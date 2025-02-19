@@ -1,17 +1,15 @@
 import axios from "axios";
 
-const API_URL = "http://192.168.0.105:5000"; // Ваш IP-адрес
+const API_URL = "http://192.168.0.105:5000";
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
   },
-  withCredentials: false, // Изменяем на false
+  withCredentials: true,
 });
 
-// Добавляем перехватчик для установки токена
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -20,9 +18,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("API Error:", error);
+    return Promise.reject(error);
+  }
+);
+
 export const login = async (email, password) => {
-  const response = await api.post("/api/auth/login", { email, password });
-  return response.data;
+  try {
+    const response = await api.post("/api/auth/login", { email, password });
+    return response.data;
+  } catch (error) {
+    console.error("Login Error:", error);
+    throw error;
+  }
 };
 
 export const register = async (username, email, password) => {

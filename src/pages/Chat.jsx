@@ -24,7 +24,7 @@ const Chat = () => {
 
   const loadMessages = async () => {
     try {
-      const response = await api.get("/messages"); // Убираем лишний /api/
+      const response = await api.get("/api/messages"); // Добавляем префикс /api
       setMessages(response.data);
     } catch (error) {
       console.error("Error loading messages:", error);
