@@ -132,13 +132,24 @@ const Chat = () => {
                     ? "bg-blue-500 text-white"
                     : "bg-gray-200 dark:bg-gray-700"
                 }`}>
-                <div className={`text-sm font-medium mb-1`}>
+                <div
+                  className={`text-sm font-medium mb-1 ${
+                    message.sender._id === user.id ? "text-right" : "text-left"
+                  }`}>
                   {message.sender._id === user.id
                     ? "Вы"
                     : message.sender.username || message.sender.email}
                 </div>
-                <p className={`text-sm break-words`}>{message.content}</p>
-                <span className={`text-xs opacity-75 block`}>
+                <p
+                  className={`text-sm break-words ${
+                    message.sender._id === user.id ? "text-right" : "text-left"
+                  }`}>
+                  {message.content}
+                </p>
+                <span
+                  className={`text-xs opacity-75 block ${
+                    message.sender._id === user.id ? "text-right" : "text-left"
+                  }`}>
                   {new Date(message.createdAt).toLocaleTimeString()}
                 </span>
               </div>
