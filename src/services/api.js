@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://192.168.95.229:5000";
+const API_URL = "http://192.168.0.111:5000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -36,13 +36,46 @@ export const login = async (email, password) => {
   }
 };
 
-export const register = async (username, email, password) => {
-  const response = await api.post("/api/auth/register", {
-    username,
-    email,
-    password,
-  });
-  return response.data;
+export const register = async (email, password) => {
+  try {
+    // Генерируем username из email
+    const username = email.split("@")[0];
+    const response = await api.post("/api/auth/register", {
+      username,
+      email,
+      password,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Register Error:", error);
+    throw error;
+  }
+};
+
+// Добавляем функцию получения сообщений
+export const getMessages = async () => {
+  try {
+    const response = await api.get("/api/messages");
+    return response.data;
+  } catch (error) {
+    console.error("Get Messages Error:", error);
+    throw error;
+  }
+};
+
+// Добавляем функцию отправки сообщения
+export const sendMessage = async (text) => {
+  try {
+    console.log("Sending message:", { text }); // Логируем отправляемые данные
+
+    const response = await api.post("/api/messages", { text });
+    console.log("Message sent successfully:", response.data); // Логируем успешный ответ
+
+    return response.data;
+  } catch (error) {
+    console.error("Send Message Error:", error.response?.data || error); // Улучшаем логирование ошибок
+    throw error;
+  }
 };
 
 export default api;

@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 import { getMessages, saveMessage } from "./controllers/messageController.js";
 import protect from "./middleware/authMiddleware.js";
 
@@ -16,14 +17,14 @@ const httpServer = createServer(app);
 app.use(express.json()); // Добавляем парсинг JSON
 app.use(
   cors({
-    origin: "http://192.168.95.229:5173", // Укажите ваш клиентский URL
+    origin: "http://192.168.0.111:5173", // Укажите ваш клиентский URL
     credentials: true,
   })
 );
 
 // API маршруты
 app.use("/api/auth", authRoutes);
-app.get("/api/messages", protect, getMessages); // Проверьте, что путь соответствует
+app.use("/api/messages", messageRoutes); // Добавляем маршруты для сообщений
 
 // Обработка ошибок
 app.use((err, req, res, next) => {
@@ -37,7 +38,7 @@ app.use((err, req, res, next) => {
 // Socket.IO настройка
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://192.168.95.229:5173",
+    origin: "http://192.168.0.111:5173", // Укажите ваш клиентский URL
     methods: ["GET", "POST"],
     credentials: true,
   },

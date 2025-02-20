@@ -1,146 +1,145 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  Box,
-  Flex,
-  Input,
-  Button,
-  VStack,
-  HStack,
-  Text,
-  Divider,
-  useToast,
-  useColorMode,
-  useColorModeValue,
-} from "@chakra-ui/react";
-import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import { getMessages, sendMessage } from "../services/api";
+import io from "socket.io-client";
 
 const Chat = () => {
-  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [socket, setSocket] = useState(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const messagesEndRef = useRef(null);
   const { user } = useAuth();
-  const toast = useToast();
-  const { colorMode } = useColorMode();
 
-  const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.600");
-  const myMessageBg = useColorModeValue("blue.100", "blue.700");
-  const otherMessageBg = useColorModeValue("gray.100", "gray.700");
-  const textColor = useColorModeValue("gray.800", "white");
-
-  const loadMessages = async () => {
-    try {
-      const response = await api.get("/api/messages");
-      setMessages(response.data);
-    } catch (error) {
-      console.error("Error loading messages:", error);
-      toast({
-        title: "Ошибка загрузки сообщений",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    const newSocket = io("http://192.168.95.229:5000", {
-      withCredentials: true,
-      transports: ["websocket", "polling"],
-    });
-    setSocket(newSocket);
-
-    loadMessages();
-
-    newSocket.on("connect", () => {
-      console.log("Connected to server");
-      newSocket.emit("join_room", "general");
-    });
-
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-
-    newSocket.on("receive_message", (data) => {
-      setMessages((prev) => [...prev, data]);
-    });
-
-    return () => {
-      newSocket.close();
+    const fetchMessages = async () => {
+      try {
+        const data = await getMessages();
+        setMessages(data);
+        setError("");
+      } catch (error) {
+        setError("Ошибка при загрузке сообщений");
+        console.error("Ошибка при загрузке сообщений:", error);
+      }
     };
+    fetchMessages();
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages]);
 
-  const sendMessage = (e) => {
-    e.preventDefault();
-    if (message.trim() && socket) {
-      const messageData = {
-        content: message,
-        sender: user.username,
-        userId: user.id,
-        roomId: "general",
-        timestamp: new Date().toISOString(),
-      };
+  useEffect(() => {
+    const socket = io("http://192.168.0.111:5000", {
+      withCredentials: true,
+    });
 
-      socket.emit("send_message", messageData);
-      setMessage("");
+    socket.on("connect", () => {
+      console.log("Connected to socket server");
+      socket.emit("join_room", "general");
+    });
+
+    socket.on("receive_message", (newMessage) => {
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    setLoading(true);
+    setError("");
+    try {
+      const message = await sendMessage(newMessage);
+      setMessages((prevMessages) => [...prevMessages, message]);
+      setNewMessage("");
+    } catch (error) {
+      setError("Ошибка при отправке сообщения");
+      console.error("Ошибка при отправке сообщения:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box h="100vh" p={4} bg={bgColor}>
-      <VStack h="full" spacing={4}>
-        <Box
-          flex={1}
-          w="full"
-          borderWidth={1}
-          borderColor={borderColor}
-          borderRadius="md"
-          p={4}
-          overflowY="auto"
-          bg={bgColor}>
-          {messages.map((msg, idx) => (
-            <Box
-              key={msg._id || idx}
-              bg={msg.sender === user.username ? myMessageBg : otherMessageBg}
-              p={2}
-              borderRadius="md"
-              mb={2}
-              ml={msg.sender === user.username ? "auto" : 0}
-              mr={msg.sender === user.username ? 0 : "auto"}
-              maxW="70%"
-              color={textColor}>
-              <Text fontSize="sm" fontWeight="bold">
-                {msg.sender}
-              </Text>
-              <Text>{msg.content}</Text>
-              <Text fontSize="xs" color="gray.500" textAlign="right">
-                {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString()}
-              </Text>
-            </Box>
-          ))}
-          <div ref={messagesEndRef} />
-        </Box>
-        <HStack as="form" w="full" onSubmit={sendMessage}>
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm py-4 px-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-semibold">Чат</h1>
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            {user.email}
+          </span>
+        </div>
+      </header>
+
+      {error && (
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4"
+          role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.map((message) => (
+          <div
+            key={message._id}
+            className={`flex ${
+              message.sender._id === user.id ? "justify-end" : "justify-start"
+            }`}>
+            <div
+              className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                message.sender._id === user.id
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 dark:bg-gray-700"
+              }`}>
+              <div className="text-sm font-medium mb-1">
+                {message.sender._id === user.id
+                  ? "Вы"
+                  : message.sender.username || message.sender.email}
+              </div>
+              <p className="text-sm break-words">{message.content}</p>
+              <span className="text-xs opacity-75">
+                {new Date(message.createdAt).toLocaleTimeString()}
+              </span>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-4">
+        <div className="flex space-x-4">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Введите сообщение..."
-            bg={bgColor}
-            borderColor={borderColor}
+            className="flex-1 px-4 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+            disabled={loading}
           />
-          <Button type="submit" colorScheme="blue">
-            Отправить
-          </Button>
-        </HStack>
-      </VStack>
-    </Box>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}>
+            {loading ? "Отправка..." : "Отправить"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 
