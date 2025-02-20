@@ -9,6 +9,8 @@ import {
   Text,
   Divider,
   useToast,
+  useColorMode,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
@@ -21,10 +23,17 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const { user } = useAuth();
   const toast = useToast();
+  const { colorMode } = useColorMode();
+
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+  const myMessageBg = useColorModeValue("blue.100", "blue.700");
+  const otherMessageBg = useColorModeValue("gray.100", "gray.700");
+  const textColor = useColorModeValue("gray.800", "white");
 
   const loadMessages = async () => {
     try {
-      const response = await api.get("/api/messages"); // Добавляем префикс /api
+      const response = await api.get("/api/messages");
       setMessages(response.data);
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -38,10 +47,9 @@ const Chat = () => {
   };
 
   useEffect(() => {
-    const newSocket = io("http://192.168.0.105:5000", {
-      // Замените X.X на ваш локальный IP-адрес
+    const newSocket = io("http://192.168.95.229:5000", {
       withCredentials: true,
-      transports: ["websocket", "polling"], // Добавляем явную поддержку WebSocket и polling
+      transports: ["websocket", "polling"],
     });
     setSocket(newSocket);
 
@@ -86,25 +94,28 @@ const Chat = () => {
   };
 
   return (
-    <Box h="100vh" p={4}>
+    <Box h="100vh" p={4} bg={bgColor}>
       <VStack h="full" spacing={4}>
         <Box
           flex={1}
           w="full"
           borderWidth={1}
+          borderColor={borderColor}
           borderRadius="md"
           p={4}
-          overflowY="auto">
+          overflowY="auto"
+          bg={bgColor}>
           {messages.map((msg, idx) => (
             <Box
               key={msg._id || idx}
-              bg={msg.sender === user.username ? "blue.100" : "gray.100"}
+              bg={msg.sender === user.username ? myMessageBg : otherMessageBg}
               p={2}
               borderRadius="md"
               mb={2}
               ml={msg.sender === user.username ? "auto" : 0}
               mr={msg.sender === user.username ? 0 : "auto"}
-              maxW="70%">
+              maxW="70%"
+              color={textColor}>
               <Text fontSize="sm" fontWeight="bold">
                 {msg.sender}
               </Text>
@@ -121,6 +132,8 @@ const Chat = () => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Введите сообщение..."
+            bg={bgColor}
+            borderColor={borderColor}
           />
           <Button type="submit" colorScheme="blue">
             Отправить

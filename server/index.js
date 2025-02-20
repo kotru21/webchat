@@ -16,14 +16,14 @@ const httpServer = createServer(app);
 app.use(express.json()); // Добавляем парсинг JSON
 app.use(
   cors({
-    origin: "http://192.168.0.105:5173", // Укажите ваш клиентский URL
+    origin: "http://192.168.95.229:5173", // Укажите ваш клиентский URL
     credentials: true,
   })
 );
 
 // API маршруты
 app.use("/api/auth", authRoutes);
-app.get("/api/messages", protect, getMessages);
+app.get("/api/messages", protect, getMessages); // Проверьте, что путь соответствует
 
 // Обработка ошибок
 app.use((err, req, res, next) => {
@@ -37,7 +37,7 @@ app.use((err, req, res, next) => {
 // Socket.IO настройка
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://192.168.0.105:5174",
+    origin: "http://192.168.95.229:5173",
     methods: ["GET", "POST"],
     credentials: true,
   },
