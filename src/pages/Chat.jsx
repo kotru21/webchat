@@ -107,63 +107,41 @@ const Chat = () => {
             className={`flex ${
               message.sender._id === user.id ? "justify-end" : "justify-start"
             }`}>
-            <div className="flex items-start space-x-2">
-              {/* Аватар для чужих сообщений показываем слева */}
-              {message.sender._id !== user.id && (
-                <img
-                  src={
-                    message.sender.avatar
-                      ? `http://192.168.0.111:5000${message.sender.avatar}`
-                      : "/default-avatar.png"
-                  }
-                  alt={`${
-                    message.sender.username || message.sender.email
-                  }'s avatar`}
-                  className="w-8 h-8 rounded-full object-cover"
-                  onError={(e) => {
-                    e.target.src = "/default-avatar.png";
-                  }}
-                />
-              )}
+            <div
+              className={`flex items-start ${
+                message.sender._id === user.id ? "flex-row-reverse" : "flex-row"
+              } gap-2 max-w-[85%]`}>
+              <img
+                src={
+                  message.sender.avatar
+                    ? `http://192.168.0.111:5000${message.sender.avatar}`
+                    : "/default-avatar.png"
+                }
+                alt={`${
+                  message.sender.username || message.sender.email
+                }'s avatar`}
+                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                onError={(e) => {
+                  e.target.src = "/default-avatar.png";
+                }}
+              />
 
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                className={`rounded-lg px-4 py-2 ${
                   message.sender._id === user.id
                     ? "bg-blue-500 text-white"
                     : "bg-gray-200 dark:bg-gray-700"
                 }`}>
-                <div
-                  className={`text-sm font-medium mb-1 ${
-                    message.sender._id === user.id ? "text-right" : "text-left"
-                  }`}>
+                <div className={`text-sm font-medium mb-1`}>
                   {message.sender._id === user.id
                     ? "Вы"
                     : message.sender.username || message.sender.email}
                 </div>
-                <p className="text-sm break-words">{message.content}</p>
-                <span
-                  className={`text-xs opacity-75 block ${
-                    message.sender._id === user.id ? "text-right" : "text-left"
-                  }`}>
+                <p className={`text-sm break-words`}>{message.content}</p>
+                <span className={`text-xs opacity-75 block`}>
                   {new Date(message.createdAt).toLocaleTimeString()}
                 </span>
               </div>
-
-              {/* Аватар для своих сообщений показываем справа */}
-              {message.sender._id === user.id && (
-                <img
-                  src={
-                    user.avatar
-                      ? `http://192.168.0.111:5000${user.avatar}`
-                      : "/default-avatar.png"
-                  }
-                  alt="Your avatar"
-                  className="w-8 h-8 rounded-full object-cover"
-                  onError={(e) => {
-                    e.target.src = "/default-avatar.png";
-                  }}
-                />
-              )}
             </div>
           </div>
         ))}
