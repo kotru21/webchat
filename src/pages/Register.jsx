@@ -5,16 +5,42 @@ import { register } from "../services/api";
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [avatar, setAvatar] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Размер файла не должен превышать 5MB");
+        return;
+      }
+      setAvatar(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+    if (avatar) {
+      formData.append("avatar", avatar);
+    }
+
     try {
-      await register(email, password);
+      await register(formData);
       navigate("/login");
     } catch (error) {
       setError(error.response?.data?.message || "Ошибка регистрации");
@@ -35,6 +61,40 @@ const Register = () => {
               {error}
             </div>
           )}
+
+          {/* Avatar Preview */}
+          {avatarPreview && (
+            <div className="flex justify-center">
+              <img
+                src={avatarPreview}
+                alt="Avatar preview"
+                className="w-24 h-24 rounded-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Avatar Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+              Аватар (опционально)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="mt-1 block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100
+                dark:file:bg-gray-700 dark:file:text-gray-200"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Максимальный размер: 5MB. Форматы: JPEG, PNG, GIF
+            </p>
+          </div>
+
           <div>
             <label
               htmlFor="email"

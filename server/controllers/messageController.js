@@ -5,7 +5,7 @@ export const getMessages = async (req, res) => {
     console.log("Getting messages...");
     const messages = await Message.find()
       .sort({ createdAt: 1 })
-      .populate("sender", "username email")
+      .populate("sender", "username email avatar")
       .lean();
 
     console.log(`Found ${messages.length} messages`);
@@ -38,7 +38,7 @@ export const saveMessage = async (messageData) => {
 
     // Получаем сохраненное сообщение с данными отправителя
     const savedMessage = await Message.findById(message._id)
-      .populate("sender", "username email")
+      .populate("sender", "username email avatar")
       .lean();
 
     console.log("Message saved successfully:", savedMessage);

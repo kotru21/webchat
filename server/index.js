@@ -8,6 +8,11 @@ import authRoutes from "./routes/authRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import { getMessages, saveMessage } from "./controllers/messageController.js";
 import protect from "./middleware/authMiddleware.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 const app = express();
@@ -21,6 +26,9 @@ app.use(
     credentials: true,
   })
 );
+
+// avatars
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // API маршруты
 app.use("/api/auth", authRoutes);

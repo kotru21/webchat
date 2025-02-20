@@ -36,14 +36,12 @@ export const login = async (email, password) => {
   }
 };
 
-export const register = async (email, password) => {
+export const register = async (formData) => {
   try {
-    // Генерируем username из email
-    const username = email.split("@")[0];
-    const response = await api.post("/api/auth/register", {
-      username,
-      email,
-      password,
+    const response = await api.post("/api/auth/register", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
     return response.data;
   } catch (error) {

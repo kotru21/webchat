@@ -4,7 +4,10 @@ import jwt from "jsonwebtoken";
 
 export const register = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { email, password } = req.body;
+
+    // Создаем username из email
+    const username = email.split("@")[0];
 
     // Проверка существования пользователя
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -16,12 +19,21 @@ export const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Создание нового пользователя
-    const user = await User.create({
+    // Создание объекта пользователя
+    const userData = {
       username,
       email,
       password: hashedPassword,
-    });
+    };
+
+    // Добавляем путь к аватару, если файл был загружен
+    if (req.file) {
+      userData.avatar = `/uploads/avatars/${req.file.filename}`;
+      console.log("Avatar path:", userData.avatar);
+    }
+
+    // Создание нового пользователя
+    const user = await User.create(userData);
 
     // Создание JWT токена
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -32,9 +44,11 @@ export const register = async (req, res) => {
       id: user._id,
       username: user.username,
       email: user.email,
+      avatar: user.avatar,
       token,
     });
   } catch (error) {
+    console.error("Register error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -60,13 +74,16 @@ export const login = async (req, res) => {
       expiresIn: "30d",
     });
 
+    // Отправка ответа
     res.json({
       id: user._id,
       username: user.username,
       email: user.email,
+      avatar: user.avatar,
       token,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Ошибка при входе" });
   }
 };
