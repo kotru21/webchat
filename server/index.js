@@ -14,17 +14,17 @@ const app = express();
 const httpServer = createServer(app);
 
 // Настройка middleware
-app.use(express.json()); // Добавляем парсинг JSON
+app.use(express.json());
 app.use(
   cors({
-    origin: "http://192.168.0.111:5173", // Укажите ваш клиентский URL
+    origin: "http://192.168.0.111:5173", // Client url
     credentials: true,
   })
 );
 
 // API маршруты
 app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoutes); // Добавляем маршруты для сообщений
+app.use("/api/messages", messageRoutes);
 
 // Обработка ошибок
 app.use((err, req, res, next) => {
@@ -35,14 +35,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Socket.IO настройка
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://192.168.0.111:5173", // Укажите ваш клиентский URL
+    origin: "http://192.168.0.111:5173", // Client url
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
+
+app.set("io", io);
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);

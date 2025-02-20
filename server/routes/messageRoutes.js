@@ -9,9 +9,6 @@ router.get("/", protect, getMessages);
 router.post("/", protect, async (req, res) => {
   try {
     console.log("POST /api/messages received");
-    console.log("Request body:", req.body);
-    console.log("User:", req.user);
-
     const { text } = req.body;
     if (!text) {
       return res.status(400).json({ message: "Message text is required" });
@@ -24,9 +21,10 @@ router.post("/", protect, async (req, res) => {
       roomId: "general",
     };
 
-    console.log("Message data to save:", messageData);
     const savedMessage = await saveMessage(messageData);
-    console.log("Saved message:", savedMessage);
+
+    // Отправляем сообщение через сокет всем клиентам в комнате
+    req.app.get("io").to("general").emit("receive_message", savedMessage);
 
     res.status(201).json(savedMessage);
   } catch (error) {

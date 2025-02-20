@@ -43,8 +43,19 @@ const Chat = () => {
       socket.emit("join_room", "general");
     });
 
+    // Обновляем обработчик получения сообщений
     socket.on("receive_message", (newMessage) => {
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      console.log("Received new message:", newMessage);
+      // Проверяем, есть ли это сообщение уже в списке
+      setMessages((prevMessages) => {
+        const messageExists = prevMessages.some(
+          (msg) => msg._id === newMessage._id
+        );
+        if (!messageExists) {
+          return [...prevMessages, newMessage];
+        }
+        return prevMessages;
+      });
     });
 
     return () => {
@@ -60,7 +71,7 @@ const Chat = () => {
     setError("");
     try {
       const message = await sendMessage(newMessage);
-      setMessages((prevMessages) => [...prevMessages, message]);
+      // отправленное сообщение приходит через ws
       setNewMessage("");
     } catch (error) {
       setError("Ошибка при отправке сообщения");
