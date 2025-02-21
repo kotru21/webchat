@@ -53,8 +53,16 @@ const io = new Server(httpServer, {
 
 app.set("io", io);
 
+// Хранилище для онлайн пользователей
+const onlineUsers = new Map();
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
+
+  socket.on("user_connected", (userData) => {
+    onlineUsers.set(socket.id, userData);
+    io.emit("users_online", Array.from(onlineUsers.values()));
+  });
 
   socket.on("join_room", (roomId) => {
     socket.join(roomId);
@@ -84,6 +92,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    onlineUsers.delete(socket.id);
+    io.emit("users_online", Array.from(onlineUsers.values()));
     console.log("User disconnected:", socket.id);
   });
 });
