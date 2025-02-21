@@ -22,7 +22,7 @@ const httpServer = createServer(app);
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://192.168.0.111:5173", // Client url
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
@@ -45,7 +45,7 @@ app.use((err, req, res, next) => {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://192.168.0.111:5173", // Client url
+    origin: process.env.CLIENT_URL, // Client url
     methods: ["GET", "POST"],
     credentials: true,
   },

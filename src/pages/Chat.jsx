@@ -34,7 +34,7 @@ const Chat = () => {
   }, [messages]);
 
   useEffect(() => {
-    const socket = io("http://192.168.0.111:5000", {
+    const socket = io(import.meta.env.VITE_API_URL, {
       withCredentials: true,
     });
 
@@ -114,7 +114,7 @@ const Chat = () => {
               <img
                 src={
                   message.sender.avatar
-                    ? `http://192.168.0.111:5000${message.sender.avatar}`
+                    ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
                     : "/default-avatar.png"
                 }
                 alt={`${
