@@ -8,7 +8,9 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   const { user } = useAuth();
 
   const scrollToBottom = () => {
@@ -63,16 +65,39 @@ const Chat = () => {
     };
   }, []);
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Проверка размера файла
+      if (file.size > 50 * 1024 * 1024) {
+        setError("Файл слишком большой (максимум 50MB)");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !selectedFile) return;
 
     setLoading(true);
     setError("");
     try {
-      const message = await sendMessage(newMessage);
-      // отправленное сообщение приходит через ws
+      const formData = new FormData();
+      if (newMessage.trim()) {
+        formData.append("text", newMessage);
+      }
+      if (selectedFile) {
+        formData.append("media", selectedFile);
+      }
+
+      const message = await sendMessage(formData);
       setNewMessage("");
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error) {
       setError("Ошибка при отправке сообщения");
       console.error("Ошибка при отправке сообщения:", error);
@@ -80,6 +105,35 @@ const Chat = () => {
       setLoading(false);
     }
   };
+
+  const renderMessageContent = (message) => (
+    <>
+      {message.content && (
+        <p
+          className={`text-sm break-words ${
+            message.sender._id === user.id ? "text-right" : "text-left"
+          }`}>
+          {message.content}
+        </p>
+      )}
+      {message.mediaUrl && message.mediaType === "image" && (
+        <img
+          src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
+          alt="Изображение"
+          className="max-w-[300px] max-h-[300px] rounded-lg mt-2"
+        />
+      )}
+      {message.mediaUrl && message.mediaType === "video" && (
+        <video controls className="max-w-[300px] max-h-[300px] rounded-lg mt-2">
+          <source
+            src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
+            type="video/mp4"
+          />
+          Ваш браузер не поддерживает видео.
+        </video>
+      )}
+    </>
+  );
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
@@ -140,12 +194,7 @@ const Chat = () => {
                     ? "Вы"
                     : message.sender.username || message.sender.email}
                 </div>
-                <p
-                  className={`text-sm break-words ${
-                    message.sender._id === user.id ? "text-right" : "text-left"
-                  }`}>
-                  {message.content}
-                </p>
+                {renderMessageContent(message)}
                 <span
                   className={`text-xs opacity-75 block ${
                     message.sender._id === user.id ? "text-right" : "text-left"
@@ -171,6 +220,19 @@ const Chat = () => {
             className="flex-1 px-4 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
             disabled={loading}
           />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*, video/mp4, video/webm"
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+            📎
+          </button>
           <button
             type="submit"
             disabled={loading}
@@ -180,6 +242,11 @@ const Chat = () => {
             {loading ? "Отправка..." : "Отправить"}
           </button>
         </div>
+        {selectedFile && (
+          <div className="mt-2 text-sm text-gray-500">
+            Выбран файл: {selectedFile.name}
+          </div>
+        )}
       </form>
     </div>
   );

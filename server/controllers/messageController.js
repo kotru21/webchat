@@ -20,16 +20,18 @@ export const saveMessage = async (messageData) => {
   try {
     console.log("Saving message with data:", messageData);
 
-    // Проверяем наличие необходимых полей
-    if (!messageData.sender || !messageData.content) {
-      throw new Error("Missing required fields");
+    // Проверяем, есть ли контент или медиафайл
+    if (!messageData.content && !messageData.mediaUrl) {
+      throw new Error("Message must have either content or media");
     }
 
     // Создаем новое сообщение
     const message = new Message({
       sender: messageData.sender,
       senderUsername: messageData.senderUsername,
-      content: messageData.content,
+      content: messageData.content || "",
+      mediaUrl: messageData.mediaUrl || null,
+      mediaType: messageData.mediaType || null,
       roomId: messageData.roomId || "general",
     });
 

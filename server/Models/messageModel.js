@@ -13,7 +13,16 @@ const messageSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+      default: "", // для картинок
+    },
+    mediaUrl: {
+      type: String,
+      default: null,
+    },
+    mediaType: {
+      type: String,
+      enum: ["image", "video", null],
+      default: null,
     },
     roomId: {
       type: String,

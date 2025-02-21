@@ -62,16 +62,16 @@ export const getMessages = async () => {
 };
 
 // Добавляем функцию отправки сообщения
-export const sendMessage = async (text) => {
+export const sendMessage = async (formData) => {
   try {
-    console.log("Sending message:", { text }); // Логируем отправляемые данные
-
-    const response = await api.post("/api/messages", { text });
-    console.log("Message sent successfully:", response.data); // Логируем успешный ответ
-
+    const response = await api.post("/api/messages", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data;
   } catch (error) {
-    console.error("Send Message Error:", error.response?.data || error); // Улучшаем логирование ошибок
+    console.error("Send Message Error:", error.response?.data || error);
     throw error;
   }
 };
