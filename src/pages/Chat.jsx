@@ -375,72 +375,75 @@ const Chat = () => {
                   onCancel={() => setEditingMessage(null)}
                 />
               ) : (
-                <div className="message-container">
-                  <div
-                    className={`flex items-start ${
-                      message.sender._id === user.id
-                        ? "flex-row-reverse"
-                        : "flex-row"
-                    } gap-2 max-w-[85%]`}>
-                    <img
-                      src={
-                        message.sender.avatar
-                          ? `${import.meta.env.VITE_API_URL}${
-                              message.sender.avatar
-                            }`
-                          : "/default-avatar.png"
-                      }
-                      alt={`${
-                        message.sender.username || message.sender.email
-                      }'s avatar`}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                      onError={(e) => {
-                        e.target.src = "/default-avatar.png";
-                      }}
-                    />
+                <div className="message-container group relative">
+                  <div className="pt-8">
+                    {message.sender._id === user.id && (
+                      <div className="absolute -top-2 right-0 hidden group-hover:flex gap-2 bg-white dark:bg-gray-800 py-1 px-2 rounded-md shadow-lg transition-all duration-200 z-10">
+                        <button
+                          onClick={() => setEditingMessage(message)}
+                          className="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
+                          Редактировать
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(message._id)}
+                          className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400">
+                          Удалить
+                        </button>
+                      </div>
+                    )}
 
                     <div
-                      className={`rounded-lg px-4 py-2 ${
+                      className={`flex items-start ${
                         message.sender._id === user.id
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-200 dark:bg-gray-700"
-                      }`}>
+                          ? "flex-row-reverse"
+                          : "flex-row"
+                      } gap-2 max-w-[85%]`}>
+                      <img
+                        src={
+                          message.sender.avatar
+                            ? `${import.meta.env.VITE_API_URL}${
+                                message.sender.avatar
+                              }`
+                            : "/default-avatar.png"
+                        }
+                        alt={`${
+                          message.sender.username || message.sender.email
+                        }'s avatar`}
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          e.target.src = "/default-avatar.png";
+                        }}
+                      />
+
                       <div
-                        className={`text-sm font-medium mb-1 ${
+                        className={`rounded-lg px-4 py-2 ${
                           message.sender._id === user.id
-                            ? "text-right"
-                            : "text-left"
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-200 dark:bg-gray-700"
                         }`}>
-                        {message.sender._id === user.id
-                          ? "Вы"
-                          : message.sender.username || message.sender.email}
-                      </div>
-                      {renderMessageContent(message)}
-                      <div className="flex flex-col gap-1">
-                        <span
-                          className={`text-xs opacity-75 ${
+                        <div
+                          className={`text-sm font-medium mb-1 ${
                             message.sender._id === user.id
                               ? "text-right"
                               : "text-left"
                           }`}>
-                          {new Date(message.createdAt).toLocaleTimeString()}
-                        </span>
-                        <ReadStatus message={message} currentUser={user} />
-                      </div>
-                      {message.sender._id === user.id && (
-                        <div className="message-actions">
-                          <button
-                            onClick={() => setEditingMessage(message)}
-                            className="text-xs text-gray-500 hover:text-blue-500">
-                            Редактировать
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMessage(message._id)}
-                            className="text-xs text-gray-500 hover:text-red-500 ml-2">
-                            Удалить
-                          </button>
+                          {message.sender._id === user.id
+                            ? "Вы"
+                            : message.sender.username || message.sender.email}
                         </div>
-                      )}
+                        {renderMessageContent(message)}
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`text-xs opacity-75 ${
+                              message.sender._id === user.id
+                                ? "text-right"
+                                : "text-left"
+                            }`}>
+                            {new Date(message.createdAt).toLocaleTimeString()}
+                          </span>
+                          <ReadStatus message={message} currentUser={user} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -30,6 +30,24 @@
            flex items-center justify-center min-w-[1.5rem]
            animate-pulse;
   }
+
+  .message-container {
+    @apply relative;
+  }
+
+  .message-container::before {
+    content: "";
+    @apply absolute -top-8 left-0 right-0 h-8 bg-transparent;
+  }
+
+  .message-container .message-actions {
+    @apply opacity-0 transform -translate-y-2 transition-all duration-200;
+  }
+
+  .message-container:hover .message-actions,
+  .message-container:focus-within .message-actions {
+    @apply opacity-100 transform translate-y-0;
+  }
 }
 
 #root {
