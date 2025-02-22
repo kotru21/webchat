@@ -67,7 +67,7 @@ const MessageEditor = ({ message, onSave, onCancel }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg w-full max-w-2xl">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-lg w-full max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Текстовое поле */}
         <textarea
