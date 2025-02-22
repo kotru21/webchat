@@ -22,7 +22,10 @@ const ReadStatus = ({ message, currentUser }) => {
       const remaining = readers.length - 6;
 
       return (
-        <div className="text-xs text-gray-500">
+        <div
+          className={`text-xs text-gray-500 ${
+            message.sender._id === currentUser.id ? "text-right" : "text-left"
+          }`}>
           Прочитали:{" "}
           {displayedReaders.map((reader) => reader.username).join(", ")}
           {remaining > 0 && ` и ещё ${remaining} человек`}

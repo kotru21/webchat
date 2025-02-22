@@ -24,6 +24,14 @@
   }
 }
 
+@layer components {
+  .unread-counter {
+    @apply px-2 py-1 bg-red-500 text-white text-xs rounded-full 
+           flex items-center justify-center min-w-[1.5rem]
+           animate-pulse;
+  }
+}
+
 #root {
   padding: 0rem !important;
 }

@@ -14,6 +14,9 @@ const Chat = () => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [unreadCounts, setUnreadCounts] = useState({
+    general: 0,
+  });
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
@@ -60,6 +63,12 @@ const Chat = () => {
     socket.on("receive_message", (newMessage) => {
       if (!selectedUser) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
+        if (newMessage.sender._id !== user.id) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            general: (prev.general || 0) + 1,
+          }));
+        }
       }
     });
 
@@ -70,6 +79,12 @@ const Chat = () => {
           newMessage.receiver._id === selectedUser.id)
       ) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
+      } else if (newMessage.sender._id !== user.id) {
+        // Обновляем счетчик непрочитанных для личных сообщений
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
+        }));
       }
     });
 
@@ -137,6 +152,19 @@ const Chat = () => {
     if (!message.readBy?.some((reader) => reader._id === user.id)) {
       try {
         await markMessageAsRead(message._id);
+        // Обновляем счетчик непрочитанных сообщений
+        setUnreadCounts((prev) => {
+          const newCounts = { ...prev };
+          if (message.isPrivate) {
+            newCounts[message.sender._id] = Math.max(
+              (newCounts[message.sender._id] || 0) - 1,
+              0
+            );
+          } else {
+            newCounts.general = Math.max((newCounts.general || 0) - 1, 0);
+          }
+          return newCounts;
+        });
       } catch (error) {
         console.error("Error marking message as read:", error);
       }
@@ -165,6 +193,32 @@ const Chat = () => {
     return () => {
       messageElements.forEach((el) => observer.unobserve(el));
     };
+  }, [messages]);
+
+  useEffect(() => {
+    const calculateUnreadCounts = () => {
+      const counts = { general: 0 };
+
+      messages.forEach((message) => {
+        // Пропускаем сообщения, отправленные текущим пользователем
+        if (message.sender._id === user.id) return;
+
+        // Проверяем, прочитано ли сообщение текущим пользователем
+        const isRead = message.readBy?.some((reader) => reader._id === user.id);
+        if (!isRead) {
+          if (message.isPrivate) {
+            const chatId = message.sender._id;
+            counts[chatId] = (counts[chatId] || 0) + 1;
+          } else {
+            counts.general++;
+          }
+        }
+      });
+
+      setUnreadCounts(counts);
+    };
+
+    calculateUnreadCounts();
   }, [messages]);
 
   const renderMessageContent = (message) => (
@@ -212,8 +266,16 @@ const Chat = () => {
           users={onlineUsers.filter((u) => u.id !== user.id)}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
-          onUserSelect={setSelectedUser}
+          onUserSelect={(user) => {
+            setSelectedUser(user);
+            // Сбрасываем счетчик непрочитанных сообщений при выборе чата
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [user ? user.id : "general"]: 0,
+            }));
+          }}
           selectedUser={selectedUser}
+          unreadCounts={unreadCounts}
         />
       </div>
 
@@ -284,14 +346,24 @@ const Chat = () => {
                       ? "bg-blue-500 text-white"
                       : "bg-gray-200 dark:bg-gray-700"
                   }`}>
-                  <div className={`text-sm font-medium mb-1`}>
+                  <div
+                    className={`text-sm font-medium mb-1 ${
+                      message.sender._id === user.id
+                        ? "text-right"
+                        : "text-left"
+                    }`}>
                     {message.sender._id === user.id
                       ? "Вы"
                       : message.sender.username || message.sender.email}
                   </div>
                   {renderMessageContent(message)}
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs opacity-75">
+                    <span
+                      className={`text-xs opacity-75 ${
+                        message.sender._id === user.id
+                          ? "text-right"
+                          : "text-left"
+                      }`}>
                       {new Date(message.createdAt).toLocaleTimeString()}
                     </span>
                     <ReadStatus message={message} currentUser={user} />
