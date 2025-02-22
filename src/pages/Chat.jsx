@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getMessages, sendMessage, markMessageAsRead } from "../services/api";
+import {
+  getMessages,
+  sendMessage,
+  markMessageAsRead,
+  updateMessage,
+  deleteMessage,
+} from "../services/api";
 import io from "socket.io-client";
 import UsersList from "../components/UsersList";
 import ReadStatus from "../components/ReadStatus";
+import MessageEditor from "../components/MessageEditor";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -17,6 +24,7 @@ const Chat = () => {
   const [unreadCounts, setUnreadCounts] = useState({
     general: 0,
   });
+  const [editingMessage, setEditingMessage] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
@@ -100,6 +108,20 @@ const Chat = () => {
       );
     });
 
+    socket.on("message_updated", (updatedMessage) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === updatedMessage._id ? updatedMessage : msg
+        )
+      );
+    });
+
+    socket.on("message_deleted", (messageId) => {
+      setMessages((prevMessages) =>
+        prevMessages.filter((msg) => msg._id !== messageId)
+      );
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -167,6 +189,33 @@ const Chat = () => {
         });
       } catch (error) {
         console.error("Error marking message as read:", error);
+      }
+    }
+  };
+
+  const handleEditMessage = async (messageId, formData) => {
+    try {
+      const updatedMessage = await updateMessage(messageId, formData);
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId ? updatedMessage : msg
+        )
+      );
+      setEditingMessage(null);
+    } catch (error) {
+      setError("Ошибка при редактировании сообщения");
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (window.confirm("Вы уверены, что хотите удалить это сообщение?")) {
+      try {
+        await deleteMessage(messageId);
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg._id !== messageId)
+        );
+      } catch (error) {
+        setError("Ошибка при удалении сообщения");
       }
     }
   };
@@ -317,59 +366,85 @@ const Chat = () => {
               className={`flex message-item ${
                 message.sender._id === user.id ? "justify-end" : "justify-start"
               }`}>
-              <div
-                className={`flex items-start ${
-                  message.sender._id === user.id
-                    ? "flex-row-reverse"
-                    : "flex-row"
-                } gap-2 max-w-[85%]`}>
-                <img
-                  src={
-                    message.sender.avatar
-                      ? `${import.meta.env.VITE_API_URL}${
-                          message.sender.avatar
-                        }`
-                      : "/default-avatar.png"
+              {editingMessage?._id === message._id ? (
+                <MessageEditor
+                  message={message}
+                  onSave={(formData) =>
+                    handleEditMessage(message._id, formData)
                   }
-                  alt={`${
-                    message.sender.username || message.sender.email
-                  }'s avatar`}
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                  onError={(e) => {
-                    e.target.src = "/default-avatar.png";
-                  }}
+                  onCancel={() => setEditingMessage(null)}
                 />
-
-                <div
-                  className={`rounded-lg px-4 py-2 ${
-                    message.sender._id === user.id
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200 dark:bg-gray-700"
-                  }`}>
+              ) : (
+                <div className="message-container">
                   <div
-                    className={`text-sm font-medium mb-1 ${
+                    className={`flex items-start ${
                       message.sender._id === user.id
-                        ? "text-right"
-                        : "text-left"
-                    }`}>
-                    {message.sender._id === user.id
-                      ? "Вы"
-                      : message.sender.username || message.sender.email}
-                  </div>
-                  {renderMessageContent(message)}
-                  <div className="flex flex-col gap-1">
-                    <span
-                      className={`text-xs opacity-75 ${
+                        ? "flex-row-reverse"
+                        : "flex-row"
+                    } gap-2 max-w-[85%]`}>
+                    <img
+                      src={
+                        message.sender.avatar
+                          ? `${import.meta.env.VITE_API_URL}${
+                              message.sender.avatar
+                            }`
+                          : "/default-avatar.png"
+                      }
+                      alt={`${
+                        message.sender.username || message.sender.email
+                      }'s avatar`}
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = "/default-avatar.png";
+                      }}
+                    />
+
+                    <div
+                      className={`rounded-lg px-4 py-2 ${
                         message.sender._id === user.id
-                          ? "text-right"
-                          : "text-left"
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-200 dark:bg-gray-700"
                       }`}>
-                      {new Date(message.createdAt).toLocaleTimeString()}
-                    </span>
-                    <ReadStatus message={message} currentUser={user} />
+                      <div
+                        className={`text-sm font-medium mb-1 ${
+                          message.sender._id === user.id
+                            ? "text-right"
+                            : "text-left"
+                        }`}>
+                        {message.sender._id === user.id
+                          ? "Вы"
+                          : message.sender.username || message.sender.email}
+                      </div>
+                      {renderMessageContent(message)}
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={`text-xs opacity-75 ${
+                            message.sender._id === user.id
+                              ? "text-right"
+                              : "text-left"
+                          }`}>
+                          {new Date(message.createdAt).toLocaleTimeString()}
+                        </span>
+                        <ReadStatus message={message} currentUser={user} />
+                      </div>
+                      {message.sender._id === user.id && (
+                        <div className="message-actions">
+                          <button
+                            onClick={() => setEditingMessage(message)}
+                            className="text-xs text-gray-500 hover:text-blue-500">
+                            Редактировать
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMessage(message._id)}
+                            className="text-xs text-gray-500 hover:text-red-500 ml-2">
+                            Удалить
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           ))}
           <div ref={messagesEndRef} />

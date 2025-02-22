@@ -90,4 +90,28 @@ export const markMessageAsRead = async (messageId) => {
   }
 };
 
+export const updateMessage = async (messageId, formData) => {
+  try {
+    const response = await api.put(`/api/messages/${messageId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Update Message Error:", error);
+    throw error;
+  }
+};
+
+export const deleteMessage = async (messageId) => {
+  try {
+    const response = await api.delete(`/api/messages/${messageId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Delete Message Error:", error);
+    throw error;
+  }
+};
+
 export default api;

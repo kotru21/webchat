@@ -3,6 +3,8 @@ import {
   getMessages,
   saveMessage,
   markAsRead,
+  updateMessage, // Добавим новые контроллеры
+  deleteMessage,
 } from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
 import { upload } from "../config/mediaUpload.js";
@@ -54,5 +56,9 @@ router.post("/", protect, upload.single("media"), async (req, res) => {
 });
 
 router.post("/:messageId/read", protect, markAsRead);
+
+// Добавляем маршруты для редактирования и удаления
+router.put("/:messageId", protect, upload.single("media"), updateMessage);
+router.delete("/:messageId", protect, deleteMessage);
 
 export default router;
