@@ -133,7 +133,10 @@ export const updateMessage = async (req, res) => {
 
     const updatedMessage = await Message.findByIdAndUpdate(
       req.params.messageId,
-      updateData,
+      {
+        ...updateData,
+        isEdited: true,
+      },
       { new: true }
     )
       .populate("sender", "username email avatar")
@@ -170,25 +173,38 @@ export const deleteMessage = async (req, res) => {
       return res.status(403).json({ message: "Нет прав на удаление" });
     }
 
-    // Удаляем медиафайл, если есть
+    // Вместо полного удаления, помечаем сообщение как удаленное
+    const updatedMessage = await Message.findByIdAndUpdate(
+      req.params.messageId,
+      {
+        isDeleted: true,
+        content: "Сообщение удалено",
+        mediaUrl: null,
+        mediaType: null,
+      },
+      { new: true }
+    )
+      .populate("sender", "username email avatar")
+      .populate("receiver", "username email avatar")
+      .populate("readBy", "username email");
+
+    // Удаляем медиафайл, если он есть
     if (message.mediaUrl) {
       const filePath = path.join(__dirname, "..", message.mediaUrl);
       await fs.unlink(filePath).catch(console.error);
     }
-
-    await Message.findByIdAndDelete(req.params.messageId);
 
     // Оповещаем через Socket.IO
     const io = req.app.get("io");
     if (message.isPrivate) {
       io.to(message.sender.toString())
         .to(message.receiver.toString())
-        .emit("message_deleted", req.params.messageId);
+        .emit("message_updated", updatedMessage);
     } else {
-      io.to("general").emit("message_deleted", req.params.messageId);
+      io.to("general").emit("message_updated", updatedMessage);
     }
 
-    res.json({ message: "Сообщение удалено" });
+    res.json(updatedMessage);
   } catch (error) {
     console.error("Delete message error:", error);
     res.status(500).json({ message: error.message });

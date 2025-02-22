@@ -210,9 +210,11 @@ const Chat = () => {
   const handleDeleteMessage = async (messageId) => {
     if (window.confirm("Вы уверены, что хотите удалить это сообщение?")) {
       try {
-        await deleteMessage(messageId);
+        const updatedMessage = await deleteMessage(messageId);
         setMessages((prevMessages) =>
-          prevMessages.filter((msg) => msg._id !== messageId)
+          prevMessages.map((msg) =>
+            msg._id === messageId ? updatedMessage : msg
+          )
         );
       } catch (error) {
         setError("Ошибка при удалении сообщения");
@@ -273,29 +275,45 @@ const Chat = () => {
   const renderMessageContent = (message) => (
     <>
       {message.content && (
-        <p
-          className={`text-sm break-words ${
-            message.sender._id === user.id ? "text-right" : "text-left"
-          }`}>
-          {message.content}
-        </p>
+        <div className="flex flex-col">
+          <p
+            className={`text-sm break-words ${
+              message.sender._id === user.id ? "text-right" : "text-left"
+            }`}>
+            {message.content}
+          </p>
+          {(message.isEdited || message.isDeleted) && (
+            <span
+              className={`text-xs text-gray-500 ${
+                message.sender._id === user.id ? "text-right" : "text-left"
+              }`}>
+              {message.isDeleted ? "удалено" : "изменено"}
+            </span>
+          )}
+        </div>
       )}
-      {message.mediaUrl && message.mediaType === "image" && (
-        <img
-          src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-          alt="Изображение"
-          className="max-w-[300px] max-h-[300px] rounded-lg mt-2"
-        />
-      )}
-      {message.mediaUrl && message.mediaType === "video" && (
-        <video controls className="max-w-[300px] max-h-[300px] rounded-lg mt-2">
-          <source
+      {!message.isDeleted &&
+        message.mediaUrl &&
+        message.mediaType === "image" && (
+          <img
             src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-            type="video/mp4"
+            alt="Изображение"
+            className="max-w-[300px] max-h-[300px] rounded-lg mt-2"
           />
-          Ваш браузер не поддерживает видео.
-        </video>
-      )}
+        )}
+      {!message.isDeleted &&
+        message.mediaUrl &&
+        message.mediaType === "video" && (
+          <video
+            controls
+            className="max-w-[300px] max-h-[300px] rounded-lg mt-2">
+            <source
+              src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
+              type="video/mp4"
+            />
+            Ваш браузер не поддерживает видео.
+          </video>
+        )}
     </>
   );
 
