@@ -2,13 +2,29 @@ import Message from "../Models/messageModel.js";
 
 export const getMessages = async (req, res) => {
   try {
-    console.log("Getting messages...");
-    const messages = await Message.find()
+    const { receiverId } = req.query;
+    let query;
+
+    if (receiverId) {
+      // Получаем личные сообщения между двумя пользователями
+      query = {
+        $or: [
+          { sender: req.user._id, receiver: receiverId },
+          { sender: receiverId, receiver: req.user._id },
+        ],
+        isPrivate: true,
+      };
+    } else {
+      // Получаем сообщения общего чата
+      query = { isPrivate: false };
+    }
+
+    const messages = await Message.find(query)
       .sort({ createdAt: 1 })
       .populate("sender", "username email avatar")
+      .populate("receiver", "username email avatar")
       .lean();
 
-    console.log(`Found ${messages.length} messages`);
     res.json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -18,33 +34,13 @@ export const getMessages = async (req, res) => {
 
 export const saveMessage = async (messageData) => {
   try {
-    console.log("Saving message with data:", messageData);
-
-    // Проверяем, есть ли контент или медиафайл
-    if (!messageData.content && !messageData.mediaUrl) {
-      throw new Error("Message must have either content or media");
-    }
-
-    // Создаем новое сообщение
-    const message = new Message({
-      sender: messageData.sender,
-      senderUsername: messageData.senderUsername,
-      content: messageData.content || "",
-      mediaUrl: messageData.mediaUrl || null,
-      mediaType: messageData.mediaType || null,
-      roomId: messageData.roomId || "general",
-    });
-
-    // Сохраняем сообщение
+    const message = new Message(messageData);
     await message.save();
 
-    // Получаем сохраненное сообщение с данными отправителя
-    const savedMessage = await Message.findById(message._id)
+    return await Message.findById(message._id)
       .populate("sender", "username email avatar")
+      .populate("receiver", "username email avatar")
       .lean();
-
-    console.log("Message saved successfully:", savedMessage);
-    return savedMessage;
   } catch (error) {
     console.error("Error saving message:", error);
     throw error;

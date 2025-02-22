@@ -51,9 +51,12 @@ export const register = async (formData) => {
 };
 
 // Добавляем функцию получения сообщений
-export const getMessages = async () => {
+export const getMessages = async (receiverId = null) => {
   try {
-    const response = await api.get("/api/messages");
+    const url = receiverId
+      ? `/api/messages?receiverId=${receiverId}`
+      : "/api/messages";
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error("Get Messages Error:", error);

@@ -12,6 +12,7 @@ const Chat = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
@@ -23,7 +24,7 @@ const Chat = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const data = await getMessages();
+        const data = await getMessages(selectedUser?.id);
         setMessages(data);
         setError("");
       } catch (error) {
@@ -32,7 +33,7 @@ const Chat = () => {
       }
     };
     fetchMessages();
-  }, []);
+  }, [selectedUser]);
 
   useEffect(() => {
     scrollToBottom();
@@ -46,6 +47,7 @@ const Chat = () => {
     socket.on("connect", () => {
       console.log("Connected to socket server");
       socket.emit("join_room", "general");
+      socket.emit("join_private_room", user.id);
       socket.emit("user_connected", {
         id: user.id,
         username: user.username,
@@ -55,16 +57,19 @@ const Chat = () => {
     });
 
     socket.on("receive_message", (newMessage) => {
-      console.log("Received new message:", newMessage);
-      setMessages((prevMessages) => {
-        const messageExists = prevMessages.some(
-          (msg) => msg._id === newMessage._id
-        );
-        if (!messageExists) {
-          return [...prevMessages, newMessage];
-        }
-        return prevMessages;
-      });
+      if (!selectedUser) {
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+      }
+    });
+
+    socket.on("receive_private_message", (newMessage) => {
+      if (
+        selectedUser &&
+        (newMessage.sender._id === selectedUser.id ||
+          newMessage.receiver._id === selectedUser.id)
+      ) {
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+      }
     });
 
     socket.on("users_online", (users) => {
@@ -74,7 +79,7 @@ const Chat = () => {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [selectedUser]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -101,8 +106,11 @@ const Chat = () => {
       if (selectedFile) {
         formData.append("media", selectedFile);
       }
+      if (selectedUser) {
+        formData.append("receiverId", selectedUser.id);
+      }
 
-      const message = await sendMessage(formData);
+      await sendMessage(formData);
       setNewMessage("");
       setSelectedFile(null);
       if (fileInputRef.current) {
@@ -158,9 +166,11 @@ const Chat = () => {
       {/* Боковое меню - изменен w-64 на w-72 и добавлены стили для корректного позиционирования */}
       <div className="flex-none md:w-72">
         <UsersList
-          users={onlineUsers}
+          users={onlineUsers.filter((u) => u.id !== user.id)}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          onUserSelect={setSelectedUser}
+          selectedUser={selectedUser}
         />
       </div>
 
@@ -174,7 +184,11 @@ const Chat = () => {
                 className="md:hidden text-gray-600 dark:text-gray-300">
                 ☰
               </button>
-              <h1 className="text-xl font-semibold">Чат</h1>
+              <h1 className="text-xl font-semibold">
+                {selectedUser
+                  ? `Чат с ${selectedUser.username || selectedUser.email}`
+                  : "Общий чат"}
+              </h1>
             </div>
             <span className="text-sm text-gray-600 dark:text-gray-300">
               {user.email}

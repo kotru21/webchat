@@ -69,6 +69,11 @@ io.on("connection", (socket) => {
     console.log(`User joined room: ${roomId}`);
   });
 
+  socket.on("join_private_room", (userId) => {
+    socket.join(userId.toString());
+    console.log(`User joined private room: ${userId}`);
+  });
+
   socket.on("send_message", async (data) => {
     try {
       const messageData = {

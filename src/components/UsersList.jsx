@@ -1,4 +1,4 @@
-const UsersList = ({ users, isOpen, onClose }) => {
+const UsersList = ({ users, isOpen, onClose, onUserSelect, selectedUser }) => {
   return (
     <div
       className={`${
@@ -6,7 +6,7 @@ const UsersList = ({ users, isOpen, onClose }) => {
       } fixed md:relative md:translate-x-0 h-full w-72 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transition-transform duration-300 ease-in-out z-20`}>
       <div className="p-4 h-full">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Пользователи онлайн</h2>
+          <h2 className="text-lg font-semibold">Пользователи</h2>
           <button
             onClick={onClose}
             className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -14,10 +14,22 @@ const UsersList = ({ users, isOpen, onClose }) => {
           </button>
         </div>
         <div className="overflow-y-auto h-[calc(100%-4rem)]">
+          <div
+            onClick={() => onUserSelect(null)}
+            className={`flex items-center space-x-3 mb-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+              !selectedUser ? "bg-blue-50 dark:bg-blue-900" : ""
+            }`}>
+            <div className="text-sm font-medium">Общий чат</div>
+          </div>
           {users.map((user) => (
             <div
               key={user.id}
-              className="flex items-center space-x-3 mb-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+              onClick={() => onUserSelect(user)}
+              className={`flex items-center space-x-3 mb-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                selectedUser?.id === user.id
+                  ? "bg-blue-50 dark:bg-blue-900"
+                  : ""
+              }`}>
               <div className="relative">
                 <img
                   src={

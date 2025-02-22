@@ -7,6 +7,11 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    receiver: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null, // null для общего чата
+    },
     senderUsername: {
       type: String,
       required: true,
@@ -26,8 +31,11 @@ const messageSchema = new mongoose.Schema(
     },
     roomId: {
       type: String,
-      required: true,
       default: "general",
+    },
+    isPrivate: {
+      type: Boolean,
+      default: false,
     },
   },
   {
