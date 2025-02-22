@@ -79,4 +79,15 @@ export const sendMessage = async (formData) => {
   }
 };
 
+// Добавляем функцию отметки сообщения как прочитанного
+export const markMessageAsRead = async (messageId) => {
+  try {
+    const response = await api.post(`/api/messages/${messageId}/read`);
+    return response.data;
+  } catch (error) {
+    console.error("Mark as read error:", error);
+    throw error;
+  }
+};
+
 export default api;

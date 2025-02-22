@@ -1,5 +1,9 @@
 import express from "express";
-import { getMessages, saveMessage } from "../controllers/messageController.js";
+import {
+  getMessages,
+  saveMessage,
+  markAsRead,
+} from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
 import { upload } from "../config/mediaUpload.js";
 
@@ -32,7 +36,7 @@ router.post("/", protect, upload.single("media"), async (req, res) => {
     if (messageData.isPrivate) {
       // Для личных сообщений
       io.to(messageData.sender.toString())
-        .to(messageData.receiver.toString())
+        .to(messageData.receiver)
         .emit("receive_private_message", savedMessage);
     } else {
       // Для общего чата
@@ -48,5 +52,7 @@ router.post("/", protect, upload.single("media"), async (req, res) => {
     });
   }
 });
+
+router.post("/:messageId/read", protect, markAsRead);
 
 export default router;

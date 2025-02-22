@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getMessages, sendMessage } from "../services/api";
+import { getMessages, sendMessage, markMessageAsRead } from "../services/api";
 import io from "socket.io-client";
 import UsersList from "../components/UsersList";
+import ReadStatus from "../components/ReadStatus";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -76,6 +77,14 @@ const Chat = () => {
       setOnlineUsers(users);
     });
 
+    socket.on("message_read", ({ messageId, readBy }) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId ? { ...msg, readBy } : msg
+        )
+      );
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -123,6 +132,40 @@ const Chat = () => {
       setLoading(false);
     }
   };
+
+  const handleMessageView = async (message) => {
+    if (!message.readBy?.some((reader) => reader._id === user.id)) {
+      try {
+        await markMessageAsRead(message._id);
+      } catch (error) {
+        console.error("Error marking message as read:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const messageId = entry.target.getAttribute("data-message-id");
+            const message = messages.find((m) => m._id === messageId);
+            if (message) {
+              handleMessageView(message);
+            }
+          }
+        });
+      },
+      { threshold: 1.0 }
+    );
+
+    const messageElements = document.querySelectorAll(".message-item");
+    messageElements.forEach((el) => observer.observe(el));
+
+    return () => {
+      messageElements.forEach((el) => observer.unobserve(el));
+    };
+  }, [messages]);
 
   const renderMessageContent = (message) => (
     <>
@@ -208,7 +251,8 @@ const Chat = () => {
           {messages.map((message) => (
             <div
               key={message._id}
-              className={`flex ${
+              data-message-id={message._id}
+              className={`flex message-item ${
                 message.sender._id === user.id ? "justify-end" : "justify-start"
               }`}>
               <div
@@ -240,25 +284,18 @@ const Chat = () => {
                       ? "bg-blue-500 text-white"
                       : "bg-gray-200 dark:bg-gray-700"
                   }`}>
-                  <div
-                    className={`text-sm font-medium mb-1 ${
-                      message.sender._id === user.id
-                        ? "text-right"
-                        : "text-left"
-                    }`}>
+                  <div className={`text-sm font-medium mb-1`}>
                     {message.sender._id === user.id
                       ? "Вы"
                       : message.sender.username || message.sender.email}
                   </div>
                   {renderMessageContent(message)}
-                  <span
-                    className={`text-xs opacity-75 block ${
-                      message.sender._id === user.id
-                        ? "text-right"
-                        : "text-left"
-                    }`}>
-                    {new Date(message.createdAt).toLocaleTimeString()}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs opacity-75">
+                      {new Date(message.createdAt).toLocaleTimeString()}
+                    </span>
+                    <ReadStatus message={message} currentUser={user} />
+                  </div>
                 </div>
               </div>
             </div>
