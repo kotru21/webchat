@@ -10,7 +10,7 @@ const UsersList = ({
     <div
       className={`${
         isOpen ? "translate-x-0" : "-translate-x-full"
-      } fixed md:relative md:translate-x-0 h-full w-72 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transition-transform duration-300 ease-in-out z-20`}>
+      } fixed md:relative md:translate-x-0 h-full w-72 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transition-transform duration-300 ease-in-out z-20 pt-4 md:pt-2`}>
       <div className="p-4 h-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Пользователи</h2>
@@ -23,7 +23,7 @@ const UsersList = ({
         <div className="overflow-y-auto h-[calc(100%-4rem)]">
           <div
             onClick={() => onUserSelect(null)}
-            className={`flex items-center justify-between mb-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+            className={`flex items-center justify-between mb-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer pt-4 pb-4 pl-4 md:pt-2 md:pb-2 md:pl-2 ${
               !selectedUser ? "bg-blue-50 dark:bg-blue-900" : ""
             }`}>
             <div className="text-sm font-medium">Общий чат</div>

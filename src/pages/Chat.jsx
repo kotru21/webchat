@@ -355,7 +355,6 @@ const Chat = () => {
         />
       )}
 
-      {/* Боковое меню - изменен w-64 на w-72 и добавлены стили для корректного позиционирования */}
       <div className="flex-none md:w-72">
         <UsersList
           users={onlineUsers.filter((u) => u.id !== user.id)}
@@ -374,9 +373,8 @@ const Chat = () => {
         />
       </div>
 
-      {/* Основной контент чата - добавлен flex-1 и min-w-0 для предотвращения переполнения */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="bg-white dark:bg-gray-800 shadow-sm py-4 px-6">
+        <header className="bg-white dark:bg-gray-800 shadow-sm py-4 px-4 sticky top-0 z-20">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <button
@@ -418,7 +416,7 @@ const Chat = () => {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 overflow-x-hidden">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 overflow-x-hidden pb-20">
           {messages.map((message) => (
             <div
               key={message._id}
@@ -515,14 +513,14 @@ const Chat = () => {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-4">
-          <div className="flex space-x-4">
+          className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4">
+          <div className="flex items-center gap-2">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Введите сообщение..."
-              className="flex-1 px-4 py-2 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+              placeholder="Сообщение..."
+              className="flex-1 px-3 py-2 text-sm rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white min-w-0"
               disabled={loading}
             />
             <input
@@ -535,21 +533,50 @@ const Chat = () => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+              className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0">
               📎
             </button>
             <button
               type="submit"
               disabled={loading}
-              className={`px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              className={`p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 pl-6 pr-6 md:pr-2 md:pl-2 ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}>
-              {loading ? "Отправка..." : "Отправить"}
+              {loading ? (
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+              )}
             </button>
           </div>
           {selectedFile && (
-            <div className="mt-2 text-sm text-gray-500">
-              Выбран файл: {selectedFile.name}
+            <div className="mt-2 text-xs text-gray-500 truncate px-2">
+              Файл: {selectedFile.name}
             </div>
           )}
         </form>
