@@ -46,13 +46,12 @@ router.post(
 
       const savedMessage = await saveMessage(messageData);
 
-      // Отправляем сообщение через Socket.IO
+      // Отправляем сообщение через Socket.IO только один раз
       const io = req.app.get("io");
 
       if (messageData.isPrivate) {
-        // Отправляем в комнаты обоих пользователей
         io.to(messageData.sender.toString())
-          .to(messageData.receiver)
+          .to(messageData.receiver.toString())
           .emit("receive_private_message", savedMessage);
       } else {
         io.to("general").emit("receive_message", savedMessage);

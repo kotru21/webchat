@@ -127,10 +127,7 @@ const Chat = () => {
 
     socket.on("connect", () => {
       console.log("Connected to socket server");
-      // Подключаемся к общему чату
       socket.emit("join_room", "general");
-      // Подключаемся к личной комнате пользователя
-      socket.emit("join_private_room", user.id);
       socket.emit("user_connected", {
         id: user.id,
         username: user.username,
@@ -140,34 +137,39 @@ const Chat = () => {
     });
 
     socket.on("receive_message", (newMessage) => {
+      // Обрабатываем сообщение только если мы в общем чате
       if (!selectedUser) {
-        setMessages((prevMessages) => {
-          // Проверяем, нет ли уже такого сообщения
-          if (prevMessages.some((msg) => msg._id === newMessage._id)) {
-            return prevMessages;
-          }
-          return [...prevMessages, newMessage];
-        });
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        if (newMessage.sender._id !== user.id) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            general: (prev.general || 0) + 1,
+          }));
+        }
       }
     });
 
     socket.on("receive_private_message", (newMessage) => {
+      // Проверяем, относится ли сообщение к текущему чату
       const isCurrentChat =
         selectedUser &&
-        ((newMessage.sender._id === selectedUser.id &&
-          newMessage.receiver === user.id) ||
-          (newMessage.sender._id === user.id &&
-            newMessage.receiver === selectedUser.id));
+        (newMessage.sender._id === selectedUser.id ||
+          newMessage.receiver === selectedUser.id);
 
-      if (isCurrentChat) {
-        setMessages((prevMessages) => {
-          // Проверяем, нет ли уже такого сообщения
-          if (prevMessages.some((msg) => msg._id === newMessage._id)) {
-            return prevMessages;
-          }
-          return [...prevMessages, newMessage];
-        });
-      } else if (newMessage.sender._id !== user.id) {
+      // Добавляем сообщение если:
+      // 1. Это текущий чат
+      // 2. Мы отправитель (чтобы видеть свои сообщения)
+      // 3. Сообщение предназначено нам
+      if (
+        isCurrentChat ||
+        newMessage.sender._id === user.id ||
+        newMessage.receiver === user.id
+      ) {
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+      }
+
+      // Увеличиваем счетчик непрочитанных только для входящих сообщений
+      if (newMessage.sender._id !== user.id && !isCurrentChat) {
         setUnreadCounts((prev) => ({
           ...prev,
           [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
@@ -240,12 +242,9 @@ const Chat = () => {
         formData.append("receiverId", selectedUser.id);
       }
 
-      const savedMessage = await sendMessage(formData);
+      await sendMessage(formData); // Убираем сохранение результата в переменную
 
-      // Добавляем сообщение локально только если оно не придет через сокет
-      if (selectedUser) {
-        setMessages((prevMessages) => [...prevMessages, savedMessage]);
-      }
+      // Удаляем добавление сообщения локально, так как оно придет через сокет
 
       setNewMessage("");
       setSelectedFile(null);
