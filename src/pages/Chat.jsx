@@ -11,6 +11,7 @@ import io from "socket.io-client";
 import UsersList from "../components/UsersList";
 import ReadStatus from "../components/ReadStatus";
 import MessageEditor from "../components/MessageEditor";
+import MediaViewer from "../components/MediaViewer";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -25,6 +26,7 @@ const Chat = () => {
     general: 0,
   });
   const [editingMessage, setEditingMessage] = useState(null);
+  const [fullscreenMedia, setFullscreenMedia] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
@@ -222,6 +224,13 @@ const Chat = () => {
     }
   };
 
+  const handleMediaClick = (mediaUrl, mediaType) => {
+    setFullscreenMedia({
+      url: `${import.meta.env.VITE_API_URL}${mediaUrl}`,
+      type: mediaType,
+    });
+  };
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -298,19 +307,17 @@ const Chat = () => {
           <img
             src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
             alt="Изображение"
-            className="max-w-[300px] max-h-[300px] rounded-lg mt-2"
+            className="max-w-[300px] max-h-[300px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => handleMediaClick(message.mediaUrl, "image")}
           />
         )}
       {!message.isDeleted &&
         message.mediaUrl &&
         message.mediaType === "video" && (
           <video
-            controls
-            className="max-w-[300px] max-h-[300px] rounded-lg mt-2">
-            <source
-              src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-              type="video/mp4"
-            />
+            src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
+            className="max-w-[300px] max-h-[300px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => handleMediaClick(message.mediaUrl, "video")}>
             Ваш браузер не поддерживает видео.
           </video>
         )}
@@ -512,6 +519,12 @@ const Chat = () => {
           )}
         </form>
       </div>
+      {fullscreenMedia && (
+        <MediaViewer
+          media={fullscreenMedia}
+          onClose={() => setFullscreenMedia(null)}
+        />
+      )}
     </div>
   );
 };
