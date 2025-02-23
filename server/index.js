@@ -11,6 +11,9 @@ import protect from "./middleware/authMiddleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
+import helmet from "helmet";
+import xss from "xss-clean";
+import mongoSanitize from "express-mongo-sanitize";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +30,9 @@ app.use(
     credentials: true,
   })
 );
+app.use(helmet()); // Защита заголовков
+app.use(xss()); // Защита от XSS атак
+app.use(mongoSanitize()); // Защита от NoSQL инъекций
 
 // Статические файлы
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
