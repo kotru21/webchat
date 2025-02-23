@@ -10,6 +10,7 @@ import { getMessages, saveMessage } from "./controllers/messageController.js";
 import protect from "./middleware/authMiddleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +19,7 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-// Настройка middleware
+// Middleware
 app.use(express.json());
 app.use(
   cors({
@@ -27,10 +28,10 @@ app.use(
   })
 );
 
-// avatars
+// Статические файлы
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// API маршруты
+// Маршруты
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
@@ -42,6 +43,21 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === "development" ? err.message : {},
   });
 });
+
+const ensureUploadsDir = async () => {
+  const avatarsPath = path.join(__dirname, "uploads", "avatars");
+  try {
+    await fs.access(avatarsPath);
+  } catch {
+    await fs.mkdir(avatarsPath, { recursive: true });
+  }
+};
+
+ensureUploadsDir()
+  .then(() => {
+    console.log("Uploads directories created");
+  })
+  .catch(console.error);
 
 const io = new Server(httpServer, {
   cors: {

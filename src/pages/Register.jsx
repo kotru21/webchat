@@ -9,6 +9,7 @@ const Register = () => {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState("");
   const navigate = useNavigate();
 
   const handleFileChange = (e) => {
@@ -35,6 +36,7 @@ const Register = () => {
     const formData = new FormData();
     formData.append("email", email);
     formData.append("password", password);
+    formData.append("username", username || email.split("@")[0]);
     if (avatar) {
       formData.append("avatar", avatar);
     }
@@ -93,6 +95,21 @@ const Register = () => {
             <p className="mt-1 text-xs text-gray-500">
               Максимальный размер: 5MB. Форматы: JPEG, PNG, GIF
             </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+              Никнейм (необязательно)
+            </label>
+            <input
+              id="username"
+              type="text"
+              className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
 
           <div>

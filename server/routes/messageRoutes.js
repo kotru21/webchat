@@ -3,7 +3,7 @@ import {
   getMessages,
   saveMessage,
   markAsRead,
-  updateMessage, // Добавим новые контроллеры
+  updateMessage,
   deleteMessage,
 } from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
@@ -15,6 +15,10 @@ router.get("/", protect, getMessages);
 
 router.post("/", protect, upload.single("media"), async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Пользователь не авторизован" });
+    }
+
     const messageData = {
       sender: req.user._id,
       senderUsername: req.user.username || req.user.email,
@@ -36,12 +40,10 @@ router.post("/", protect, upload.single("media"), async (req, res) => {
     // Отправляем сообщение через Socket.IO
     const io = req.app.get("io");
     if (messageData.isPrivate) {
-      // Для личных сообщений
       io.to(messageData.sender.toString())
         .to(messageData.receiver)
         .emit("receive_private_message", savedMessage);
     } else {
-      // Для общего чата
       io.to("general").emit("receive_message", savedMessage);
     }
 
@@ -57,7 +59,7 @@ router.post("/", protect, upload.single("media"), async (req, res) => {
 
 router.post("/:messageId/read", protect, markAsRead);
 
-// Добавляем маршруты для редактирования и удаления
+// Маршруты для редактирования и удаления
 router.put("/:messageId", protect, upload.single("media"), updateMessage);
 router.delete("/:messageId", protect, deleteMessage);
 

@@ -10,6 +10,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Добавляем токен к каждому запросу
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -22,6 +23,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error("API Error:", error);
+    // Если токен истек или недействителен, разлогиниваем пользователя
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
     return Promise.reject(error);
   }
 );
@@ -110,6 +117,20 @@ export const deleteMessage = async (messageId) => {
     return response.data;
   } catch (error) {
     console.error("Delete Message Error:", error);
+    throw error;
+  }
+};
+
+export const updateProfile = async (formData) => {
+  try {
+    const response = await api.put("/api/auth/profile", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Update Profile Error:", error);
     throw error;
   }
 };

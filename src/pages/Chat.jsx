@@ -6,12 +6,14 @@ import {
   markMessageAsRead,
   updateMessage,
   deleteMessage,
+  updateProfile,
 } from "../services/api";
 import io from "socket.io-client";
 import UsersList from "../components/UsersList";
 import ReadStatus from "../components/ReadStatus";
 import MessageEditor from "../components/MessageEditor";
 import MediaViewer from "../components/MediaViewer";
+import ProfileEditor from "../components/ProfileEditor";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -27,6 +29,7 @@ const Chat = () => {
   });
   const [editingMessage, setEditingMessage] = useState(null);
   const [fullscreenMedia, setFullscreenMedia] = useState(null);
+  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const { user } = useAuth();
@@ -231,6 +234,22 @@ const Chat = () => {
     });
   };
 
+  const handleProfileUpdate = async (formData) => {
+    try {
+      const updatedUser = await updateProfile(formData);
+      // Обновляем данные пользователя в контексте
+      const userData = {
+        ...user,
+        username: updatedUser.username,
+        avatar: updatedUser.avatar,
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      window.location.reload(); // Перезагружаем страницу для обновления всех компонентов
+    } catch (error) {
+      setError("Ошибка обновления профиля");
+    }
+  };
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -369,9 +388,23 @@ const Chat = () => {
                   : "Общий чат"}
               </h1>
             </div>
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              {user.email}
-            </span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <img
+                  src={
+                    user.avatar
+                      ? `${import.meta.env.VITE_API_URL}${user.avatar}`
+                      : "/default-avatar.png"
+                  }
+                  alt="Your avatar"
+                  className="w-8 h-8 rounded-full cursor-pointer hover:opacity-80"
+                  onClick={() => setIsProfileEditorOpen(true)}
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {user.username || user.email}
+                </span>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -523,6 +556,13 @@ const Chat = () => {
         <MediaViewer
           media={fullscreenMedia}
           onClose={() => setFullscreenMedia(null)}
+        />
+      )}
+      {isProfileEditorOpen && (
+        <ProfileEditor
+          user={user}
+          onSave={handleProfileUpdate}
+          onClose={() => setIsProfileEditorOpen(false)}
         />
       )}
     </div>
