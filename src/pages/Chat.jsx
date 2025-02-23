@@ -328,7 +328,7 @@ const Chat = () => {
           <img
             src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
             alt="Изображение"
-            className="max-w-[400px] max-h-[400px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
+            className="lg:max-w-[400px] lg:max-h-[400px] max-w-[200px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => handleMediaClick(message.mediaUrl, "image")}
           />
         )}
