@@ -127,7 +127,10 @@ const Chat = () => {
 
     socket.on("connect", () => {
       console.log("Connected to socket server");
+      // Подключаемся к общему чату
       socket.emit("join_room", "general");
+      // Подключаемся к личной комнате пользователя
+      socket.emit("join_private_room", user.id);
       socket.emit("user_connected", {
         id: user.id,
         username: user.username,
@@ -137,29 +140,34 @@ const Chat = () => {
     });
 
     socket.on("receive_message", (newMessage) => {
-      // Обрабатываем сообщение только если мы в общем чате
       if (!selectedUser) {
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
-        if (newMessage.sender._id !== user.id) {
-          setUnreadCounts((prev) => ({
-            ...prev,
-            general: (prev.general || 0) + 1,
-          }));
-        }
+        setMessages((prevMessages) => {
+          // Проверяем, нет ли уже такого сообщения
+          if (prevMessages.some((msg) => msg._id === newMessage._id)) {
+            return prevMessages;
+          }
+          return [...prevMessages, newMessage];
+        });
       }
     });
 
     socket.on("receive_private_message", (newMessage) => {
-      // Проверяем, относится ли сообщение к текущему чату
       const isCurrentChat =
         selectedUser &&
-        (newMessage.sender._id === selectedUser.id ||
-          newMessage.receiver === selectedUser.id);
+        ((newMessage.sender._id === selectedUser.id &&
+          newMessage.receiver === user.id) ||
+          (newMessage.sender._id === user.id &&
+            newMessage.receiver === selectedUser.id));
 
       if (isCurrentChat) {
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        setMessages((prevMessages) => {
+          // Проверяем, нет ли уже такого сообщения
+          if (prevMessages.some((msg) => msg._id === newMessage._id)) {
+            return prevMessages;
+          }
+          return [...prevMessages, newMessage];
+        });
       } else if (newMessage.sender._id !== user.id) {
-        // Увеличиваем счетчик непрочитанных для отправителя
         setUnreadCounts((prev) => ({
           ...prev,
           [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
@@ -232,9 +240,12 @@ const Chat = () => {
         formData.append("receiverId", selectedUser.id);
       }
 
-      await sendMessage(formData); // Убираем сохранение результата в переменную
+      const savedMessage = await sendMessage(formData);
 
-      // Удаляем добавление сообщения локально, так как оно придет через сокет
+      // Добавляем сообщение локально только если оно не придет через сокет
+      if (selectedUser) {
+        setMessages((prevMessages) => [...prevMessages, savedMessage]);
+      }
 
       setNewMessage("");
       setSelectedFile(null);
