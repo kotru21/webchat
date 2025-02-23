@@ -53,6 +53,11 @@ export const register = async (req, res) => {
     // Хеширование пароля
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    console.log("Password hashing:", {
+      originalPassword: password,
+      salt,
+      hashedPassword,
+    });
 
     // Создание объекта пользователя
     const userData = {
@@ -92,16 +97,40 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Поиск пользователя
+    // Проверяем наличие обязательных полей
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Пожалуйста, заполните все поля",
+      });
+    }
+
+    // Поиск пользователя с подробным логированием
     const user = await User.findOne({ email });
+    console.log("Login attempt:", {
+      email,
+      userFound: !!user,
+      storedHash: user?.password,
+      attemptedPassword: password,
+    });
+
     if (!user) {
-      return res.status(404).json({ message: "Неверный email или пароль" });
+      return res.status(400).json({
+        message: "Неверный email или пароль",
+      });
     }
 
     // Проверка пароля
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("Password check:", {
+      isMatch,
+      passwordLength: password.length,
+      hashLength: user.password.length,
+    });
+
     if (!isMatch) {
-      return res.status(400).json({ message: "Неверный email или пароль" });
+      return res.status(400).json({
+        message: "Неверный email или пароль",
+      });
     }
 
     // Создание JWT токена
@@ -109,7 +138,7 @@ export const login = async (req, res) => {
       expiresIn: "30d",
     });
 
-    // Отправка ответа
+    // Отправка успешного ответа
     res.json({
       id: user._id,
       username: user.username,
@@ -119,7 +148,10 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Ошибка при входе" });
+    res.status(500).json({
+      message: "Ошибка при входе",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
 };
 

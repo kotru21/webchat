@@ -128,7 +128,6 @@ const Chat = () => {
     socket.on("connect", () => {
       console.log("Connected to socket server");
       socket.emit("join_room", "general");
-      socket.emit("join_private_room", user.id);
       socket.emit("user_connected", {
         id: user.id,
         username: user.username,
@@ -138,6 +137,7 @@ const Chat = () => {
     });
 
     socket.on("receive_message", (newMessage) => {
+      // Обрабатываем сообщение только если мы в общем чате
       if (!selectedUser) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
         if (newMessage.sender._id !== user.id) {
@@ -150,6 +150,7 @@ const Chat = () => {
     });
 
     socket.on("receive_private_message", (newMessage) => {
+      // Проверяем, относится ли сообщение к текущему чату
       const isCurrentChat =
         selectedUser &&
         (newMessage.sender._id === selectedUser.id ||
@@ -158,6 +159,7 @@ const Chat = () => {
       if (isCurrentChat) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
       } else if (newMessage.sender._id !== user.id) {
+        // Увеличиваем счетчик непрочитанных для отправителя
         setUnreadCounts((prev) => ({
           ...prev,
           [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
@@ -230,7 +232,10 @@ const Chat = () => {
         formData.append("receiverId", selectedUser.id);
       }
 
-      await sendMessage(formData);
+      await sendMessage(formData); // Убираем сохранение результата в переменную
+
+      // Удаляем добавление сообщения локально, так как оно придет через сокет
+
       setNewMessage("");
       setSelectedFile(null);
       if (fileInputRef.current) {

@@ -15,12 +15,28 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Базовая валидация на клиенте
+    if (!email || !password) {
+      setError("Пожалуйста, заполните все поля");
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await login(email, password);
-      authLogin(data, data.token);
-      navigate("/");
+      if (data && data.token) {
+        authLogin(data, data.token);
+        navigate("/");
+      } else {
+        setError("Некорректный ответ от сервера");
+      }
     } catch (error) {
-      setError(error.response?.data?.message || "Ошибка входа");
+      setError(
+        error.response?.data?.message ||
+          "Ошибка при входе. Пожалуйста, попробуйте позже."
+      );
+      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }

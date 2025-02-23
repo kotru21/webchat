@@ -22,8 +22,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API Error:", error);
-    // Если токен истек или недействителен, разлогиниваем пользователя
+    console.error("API Error:", {
+      endpoint: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+    });
+
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -35,10 +40,21 @@ api.interceptors.response.use(
 
 export const login = async (email, password) => {
   try {
-    const response = await api.post("/api/auth/login", { email, password });
+    const response = await api.post(
+      "/api/auth/login",
+      { email, password },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     return response.data;
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("Login Error:", {
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+    });
     throw error;
   }
 };

@@ -8,20 +8,15 @@ import {
 } from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
 import { upload } from "../config/multer.js";
-import { authLimiter } from "../middleware/rateLimiter.js";
-import { validateAuth } from "../middleware/validator.js";
 import { messageLimiter } from "../middleware/rateLimiter.js";
 import { validateMessage } from "../middleware/validator.js";
-import {
-  register,
-  login,
-  updateProfile,
-} from "../controllers/authController.js";
 
 const router = express.Router();
 
+// Маршрут получения сообщений без лимитера
 router.get("/", protect, getMessages);
 
+// Применяем лимитер только к отправке/редактированию сообщений
 router.post(
   "/",
   protect,
@@ -40,7 +35,6 @@ router.post(
         content: req.body.text || "",
         receiver: req.body.receiverId || null,
         isPrivate: !!req.body.receiverId,
-        roomId: req.body.receiverId || "general",
       };
 
       if (req.file) {
@@ -52,11 +46,12 @@ router.post(
 
       const savedMessage = await saveMessage(messageData);
 
-      // Отправляем сообщение через Socket.IO
+      // Отправляем сообщение через Socket.IO только один раз
       const io = req.app.get("io");
+
       if (messageData.isPrivate) {
         io.to(messageData.sender.toString())
-          .to(messageData.receiver)
+          .to(messageData.receiver.toString())
           .emit("receive_private_message", savedMessage);
       } else {
         io.to("general").emit("receive_message", savedMessage);
@@ -73,9 +68,6 @@ router.post(
   }
 );
 
-router.post("/:messageId/read", protect, markAsRead);
-
-// Маршруты для редактирования и удаления
 router.put(
   "/:messageId",
   protect,
@@ -85,16 +77,6 @@ router.put(
   updateMessage
 );
 router.delete("/:messageId", protect, deleteMessage);
-
-// лимитер и валидация в маршрутах аутентификации
-router.post(
-  "/register",
-  authLimiter,
-  validateAuth,
-  upload.single("avatar"),
-  register
-);
-router.post("/login", authLimiter, validateAuth, login);
-router.put("/profile", protect, upload.single("avatar"), updateProfile);
+router.post("/:messageId/read", protect, markAsRead);
 
 export default router;
