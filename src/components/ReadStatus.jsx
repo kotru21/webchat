@@ -23,8 +23,10 @@ const ReadStatus = ({ message, currentUser }) => {
 
       return (
         <div
-          className={`text-xs text-gray-500 ${
-            message.sender._id === currentUser.id ? "text-right" : "text-left"
+          className={`text-xs  ${
+            message.sender._id === currentUser.id
+              ? "text-right text-gray-300"
+              : "text-left text-gray-500"
           }`}>
           Прочитали:{" "}
           {displayedReaders.map((reader) => reader.username).join(", ")}
@@ -34,7 +36,7 @@ const ReadStatus = ({ message, currentUser }) => {
     }
   };
 
-  return <div className="mt-1">{renderReadList()}</div>;
+  return <div>{renderReadList()}</div>;
 };
 
 export default ReadStatus;

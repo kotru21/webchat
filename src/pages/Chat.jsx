@@ -312,8 +312,10 @@ const Chat = () => {
           </p>
           {(message.isEdited || message.isDeleted) && (
             <span
-              className={`text-xs text-gray-500 ${
-                message.sender._id === user.id ? "text-right" : "text-left"
+              className={`text-xs  ${
+                message.sender._id === user.id
+                  ? "text-right text-gray-300"
+                  : "text-left text-gray-500"
               }`}>
               {message.isDeleted ? "удалено" : "изменено"}
             </span>
@@ -326,7 +328,7 @@ const Chat = () => {
           <img
             src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
             alt="Изображение"
-            className="max-w-[300px] max-h-[300px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
+            className="max-w-[400px] max-h-[400px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => handleMediaClick(message.mediaUrl, "image")}
           />
         )}
@@ -335,7 +337,7 @@ const Chat = () => {
         message.mediaType === "video" && (
           <video
             src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-            className="max-w-[300px] max-h-[300px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
+            className="max-w-[400px] max-h-[400px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => handleMediaClick(message.mediaUrl, "video")}>
             Ваш браузер не поддерживает видео.
           </video>
@@ -455,7 +457,7 @@ const Chat = () => {
                         message.sender._id === user.id
                           ? "flex-row-reverse"
                           : "flex-row"
-                      } gap-2 max-w-[85%]`}>
+                      } gap-2 `}>
                       <img
                         src={
                           message.sender.avatar
@@ -490,7 +492,7 @@ const Chat = () => {
                             : message.sender.username || message.sender.email}
                         </div>
                         {renderMessageContent(message)}
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-row-reverse gap-2 mt-1">
                           <span
                             className={`text-xs opacity-75 ${
                               message.sender._id === user.id
