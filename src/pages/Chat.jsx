@@ -438,7 +438,7 @@ const Chat = () => {
                 <div className="message-container group relative">
                   <div className="pt-8">
                     {message.sender._id === user.id && (
-                      <div className="absolute -top-2 right-16 hidden group-hover:flex gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10">
+                      <div className="absolute -top-2 right-10 hidden group-hover:flex gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10">
                         <button
                           onClick={() => setEditingMessage(message)}
                           className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
@@ -496,7 +496,7 @@ const Chat = () => {
                           <span
                             className={`text-xs opacity-75 ${
                               message.sender._id === user.id
-                                ? "text-right"
+                                ? "text-right mt-1.5"
                                 : "text-left"
                             }`}>
                             {new Date(message.createdAt).toLocaleTimeString()}
