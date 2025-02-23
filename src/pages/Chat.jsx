@@ -42,31 +42,33 @@ const Chat = () => {
     const fetchMessages = async () => {
       try {
         const data = await getMessages(selectedUser?.id);
+        setMessages(data);
 
-        // Находим непрочитанные сообщения
+        // Автоматически отмечаем все сообщения в текущем чате как прочитанные
         const unreadMessages = data.filter(
           (message) =>
             message.sender._id !== user.id && // не наши сообщения
             !message.readBy?.some((reader) => reader._id === user.id) // не прочитанные нами
         );
 
-        // Сразу помечаем сообщения как прочитанные в локальном состоянии
-        const updatedMessages = data.map((msg) => {
-          if (unreadMessages.some((unread) => unread._id === msg._id)) {
-            return {
-              ...msg,
-              readBy: [...(msg.readBy || []), { _id: user.id }],
-            };
-          }
-          return msg;
-        });
-
-        // Обновляем состояние с уже отмеченными как прочитанные сообщениями
-        setMessages(updatedMessages);
-
-        // В фоновом режиме отмечаем сообщения как прочитанные на сервере
+        // Отмечаем все непрочитанные сообщения как прочитанные
         for (const message of unreadMessages) {
           await markMessageAsRead(message._id);
+        }
+
+        // Обновляем локальное состояние сообщений с отметками о прочтении
+        if (unreadMessages.length > 0) {
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) => {
+              if (unreadMessages.some((unread) => unread._id === msg._id)) {
+                return {
+                  ...msg,
+                  readBy: [...(msg.readBy || []), { _id: user.id }],
+                };
+              }
+              return msg;
+            })
+          );
         }
 
         setError("");
@@ -79,50 +81,38 @@ const Chat = () => {
   }, [selectedUser, user.id]);
 
   useEffect(() => {
-    // Скроллим только если:
-    // 1. Последнее сообщение от текущего пользователя
-    // 2. Пользователь уже находится близко к низу чата
-    const lastMessage = messages[messages.length - 1];
-    const chatContainer = document.querySelector(".overflow-y-auto");
-
-    if (chatContainer) {
-      const isNearBottom =
-        chatContainer.scrollHeight -
-          chatContainer.scrollTop -
-          chatContainer.clientHeight <
-        100;
-      const isOwnMessage = lastMessage?.sender._id === user.id;
-
-      if (isOwnMessage || isNearBottom) {
-        scrollToBottom();
-      }
-    }
+    scrollToBottom();
   }, [messages]);
 
   const calculateUnreadCounts = (messages, currentUserId) => {
     const counts = { general: 0 };
 
     messages.forEach((message) => {
-      // Пропускаем сообщения отправленные текущим пользователем или удаленные
-      if (message.sender._id === currentUserId || message.isDeleted) {
+      // Пропускаем:
+      // - сообщения, отправленные текущим пользователем
+      // - удаленные сообщения
+      // - сообщения из текущего открытого чата
+      if (
+        message.sender._id === currentUserId ||
+        message.isDeleted ||
+        (selectedUser &&
+          (message.sender._id === selectedUser.id ||
+            message.receiver === selectedUser.id))
+      ) {
         return;
       }
 
-      // Проверяем, прочитано ли сообщение
+      // Проверяем, прочитано ли сообщение текущим пользователем
       const isRead = message.readBy?.some(
         (reader) => reader._id === currentUserId
       );
 
       if (!isRead) {
         if (message.isPrivate) {
-          // Для личных сообщений используем ID отправителя
           const senderId = message.sender._id;
-          if (senderId !== currentUserId) {
-            counts[senderId] = (counts[senderId] || 0) + 1;
-          }
+          counts[senderId] = (counts[senderId] || 0) + 1;
         } else {
-          // Для общего чата
-          counts.general = (counts.general || 0) + 1;
+          counts.general++;
         }
       }
     });
@@ -169,22 +159,15 @@ const Chat = () => {
           (newMessage.sender._id === user.id &&
             newMessage.receiver === selectedUser.id));
 
-      setMessages((prevMessages) => {
-        // Проверяем дубликаты
-        if (prevMessages.some((msg) => msg._id === newMessage._id)) {
-          return prevMessages;
-        }
-
-        // Добавляем сообщение только если это текущий чат
-        if (isCurrentChat) {
+      if (isCurrentChat) {
+        setMessages((prevMessages) => {
+          // Проверяем, нет ли уже такого сообщения
+          if (prevMessages.some((msg) => msg._id === newMessage._id)) {
+            return prevMessages;
+          }
           return [...prevMessages, newMessage];
-        }
-
-        return prevMessages;
-      });
-
-      // Обновляем счетчик непрочитанных только для сообщений от других пользователей
-      if (!isCurrentChat && newMessage.sender._id !== user.id) {
+        });
+      } else if (newMessage.sender._id !== user.id) {
         setUnreadCounts((prev) => ({
           ...prev,
           [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
@@ -225,17 +208,8 @@ const Chat = () => {
 
   useEffect(() => {
     const newCounts = calculateUnreadCounts(messages, user.id);
-
-    // Не обновляем счетчик для текущего открытого чата
-    const currentChatId = selectedUser ? selectedUser.id : "general";
-    const filteredCounts = { ...newCounts };
-    delete filteredCounts[currentChatId];
-
-    setUnreadCounts((prev) => ({
-      ...prev,
-      ...filteredCounts,
-    }));
-  }, [messages, user.id, selectedUser]);
+    setUnreadCounts(newCounts);
+  }, [messages, user.id]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -400,16 +374,11 @@ const Chat = () => {
 
   const handleUserSelect = (selectedUser) => {
     setSelectedUser(selectedUser);
-    const chatId = selectedUser ? selectedUser.id : "general";
-
-    // Сбрасываем счетчик для выбранного чата
+    // Сбрасываем счетчик только для выбранного чата
     setUnreadCounts((prev) => ({
       ...prev,
-      [chatId]: 0,
+      [selectedUser ? selectedUser.id : "general"]: 0,
     }));
-
-    // Принудительно прокручиваем к последнему сообщению при смене чата
-    setTimeout(scrollToBottom, 100);
   };
 
   const renderMessageContent = (message) => (
