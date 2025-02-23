@@ -43,6 +43,34 @@ const Chat = () => {
       try {
         const data = await getMessages(selectedUser?.id);
         setMessages(data);
+
+        // Автоматически отмечаем все сообщения в текущем чате как прочитанные
+        const unreadMessages = data.filter(
+          (message) =>
+            message.sender._id !== user.id && // не наши сообщения
+            !message.readBy?.some((reader) => reader._id === user.id) // не прочитанные нами
+        );
+
+        // Отмечаем все непрочитанные сообщения как прочитанные
+        for (const message of unreadMessages) {
+          await markMessageAsRead(message._id);
+        }
+
+        // Обновляем локальное состояние сообщений с отметками о прочтении
+        if (unreadMessages.length > 0) {
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) => {
+              if (unreadMessages.some((unread) => unread._id === msg._id)) {
+                return {
+                  ...msg,
+                  readBy: [...(msg.readBy || []), { _id: user.id }],
+                };
+              }
+              return msg;
+            })
+          );
+        }
+
         setError("");
       } catch (error) {
         setError("Ошибка при загрузке сообщений");
@@ -50,11 +78,47 @@ const Chat = () => {
       }
     };
     fetchMessages();
-  }, [selectedUser]);
+  }, [selectedUser, user.id]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const calculateUnreadCounts = (messages, currentUserId) => {
+    const counts = { general: 0 };
+
+    messages.forEach((message) => {
+      // Пропускаем:
+      // - сообщения, отправленные текущим пользователем
+      // - удаленные сообщения
+      // - сообщения из текущего открытого чата
+      if (
+        message.sender._id === currentUserId ||
+        message.isDeleted ||
+        (selectedUser &&
+          (message.sender._id === selectedUser.id ||
+            message.receiver === selectedUser.id))
+      ) {
+        return;
+      }
+
+      // Проверяем, прочитано ли сообщение текущим пользователем
+      const isRead = message.readBy?.some(
+        (reader) => reader._id === currentUserId
+      );
+
+      if (!isRead) {
+        if (message.isPrivate) {
+          const senderId = message.sender._id;
+          counts[senderId] = (counts[senderId] || 0) + 1;
+        } else {
+          counts.general++;
+        }
+      }
+    });
+
+    return counts;
+  };
 
   useEffect(() => {
     const socket = io(import.meta.env.VITE_API_URL, {
@@ -86,14 +150,14 @@ const Chat = () => {
     });
 
     socket.on("receive_private_message", (newMessage) => {
-      if (
+      const isCurrentChat =
         selectedUser &&
         (newMessage.sender._id === selectedUser.id ||
-          newMessage.receiver._id === selectedUser.id)
-      ) {
+          newMessage.receiver === selectedUser.id);
+
+      if (isCurrentChat) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
       } else if (newMessage.sender._id !== user.id) {
-        // Обновляем счетчик непрочитанных для личных сообщений
         setUnreadCounts((prev) => ({
           ...prev,
           [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
@@ -130,7 +194,12 @@ const Chat = () => {
     return () => {
       socket.disconnect();
     };
-  }, [selectedUser]);
+  }, [selectedUser, user.id]);
+
+  useEffect(() => {
+    const newCounts = calculateUnreadCounts(messages, user.id);
+    setUnreadCounts(newCounts);
+  }, [messages, user.id]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -179,7 +248,20 @@ const Chat = () => {
     if (!message.readBy?.some((reader) => reader._id === user.id)) {
       try {
         await markMessageAsRead(message._id);
-        // Обновляем счетчик непрочитанных сообщений
+
+        // Обновляем локально статус прочтения
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === message._id
+              ? {
+                  ...msg,
+                  readBy: [...(msg.readBy || []), { _id: user.id }],
+                }
+              : msg
+          )
+        );
+
+        // Обновляем счетчик непрочитанных
         setUnreadCounts((prev) => {
           const newCounts = { ...prev };
           if (message.isPrivate) {
@@ -274,31 +356,14 @@ const Chat = () => {
     };
   }, [messages]);
 
-  useEffect(() => {
-    const calculateUnreadCounts = () => {
-      const counts = { general: 0 };
-
-      messages.forEach((message) => {
-        // Пропускаем сообщения, отправленные текущим пользователем
-        if (message.sender._id === user.id) return;
-
-        // Проверяем, прочитано ли сообщение текущим пользователем
-        const isRead = message.readBy?.some((reader) => reader._id === user.id);
-        if (!isRead) {
-          if (message.isPrivate) {
-            const chatId = message.sender._id;
-            counts[chatId] = (counts[chatId] || 0) + 1;
-          } else {
-            counts.general++;
-          }
-        }
-      });
-
-      setUnreadCounts(counts);
-    };
-
-    calculateUnreadCounts();
-  }, [messages]);
+  const handleUserSelect = (selectedUser) => {
+    setSelectedUser(selectedUser);
+    // Сбрасываем счетчик только для выбранного чата
+    setUnreadCounts((prev) => ({
+      ...prev,
+      [selectedUser ? selectedUser.id : "general"]: 0,
+    }));
+  };
 
   const renderMessageContent = (message) => (
     <>
@@ -360,14 +425,7 @@ const Chat = () => {
           users={onlineUsers.filter((u) => u.id !== user.id)}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
-          onUserSelect={(user) => {
-            setSelectedUser(user);
-            // Сбрасываем счетчик непрочитанных сообщений при выборе чата
-            setUnreadCounts((prev) => ({
-              ...prev,
-              [user ? user.id : "general"]: 0,
-            }));
-          }}
+          onUserSelect={handleUserSelect}
           selectedUser={selectedUser}
           unreadCounts={unreadCounts}
         />
