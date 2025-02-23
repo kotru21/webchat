@@ -8,33 +8,27 @@ const __dirname = path.dirname(__filename);
 
 export const getMessages = async (req, res) => {
   try {
-    const { receiverId } = req.query;
-    let query;
+    const { receiverId, page = 1, limit = 50 } = req.query;
+    const skip = (page - 1) * limit;
 
-    if (receiverId) {
-      // Получаем личные сообщения между двумя пользователями
-      query = {
-        $or: [
-          { sender: req.user._id, receiver: receiverId },
-          { sender: receiverId, receiver: req.user._id },
-        ],
-        isPrivate: true,
-      };
-    } else {
-      // Получаем сообщения общего чата
-      query = { isPrivate: false };
-    }
+    let query = receiverId
+      ? {
+          $or: [
+            { sender: req.user._id, receiver: receiverId },
+            { sender: receiverId, receiver: req.user._id },
+          ],
+        }
+      : { isPrivate: false };
 
     const messages = await Message.find(query)
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
       .populate("sender", "username email avatar")
-      .populate("receiver", "username email avatar")
-      .populate("readBy", "username email")
       .lean();
 
-    res.json(messages);
+    res.json(messages.reverse());
   } catch (error) {
-    console.error("Error fetching messages:", error);
     res.status(500).json({ message: error.message });
   }
 };

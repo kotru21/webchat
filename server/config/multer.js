@@ -1,13 +1,27 @@
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
+import sharp from "sharp";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const processImage = async (file) => {
+  if (!file.mimetype.startsWith("image/")) return file.buffer;
+
+  return await sharp(file.buffer)
+    .resize(1200, 1200, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+};
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "..", "uploads", "avatars"));
+    const uploadPath = file.fieldname === "avatar" ? "avatars" : "media";
+    cb(null, path.join(__dirname, "..", "uploads", uploadPath));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -15,25 +29,24 @@ const storage = multer.diskStorage({
   },
 });
 
-// Фильтр файлов
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
-  if (allowedTypes.includes(file.mimetype)) {
+  const allowedImageTypes = ["image/jpeg", "image/png", "image/gif"];
+  const allowedVideoTypes = ["video/mp4", "video/webm"];
+
+  if ([...allowedImageTypes, ...allowedVideoTypes].includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(
-      new Error("Недопустимый формат файла. Разрешены только JPEG, PNG и GIF")
-    );
+    cb(new Error("Неподдерживаемый формат файла"));
   }
 };
 
-// Настройка загрузки
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB макс размер
-  },
-  fileFilter: fileFilter,
-});
+const limits = {
+  fileSize: 50 * 1024 * 1024, // 50MB для видео
+  files: 1,
+};
 
-export default upload;
+export const upload = multer({
+  storage,
+  fileFilter,
+  limits,
+});

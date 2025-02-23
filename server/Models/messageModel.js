@@ -57,4 +57,8 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
+messageSchema.index({ sender: 1, receiver: 1 });
+messageSchema.index({ createdAt: -1 });
+messageSchema.index({ isPrivate: 1 });
+
 export default mongoose.model("Message", messageSchema);

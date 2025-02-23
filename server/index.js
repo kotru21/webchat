@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import compression from "compression";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
@@ -14,6 +15,7 @@ import fs from "fs/promises";
 import helmet from "helmet";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
+import { globalLimiter } from "./middleware/rateLimiter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,12 +32,46 @@ app.use(
     credentials: true,
   })
 );
-app.use(helmet()); // Защита заголовков
-app.use(xss()); // Защита от XSS атак
-app.use(mongoSanitize()); // Защита от NoSQL инъекций
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "blob:", process.env.CLIENT_URL],
+        mediaSrc: ["'self'", "data:", "blob:", process.env.CLIENT_URL],
+        connectSrc: ["'self'", process.env.CLIENT_URL],
+      },
+    },
+  })
+);
+app.use(xss());
+app.use(mongoSanitize());
+app.use(compression());
 
-// Статические файлы
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Добавляем дополнительные CORS заголовки
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
+  res.header("Access-Control-Allow-Credentials", true);
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  next();
+});
+
+// глобальный лимит для всех маршрутов API
+app.use("/api", globalLimiter);
+
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.set("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  },
+  express.static(path.join(__dirname, "uploads"))
+);
 
 // Маршруты
 app.use("/api/auth", authRoutes);
@@ -50,24 +86,31 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Создание директорий
 const ensureUploadsDir = async () => {
-  const avatarsPath = path.join(__dirname, "uploads", "avatars");
-  try {
-    await fs.access(avatarsPath);
-  } catch {
-    await fs.mkdir(avatarsPath, { recursive: true });
+  const dirs = [
+    path.join(__dirname, "uploads"),
+    path.join(__dirname, "uploads", "avatars"),
+    path.join(__dirname, "uploads", "media"),
+  ];
+
+  for (const dir of dirs) {
+    try {
+      await fs.access(dir);
+    } catch {
+      await fs.mkdir(dir, { recursive: true });
+    }
   }
 };
 
 ensureUploadsDir()
-  .then(() => {
-    console.log("Uploads directories created");
-  })
+  .then(() => console.log("Uploads directories created"))
   .catch(console.error);
 
+// Настройка Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL, // Client url
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },

@@ -4,21 +4,50 @@ import jwt from "jsonwebtoken";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import passwordValidator from "password-validator";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const schema = new passwordValidator();
+schema
+  .is()
+  .min(8)
+  .has()
+  .uppercase()
+  .has()
+  .lowercase()
+  .has()
+  .digits(1)
+  .has()
+  .symbols()
+  .has()
+  .not()
+  .spaces();
+
 export const register = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, username } = req.body;
 
-    // Создаем username из email
-    const username = email.split("@")[0];
+    if (!schema.validate(password)) {
+      return res.status(400).json({
+        message:
+          "Пароль должен содержать минимум 8 символов, включая заглавные и строчные буквы, цифры и специальные символы",
+      });
+    }
 
     // Проверка существования пользователя
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username: username || email.split("@")[0] }],
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: "Пользователь уже существует" });
+      return res.status(400).json({
+        message:
+          existingUser.email === email
+            ? "Email уже используется"
+            : "Никнейм уже занят",
+      });
     }
 
     // Хеширование пароля
@@ -27,7 +56,7 @@ export const register = async (req, res) => {
 
     // Создание объекта пользователя
     const userData = {
-      username,
+      username: username || email.split("@")[0],
       email,
       password: hashedPassword,
     };
@@ -55,7 +84,7 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.error("Register error:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Ошибка при регистрации" });
   }
 };
 
@@ -66,13 +95,13 @@ export const login = async (req, res) => {
     // Поиск пользователя
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "Пользователь не найден" });
+      return res.status(404).json({ message: "Неверный email или пароль" });
     }
 
     // Проверка пароля
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Неверный пароль" });
+      return res.status(400).json({ message: "Неверный email или пароль" });
     }
 
     // Создание JWT токена
