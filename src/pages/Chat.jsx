@@ -91,14 +91,7 @@ const Chat = () => {
       // Пропускаем:
       // - сообщения, отправленные текущим пользователем
       // - удаленные сообщения
-      // - сообщения из текущего открытого чата
-      if (
-        message.sender._id === currentUserId ||
-        message.isDeleted ||
-        (selectedUser &&
-          (message.sender._id === selectedUser.id ||
-            message.receiver === selectedUser.id))
-      ) {
+      if (message.sender._id === currentUserId || message.isDeleted) {
         return;
       }
 
@@ -110,8 +103,12 @@ const Chat = () => {
       if (!isRead) {
         if (message.isPrivate) {
           const senderId = message.sender._id;
-          counts[senderId] = (counts[senderId] || 0) + 1;
-        } else {
+          // Обновляем счетчик только если это не текущий открытый чат
+          if (!selectedUser || selectedUser.id !== senderId) {
+            counts[senderId] = (counts[senderId] || 0) + 1;
+          }
+        } else if (!selectedUser) {
+          // Обновляем general только если не открыт приватный чат
           counts.general++;
         }
       }
@@ -137,9 +134,10 @@ const Chat = () => {
     });
 
     socket.on("receive_message", (newMessage) => {
-      // Обрабатываем сообщение только если мы в общем чате
+      // Добавляем сообщение в общий чат только если мы не в приватном чате
       if (!selectedUser) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
+        // Увеличиваем счетчик только для чужих сообщений
         if (newMessage.sender._id !== user.id) {
           setUnreadCounts((prev) => ({
             ...prev,
@@ -150,30 +148,25 @@ const Chat = () => {
     });
 
     socket.on("receive_private_message", (newMessage) => {
-      // Проверяем, относится ли сообщение к текущему чату
       const isCurrentChat =
         selectedUser &&
         (newMessage.sender._id === selectedUser.id ||
           newMessage.receiver === selectedUser.id);
 
-      // Добавляем сообщение если:
-      // 1. Это текущий чат
-      // 2. Мы отправитель (чтобы видеть свои сообщения)
-      // 3. Сообщение предназначено нам
       if (
         isCurrentChat ||
         newMessage.sender._id === user.id ||
         newMessage.receiver === user.id
       ) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
-      }
 
-      // Увеличиваем счетчик непрочитанных только для входящих сообщений
-      if (newMessage.sender._id !== user.id && !isCurrentChat) {
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
-        }));
+        // Увеличиваем счетчик только для входящих сообщений не в текущем чате
+        if (newMessage.sender._id !== user.id && !isCurrentChat) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
+          }));
+        }
       }
     });
 
@@ -373,11 +366,17 @@ const Chat = () => {
 
   const handleUserSelect = (selectedUser) => {
     setSelectedUser(selectedUser);
-    // Сбрасываем счетчик только для выбранного чата
-    setUnreadCounts((prev) => ({
-      ...prev,
-      [selectedUser ? selectedUser.id : "general"]: 0,
-    }));
+
+    // Сбрасываем счетчик для выбранного чата
+    setUnreadCounts((prev) => {
+      const newCounts = { ...prev };
+      if (selectedUser) {
+        delete newCounts[selectedUser.id]; // Удаляем счетчик для выбранного пользователя
+      } else {
+        newCounts.general = 0; // Сбрасываем счетчик общего чата
+      }
+      return newCounts;
+    });
   };
 
   const renderMessageContent = (message) => (
