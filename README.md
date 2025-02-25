@@ -1,16 +1,18 @@
 # React + Vite
 
-<h2> A chat app made with React & Vite </h2> <br>
+### A chat app made with React & Vite <br>
 <b>In active development, things may and will change</b>
 <br>
+
 ## to start an app create .env files:
-# .env in root directory with following field:
+
+### .env in root directory with following field:
 
 ```
 VITE_API_URL=http://localhost:5000 // or other back-end URL of the backend
 ```
 
-# .env in server/ directory with following fields:
+### .env in server/ directory with following fields:
 
 ```
 MONGODB_URI=mongodb://localhost:27017/webchat // MongoDB URI
