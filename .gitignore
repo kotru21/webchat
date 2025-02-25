@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 server/uploads/avatars
 server/uploads/media
+
+.env
+/server/.env
