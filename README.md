@@ -1,6 +1,6 @@
-# React + Vite
+# React + Vite webchat APP
 
-### A chat app made with React & Vite <br>
+### A chat app made with React & Vite with features like sending media, user authentification, private messaging & mobile devices support<br>
 <b>In active development, things may and will change</b>
 <br>
 
