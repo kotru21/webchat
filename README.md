@@ -10,7 +10,7 @@
 VITE_API_URL=http://localhost:5000 # back-end URL
 ```
 
-# .env in server/ directory with following fields:
+# .env in /server directory with following fields:
 
 ```
 # MongoDB URI
