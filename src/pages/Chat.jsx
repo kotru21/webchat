@@ -1,4 +1,3 @@
-// src/pages/Chat.jsx
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import ChatHeader from "../components/Chat/ChatHeader";
@@ -20,6 +19,7 @@ const Chat = () => {
 
   const {
     messages,
+    setMessages, // Make sure useChatMessages exposes this
     loading,
     error,
     setError,
@@ -38,7 +38,10 @@ const Chat = () => {
   });
 
   const handleMediaClick = (mediaUrl, mediaType) => {
-    setFullscreenMedia({ url: mediaUrl, type: mediaType });
+    setFullscreenMedia({
+      url: `${import.meta.env.VITE_API_URL}${mediaUrl}`,
+      type: mediaType,
+    });
   };
 
   const handleUserSelect = (user) => {
@@ -52,6 +55,7 @@ const Chat = () => {
 
   const handleProfileUpdate = async (formData) => {
     try {
+      // This function isn't defined - you need to import or define it
       await updateProfile(formData);
       setIsProfileEditorOpen(false);
       // Update user context or refresh page
