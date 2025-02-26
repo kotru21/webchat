@@ -19,7 +19,7 @@ const Chat = () => {
 
   const {
     messages,
-    setMessages, // Make sure useChatMessages exposes this
+    setMessages,
     loading,
     error,
     setError,
@@ -55,10 +55,8 @@ const Chat = () => {
 
   const handleProfileUpdate = async (formData) => {
     try {
-      // This function isn't defined - you need to import or define it
       await updateProfile(formData);
       setIsProfileEditorOpen(false);
-      // Update user context or refresh page
     } catch (error) {
       setError("Ошибка при обновлении профиля");
     }
