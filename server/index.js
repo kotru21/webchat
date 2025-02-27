@@ -7,15 +7,12 @@ import compression from "compression";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
-import { getMessages, saveMessage } from "./controllers/messageController.js";
-// import protect from "./middleware/authMiddleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import helmet from "helmet";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
-// import { globalLimiter } from "./middleware/rateLimiter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
