@@ -9,7 +9,7 @@ import {
   resetPassword,
 } from "../controllers/authController.js";
 import protect from "../middleware/authMiddleware.js";
-import { upload } from "../config/multer.js";
+import { upload } from "../config/fileUpload.js";
 import { authLimiter, profileLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();

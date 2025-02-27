@@ -6,6 +6,11 @@ import sharp from "sharp";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Allowed file types
+const allowedImageTypes = ["image/jpeg", "image/png", "image/gif"];
+const allowedVideoTypes = ["video/mp4", "video/webm"];
+
+// Process image function for optimization
 const processImage = async (file) => {
   if (!file.mimetype.startsWith("image/")) return file.buffer;
 
@@ -18,10 +23,20 @@ const processImage = async (file) => {
     .toBuffer();
 };
 
-const storage = multer.diskStorage({
+// File destination handler
+const getDestination = (fieldname) => {
+  return path.join(
+    __dirname,
+    "..",
+    "uploads",
+    fieldname === "avatar" ? "avatars" : "media"
+  );
+};
+
+// Disk storage configuration
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = file.fieldname === "avatar" ? "avatars" : "media";
-    cb(null, path.join(__dirname, "..", "uploads", uploadPath));
+    cb(null, getDestination(file.fieldname));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -29,10 +44,8 @@ const storage = multer.diskStorage({
   },
 });
 
+// File filter
 const fileFilter = (req, file, cb) => {
-  const allowedImageTypes = ["image/jpeg", "image/png", "image/gif"];
-  const allowedVideoTypes = ["video/mp4", "video/webm"];
-
   if ([...allowedImageTypes, ...allowedVideoTypes].includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -40,13 +53,18 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Upload limits
 const limits = {
-  fileSize: 50 * 1024 * 1024, // 50MB для видео
+  fileSize: 50 * 1024 * 1024, // 50MB limit
   files: 1,
 };
 
+// Create and export multer instance
 export const upload = multer({
-  storage,
+  storage: diskStorage,
   fileFilter,
   limits,
 });
+
+// Export helper functions and configurations for use in other modules
+export { processImage, allowedImageTypes, allowedVideoTypes, getDestination };

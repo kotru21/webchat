@@ -7,7 +7,7 @@ import {
   deleteMessage,
 } from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
-import { upload } from "../config/multer.js";
+import { upload } from "../config/fileUpload.js";
 import { messageLimiter } from "../middleware/rateLimiter.js";
 import { validateMessage } from "../middleware/validator.js";
 
