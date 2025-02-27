@@ -33,7 +33,7 @@ export const getMessages = async (req, res) => {
   }
 };
 
-export const saveMessage = async (messageData) => {
+export const saveMessageToDb = async (messageData) => {
   try {
     const message = new Message(messageData);
     await message.save();
@@ -202,5 +202,49 @@ export const deleteMessage = async (req, res) => {
   } catch (error) {
     console.error("Delete message error:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const saveMessage = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "User not authorized" });
+    }
+
+    const messageData = {
+      sender: req.user._id,
+      senderUsername: req.user.username || req.user.email,
+      content: req.body.text || "",
+      receiver: req.body.receiverId || null,
+      isPrivate: !!req.body.receiverId,
+    };
+
+    if (req.file) {
+      messageData.mediaUrl = `/uploads/media/${req.file.filename}`;
+      messageData.mediaType = req.file.mimetype.startsWith("image/")
+        ? "image"
+        : "video";
+    }
+
+    const savedMessage = await saveMessageToDb(messageData); // Rename your existing function or adapt this
+
+    // Send message through Socket.IO
+    const io = req.app.get("io");
+
+    if (messageData.isPrivate) {
+      io.to(messageData.sender.toString())
+        .to(messageData.receiver.toString())
+        .emit("receive_private_message", savedMessage);
+    } else {
+      io.to("general").emit("receive_message", savedMessage);
+    }
+
+    res.status(201).json(savedMessage);
+  } catch (error) {
+    console.error("Error in saveMessage:", error);
+    res.status(500).json({
+      message: "Error while saving message",
+      error: error.message,
+    });
   }
 };

@@ -27,6 +27,14 @@ app.use(
   cors({
     origin: process.env.CLIENT_URL,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+    ],
   })
 );
 app.use(
@@ -46,20 +54,7 @@ app.use(xss());
 app.use(mongoSanitize());
 app.use(compression());
 
-// Добавляем дополнительные CORS заголовки
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Credentials", true);
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  next();
-});
-
-// app.use("/api", globalLimiter);
-
+// Static file serving with CORS headers
 app.use(
   "/uploads",
   (req, res, next) => {
@@ -69,20 +64,20 @@ app.use(
   express.static(path.join(__dirname, "uploads"))
 );
 
-// Маршруты без глобального лимитера
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// Обработка ошибок
+// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
-    message: "Что-то пошло не так!",
+    message: "Something went wrong!",
     error: process.env.NODE_ENV === "development" ? err.message : {},
   });
 });
 
-// Создание директорий
+// Create required directories
 const ensureUploadsDir = async () => {
   const dirs = [
     path.join(__dirname, "uploads"),
@@ -99,11 +94,7 @@ const ensureUploadsDir = async () => {
   }
 };
 
-ensureUploadsDir()
-  .then(() => console.log("Uploads directories created"))
-  .catch(console.error);
-
-// Настройка Socket.IO
+// Socket.IO setup
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.CLIENT_URL,
@@ -114,16 +105,15 @@ const io = new Server(httpServer, {
 
 app.set("io", io);
 
-// Хранилище для онлайн пользователей
+// Online users storage
 const onlineUsers = new Map();
 
-// Обновляем обработчик соединения Socket.IO
+// Socket.IO connection handler
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("user_connected", (userData) => {
     onlineUsers.set(socket.id, userData);
-    // Подключаем пользователя к его личной комнате
     socket.join(userData.id.toString());
     io.emit("users_online", Array.from(onlineUsers.values()));
   });
@@ -140,15 +130,22 @@ io.on("connection", (socket) => {
   });
 });
 
-// Connect to MongoDB
-connectDB()
-  .then(() => {
+// Initialize server
+const startServer = async () => {
+  try {
+    await ensureUploadsDir();
+    console.log("Uploads directories created");
+
+    await connectDB();
+
     const PORT = process.env.PORT || 5000;
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.error("Failed to connect to MongoDB", err);
+  } catch (err) {
+    console.error("Server initialization failed:", err);
     process.exit(1);
-  });
+  }
+};
+
+startServer();
