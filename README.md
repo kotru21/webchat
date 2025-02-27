@@ -3,7 +3,9 @@
 <h2> A chat app made with React & Vite </h2> <br>
 <b>In active development, things may and will change</b>
 <br>
+
 ## to start an app create .env files:
+
 # .env in root directory with following field:
 
 ```
