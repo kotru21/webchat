@@ -150,5 +150,10 @@ export const updateProfile = async (formData) => {
     throw error;
   }
 };
-
+export const pinMessage = async (messageId, isPinned) => {
+  const response = await api.put(`/api/messages/${messageId}/pin`, {
+    isPinned,
+  });
+  return response.data;
+};
 export default api;

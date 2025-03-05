@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
   const normalizeUser = (userData) => {
     return {
       ...userData,
-      id: userData._id || userData.id, // Преобразуем _id в id, если нужно
+      id: userData._id || userData.id, // преобразование _id в id
     };
   };
 

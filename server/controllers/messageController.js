@@ -33,6 +33,26 @@ export const getMessages = async (req, res) => {
   }
 };
 
+export const pinMessage = async function (messageId, isPinned, io) {
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) {
+      throw new Error("Сообщение не найдено");
+    }
+    message.isPinned = isPinned;
+    await message.save();
+    // Отправляем событие через Socket.IO
+    io.emit("message_pinned", {
+      messageId: message._id,
+      isPinned: message.isPinned,
+    });
+    return message;
+  } catch (error) {
+    console.error("Ошибка в pinMessage:", error);
+    throw error; // Пробрасываем ошибку для обработки в маршруте
+  }
+};
+
 export const saveMessage = async (messageData) => {
   try {
     const message = new Message(messageData);

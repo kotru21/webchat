@@ -1,3 +1,4 @@
+// src/pages/Chat.jsx
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import ChatHeader from "../components/Chat/ChatHeader";
@@ -8,8 +9,8 @@ import MediaViewer from "../components/MediaViewer";
 import ProfileEditor from "../components/ProfileEditor";
 import useChatSocket from "../hooks/useChatSocket";
 import useChatMessages from "../hooks/useChatMessages";
-import { updateProfile } from "../services/api";
-import api from "../services/api";
+import { updateProfile } from "../services/api.js";
+import api from "../services/api.js";
 
 const Chat = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -72,14 +73,38 @@ const Chat = () => {
     }
   };
 
+  const handlePinMessage = (messageId, isPinned) => {
+    console.log("handlePinMessage called with:", messageId, isPinned);
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg._id === messageId ? { ...msg, isPinned } : msg
+      )
+    );
+  };
+
   useEffect(() => {
     if (user && user.id) {
       console.log("Sending user_connected with:", user);
-      // Здесь предполагается отправка события user_connected через WebSocket
     } else {
       console.error("User data is incomplete:", user);
     }
   }, [user]);
+
+  useEffect(() => {
+    const socket = api.io; // Предполагается, что Socket.IO интегрирован в api
+    if (socket) {
+      socket.on("message_pinned", ({ messageId, isPinned }) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === messageId ? { ...msg, isPinned } : msg
+          )
+        );
+      });
+    }
+    return () => {
+      if (socket) socket.off("message_pinned");
+    };
+  }, [setMessages]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
@@ -89,7 +114,6 @@ const Chat = () => {
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-
       <div className="flex-none md:w-72">
         <UsersList
           users={onlineUsers.filter((u) => u.id !== user.id)}
@@ -100,7 +124,6 @@ const Chat = () => {
           unreadCounts={unreadCounts}
         />
       </div>
-
       <div className="flex-1 min-w-0 flex flex-col">
         <ChatHeader
           user={user}
@@ -108,7 +131,6 @@ const Chat = () => {
           onOpenSidebar={() => setIsSidebarOpen(true)}
           onOpenProfileEditor={() => setIsProfileEditorOpen(true)}
         />
-
         {error && (
           <div
             className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4"
@@ -116,7 +138,6 @@ const Chat = () => {
             <span className="block sm:inline">{error}</span>
           </div>
         )}
-
         <ChatMessages
           messages={messages}
           currentUser={user}
@@ -124,18 +145,16 @@ const Chat = () => {
           onEditMessage={editMessageHandler}
           onDeleteMessage={deleteMessageHandler}
           onMediaClick={handleMediaClick}
+          onPinMessage={handlePinMessage} // Передаем функцию явно
         />
-
         <ChatInput onSendMessage={sendMessageHandler} loading={loading} />
       </div>
-
       {fullscreenMedia && (
         <MediaViewer
           media={fullscreenMedia}
           onClose={() => setFullscreenMedia(null)}
         />
       )}
-
       {isProfileEditorOpen && (
         <ProfileEditor
           user={user}

@@ -1,3 +1,4 @@
+// src/components/Chat/ChatMessages.jsx
 import { useState, useEffect, useRef } from "react";
 import MessageItem from "./MessageItem";
 import MessageEditor from "../MessageEditor";
@@ -9,6 +10,7 @@ const ChatMessages = ({
   onEditMessage,
   onDeleteMessage,
   onMediaClick,
+  onPinMessage,
 }) => {
   const [editingMessage, setEditingMessage] = useState(null);
   const messagesEndRef = useRef(null);
@@ -43,38 +45,77 @@ const ChatMessages = ({
     };
   }, [messages, onMarkAsRead]);
 
+  const pinnedMessages = messages.filter((msg) => msg.isPinned);
+  const regularMessages = messages.filter((msg) => !msg.isPinned);
+
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 overflow-x-hidden pb-20">
-      {messages.map((message) => (
-        <div
-          key={message._id}
-          data-message-id={message._id}
-          className={`flex message-item ${
-            message.sender._id === currentUser.id
-              ? "justify-end"
-              : "justify-start"
-          }`}>
-          {editingMessage?._id === message._id ? (
-            <MessageEditor
-              message={message}
-              onSave={(formData) => {
-                onEditMessage(message._id, formData);
-                setEditingMessage(null);
-              }}
-              onCancel={() => setEditingMessage(null)}
-            />
-          ) : (
-            <MessageItem
-              message={message}
-              currentUser={currentUser}
-              onEdit={() => setEditingMessage(message)}
-              onDelete={() => onDeleteMessage(message._id)}
-              onMediaClick={onMediaClick}
-            />
-          )}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Фиксированная область для закрепленных сообщений */}
+      {pinnedMessages.length > 0 && (
+        <div className="pinned-messages bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 sticky top-0 z-10 max-h-40 overflow-y-auto">
+          {pinnedMessages.map((message) => (
+            <div
+              key={message._id}
+              data-message-id={message._id}
+              className="message-item mb-2">
+              {editingMessage?._id === message._id ? (
+                <MessageEditor
+                  message={message}
+                  onSave={(formData) => {
+                    onEditMessage(message._id, formData);
+                    setEditingMessage(null);
+                  }}
+                  onCancel={() => setEditingMessage(null)}
+                />
+              ) : (
+                <MessageItem
+                  message={message}
+                  currentUser={currentUser}
+                  onEdit={() => setEditingMessage(message)}
+                  onDelete={() => onDeleteMessage(message._id)}
+                  onMediaClick={onMediaClick}
+                  onPin={onPinMessage}
+                />
+              )}
+            </div>
+          ))}
         </div>
-      ))}
-      <div ref={messagesEndRef} />
+      )}
+
+      {/* Прокручиваемая область для обычных сообщений */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {regularMessages.map((message) => (
+          <div
+            key={message._id}
+            data-message-id={message._id}
+            className={`flex message-item ${
+              message.sender._id === currentUser.id
+                ? "justify-end"
+                : "justify-start"
+            }`}>
+            {editingMessage?._id === message._id ? (
+              <MessageEditor
+                message={message}
+                onSave={(formData) => {
+                  onEditMessage(message._id, formData);
+                  setEditingMessage(null);
+                }}
+                onCancel={() => setEditingMessage(null)}
+              />
+            ) : (
+              <MessageItem
+                message={message}
+                currentUser={currentUser}
+                onEdit={() => setEditingMessage(message)}
+                onDelete={() => onDeleteMessage(message._id)}
+                onMediaClick={onMediaClick}
+                onPin={onPinMessage}
+              />
+            )}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
     </div>
   );
 };

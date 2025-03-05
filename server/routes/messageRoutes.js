@@ -5,6 +5,7 @@ import {
   markAsRead,
   updateMessage,
   deleteMessage,
+  pinMessage,
 } from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
 import { upload } from "../config/multer.js";
@@ -76,6 +77,21 @@ router.put(
   upload.single("media"),
   updateMessage
 );
+
+router.put("/:id/pin", protect, async (req, res) => {
+  try {
+    const io = req.app.get("io");
+    const message = await pinMessage(req.params.id, req.body.isPinned, io);
+    res.json(message);
+  } catch (error) {
+    if (error.message === "Сообщение не найдено") {
+      return res.status(404).json({ message: error.message });
+    }
+    console.error("Ошибка при закреплении сообщения:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+});
+
 router.delete("/:messageId", protect, deleteMessage);
 router.post("/:messageId/read", protect, markAsRead);
 

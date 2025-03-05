@@ -1,4 +1,6 @@
+// src/components/Chat/MessageItem.jsx
 import ReadStatus from "../ReadStatus";
+import { pinMessage } from "../../services/api.js";
 
 const MessageItem = ({
   message,
@@ -6,8 +8,22 @@ const MessageItem = ({
   onEdit,
   onDelete,
   onMediaClick,
+  onPin, // Этот пропс должен прийти от ChatMessages.jsx
 }) => {
   const isOwnMessage = message.sender._id === currentUser.id;
+
+  const handlePin = async () => {
+    try {
+      await pinMessage(message._id, !message.isPinned);
+      if (typeof onPin === "function") {
+        onPin(message._id, !message.isPinned);
+      } else {
+        console.warn("onPin is not a function or not provided");
+      }
+    } catch (error) {
+      console.error("Ошибка при закреплении:", error);
+    }
+  };
 
   const renderMessageContent = () => (
     <>
@@ -69,13 +85,17 @@ const MessageItem = ({
               className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">
               Удалить
             </button>
+            <button
+              onClick={handlePin}
+              className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
+              {message.isPinned ? "Открепить" : "Закрепить"}
+            </button>
           </div>
         )}
-
         <div
           className={`flex items-start ${
             isOwnMessage ? "flex-row-reverse" : "flex-row"
-          } gap-2 `}>
+          } gap-2`}>
           <img
             src={
               message.sender.avatar
@@ -88,7 +108,6 @@ const MessageItem = ({
               e.target.src = "/default-avatar.png";
             }}
           />
-
           <div
             className={`rounded-lg px-4 py-2 ${
               isOwnMessage
