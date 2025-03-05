@@ -8,6 +8,8 @@ import MediaViewer from "../components/MediaViewer";
 import ProfileEditor from "../components/ProfileEditor";
 import useChatSocket from "../hooks/useChatSocket";
 import useChatMessages from "../hooks/useChatMessages";
+import { updateProfile } from "../services/api";
+import api from "../services/api";
 
 const Chat = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -15,7 +17,7 @@ const Chat = () => {
   const [fullscreenMedia, setFullscreenMedia] = useState(null);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState({ general: 0 });
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const {
     messages,
@@ -29,7 +31,6 @@ const Chat = () => {
     deleteMessageHandler,
   } = useChatMessages(selectedUser);
 
-  // Connect to socket and handle socket events
   const { onlineUsers } = useChatSocket({
     user,
     selectedUser,
@@ -55,12 +56,30 @@ const Chat = () => {
 
   const handleProfileUpdate = async (formData) => {
     try {
-      await updateProfile(formData);
+      const response = await updateProfile(formData);
+      const updatedUser = response?.user || response;
+      if (updatedUser && updatedUser.id) {
+        updateUser(updatedUser);
+      } else {
+        const userResponse = await api.get("/api/auth/me");
+        updateUser(userResponse.data);
+      }
       setIsProfileEditorOpen(false);
+      setError("");
     } catch (error) {
       setError("Ошибка при обновлении профиля");
+      console.error("Profile update error:", error);
     }
   };
+
+  useEffect(() => {
+    if (user && user.id) {
+      console.log("Sending user_connected with:", user);
+      // Здесь предполагается отправка события user_connected через WebSocket
+    } else {
+      console.error("User data is incomplete:", user);
+    }
+  }, [user]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">

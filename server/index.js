@@ -122,10 +122,13 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("user_connected", (userData) => {
-    onlineUsers.set(socket.id, userData);
-    // Подключаем пользователя к его личной комнате
-    socket.join(userData.id.toString());
-    io.emit("users_online", Array.from(onlineUsers.values()));
+    if (userData && userData.id) {
+      onlineUsers.set(socket.id, userData);
+      socket.join(userData.id.toString());
+      io.emit("users_online", Array.from(onlineUsers.values()));
+    } else {
+      console.error("Invalid userData:", userData);
+    }
   });
 
   socket.on("join_room", (roomId) => {
