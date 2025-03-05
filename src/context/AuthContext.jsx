@@ -6,27 +6,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Функция для нормализации данных пользователя
+  // Функция нормализации данных пользователя
   const normalizeUser = (userData) => {
     return {
       ...userData,
-      id: userData._id,
+      id: userData._id || userData.id, // Преобразуем _id в id, если нужно
     };
   };
 
-  // Загрузка данных пользователя из localStorage при монтировании компонента
+  // Загрузка данных из localStorage при старте
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
     if (token && userData) {
-      const parsedUser = JSON.parse(userData);
-      const normalizedUser = normalizeUser(parsedUser);
-      setUser(normalizedUser);
+      try {
+        const parsedUser = JSON.parse(userData);
+        const normalizedUser = normalizeUser(parsedUser);
+        setUser(normalizedUser);
+      } catch (error) {
+        console.error("Ошибка парсинга данных из localStorage:", error);
+        localStorage.removeItem("user");
+      }
     }
     setLoading(false);
   }, []);
 
-  // Функция входа в систему
+  // Вход в систему
   const login = (userData, token) => {
     const normalizedUser = normalizeUser(userData);
     setUser(normalizedUser);
@@ -34,14 +39,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("user", JSON.stringify(normalizedUser));
   };
 
-  // Функция обновления данных пользователя
+  // Обновление профиля
   const updateUser = (updatedUser) => {
     const normalizedUser = normalizeUser(updatedUser);
     setUser(normalizedUser);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
   };
 
-  // Функция выхода из системы
+  // Выход из системы
   const logout = () => {
     setUser(null);
     localStorage.removeItem("token");
