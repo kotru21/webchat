@@ -73,8 +73,12 @@ const MessageItem = ({
   return (
     <div
       className={`message-container pb-4 group relative ${
-        message.isPinned ? "   border-yellow-500" : ""
-      } ${isOwnMessage ? "border-r-4 pr-2" : "border-l-4"}`}>
+        message.isPinned
+          ? isOwnMessage
+            ? "border-r-4 border-yellow-500 pr-2"
+            : "border-l-4 border-yellow-500 pl-2"
+          : ""
+      }`}>
       <div className="pt-6">
         <div
           className={`absolute -top-2 ${
