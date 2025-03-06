@@ -1,4 +1,3 @@
-// src/components/Chat/MessageItem.jsx
 import ReadStatus from "../ReadStatus";
 import { pinMessage } from "../../services/api.js";
 
