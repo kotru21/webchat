@@ -73,28 +73,37 @@ const MessageItem = ({
   return (
     <div
       className={`message-container group relative ${
-        message.isPinned ? "border-l-4 border-yellow-500" : ""
+        message.isPinned
+          ? "bg-yellow-100 dark:bg-yellow-900/20 border-l-4 border-yellow-500"
+          : ""
       }`}>
       <div className="pt-8">
-        {isOwnMessage && (
-          <div className="absolute -top-2 right-10 hidden group-hover:flex gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10">
-            <button
-              onClick={onEdit}
-              className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
-              Редактировать
-            </button>
-            <button
-              onClick={onDelete}
-              className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">
-              Удалить
-            </button>
-            <button
-              onClick={handlePin}
-              className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
-              {message.isPinned ? "Открепить" : "Закрепить"}
-            </button>
-          </div>
-        )}
+        {/* Меню управления для всех сообщений */}
+        <div
+          className={`absolute -top-2 ${
+            isOwnMessage ? "right-10" : "left-10"
+          } hidden group-hover:flex gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10`}>
+          {isOwnMessage && (
+            <>
+              <button
+                onClick={onEdit}
+                className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
+                Редактировать
+              </button>
+              <button
+                onClick={onDelete}
+                className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">
+                Удалить
+              </button>
+            </>
+          )}
+          <button
+            onClick={handlePin}
+            className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
+            {message.isPinned ? "Открепить" : "Закрепить"}
+          </button>
+        </div>
+
         <div
           className={`flex items-start ${
             isOwnMessage ? "flex-row-reverse" : "flex-row"

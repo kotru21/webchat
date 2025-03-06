@@ -16,6 +16,7 @@ const ChatMessages = ({
   const [showAllPinned, setShowAllPinned] = useState(false);
   const messagesEndRef = useRef(null);
   const messageRefs = useRef({});
+  const prevMessagesLength = useRef(messages.length);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,8 +29,18 @@ const ChatMessages = ({
     }
   };
 
+  // Сохраняем позицию скролла перед обновлением
   useEffect(() => {
-    scrollToBottom();
+    const chatContainer = document.querySelector(".overflow-y-auto");
+    const shouldScrollToBottom =
+      prevMessagesLength.current < messages.length && // Только при добавлении нового сообщения
+      chatContainer.scrollTop + chatContainer.clientHeight >=
+        chatContainer.scrollHeight - 50; // Близко к низу
+
+    if (shouldScrollToBottom) {
+      scrollToBottom();
+    }
+    prevMessagesLength.current = messages.length;
   }, [messages]);
 
   useEffect(() => {
@@ -62,6 +73,10 @@ const ChatMessages = ({
       : message.sender.username || message.sender.email;
   };
 
+  const shouldTruncate = (text) => {
+    return text && text.length > 50; // Точки добавляем только для длинных сообщений
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Фиксированная область для закрепленных сообщений */}
@@ -72,12 +87,16 @@ const ChatMessages = ({
               {pinnedMessages.slice(0, 1).map((message) => (
                 <div
                   key={message._id}
-                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 truncate flex items-center justify-between">
-                  <span className="text-sm flex-1 truncate">
+                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 flex items-center justify-between">
+                  <span
+                    className={`text-sm flex-1 ${
+                      shouldTruncate(message.content) ? "truncate" : ""
+                    }`}>
                     <span className="font-medium">
                       {getSenderName(message)}:{" "}
                     </span>
-                    {message.content || "Медиа-сообщение"}...
+                    {message.content || "Медиа-сообщение"}
+                    {shouldTruncate(message.content) && "..."}
                   </span>
                   <button
                     onClick={(e) => {
@@ -103,12 +122,16 @@ const ChatMessages = ({
               {pinnedMessages.slice(1).map((message) => (
                 <div
                   key={message._id}
-                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 truncate flex items-center justify-between">
-                  <span className="text-sm flex-1 truncate">
+                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 flex items-center justify-between">
+                  <span
+                    className={`text-sm flex-1 ${
+                      shouldTruncate(message.content) ? "truncate" : ""
+                    }`}>
                     <span className="font-medium">
                       {getSenderName(message)}:{" "}
                     </span>
-                    {message.content || "Медиа-сообщение"}...
+                    {message.content || "Медиа-сообщение"}
+                    {shouldTruncate(message.content) && "..."}
                   </span>
                   <button
                     onClick={() => scrollToMessage(message._id)}
