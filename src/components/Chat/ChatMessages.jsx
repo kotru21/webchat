@@ -13,10 +13,19 @@ const ChatMessages = ({
   onPinMessage,
 }) => {
   const [editingMessage, setEditingMessage] = useState(null);
+  const [showAllPinned, setShowAllPinned] = useState(false);
   const messagesEndRef = useRef(null);
+  const messageRefs = useRef({});
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToMessage = (messageId) => {
+    const element = messageRefs.current[messageId];
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   };
 
   useEffect(() => {
@@ -46,47 +55,79 @@ const ChatMessages = ({
   }, [messages, onMarkAsRead]);
 
   const pinnedMessages = messages.filter((msg) => msg.isPinned);
-  const regularMessages = messages.filter((msg) => !msg.isPinned);
+
+  const getSenderName = (message) => {
+    return message.sender._id === currentUser.id
+      ? "Вы"
+      : message.sender.username || message.sender.email;
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Фиксированная область для закрепленных сообщений */}
       {pinnedMessages.length > 0 && (
-        <div className="pinned-messages bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 sticky top-0 z-10 max-h-40 overflow-y-auto">
-          {pinnedMessages.map((message) => (
-            <div
-              key={message._id}
-              data-message-id={message._id}
-              className="message-item mb-2">
-              {editingMessage?._id === message._id ? (
-                <MessageEditor
-                  message={message}
-                  onSave={(formData) => {
-                    onEditMessage(message._id, formData);
-                    setEditingMessage(null);
-                  }}
-                  onCancel={() => setEditingMessage(null)}
-                />
-              ) : (
-                <MessageItem
-                  message={message}
-                  currentUser={currentUser}
-                  onEdit={() => setEditingMessage(message)}
-                  onDelete={() => onDeleteMessage(message._id)}
-                  onMediaClick={onMediaClick}
-                  onPin={onPinMessage}
-                />
-              )}
+        <div className="pinned-messages bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 sticky top-0 z-10 overflow-y-auto">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex-1">
+              {pinnedMessages.slice(0, 1).map((message) => (
+                <div
+                  key={message._id}
+                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 truncate flex items-center justify-between">
+                  <span className="text-sm flex-1 truncate">
+                    <span className="font-medium">
+                      {getSenderName(message)}:{" "}
+                    </span>
+                    {message.content || "Медиа-сообщение"}...
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      scrollToMessage(message._id);
+                    }}
+                    className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-xs flex-shrink-0">
+                    Перейти
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+            {pinnedMessages.length > 1 && (
+              <button
+                onClick={() => setShowAllPinned(!showAllPinned)}
+                className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-sm flex-shrink-0">
+                {showAllPinned ? "Скрыть" : `Ещё ${pinnedMessages.length - 1}`}
+              </button>
+            )}
+          </div>
+          {showAllPinned && (
+            <div className="mt-2 max-h-40 overflow-y-auto">
+              {pinnedMessages.slice(1).map((message) => (
+                <div
+                  key={message._id}
+                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 truncate flex items-center justify-between">
+                  <span className="text-sm flex-1 truncate">
+                    <span className="font-medium">
+                      {getSenderName(message)}:{" "}
+                    </span>
+                    {message.content || "Медиа-сообщение"}...
+                  </span>
+                  <button
+                    onClick={() => scrollToMessage(message._id)}
+                    className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-xs flex-shrink-0">
+                    Перейти
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Прокручиваемая область для обычных сообщений */}
+      {/* Прокручиваемая область для всех сообщений */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {regularMessages.map((message) => (
+        {messages.map((message) => (
           <div
             key={message._id}
+            ref={(el) => (messageRefs.current[message._id] = el)}
             data-message-id={message._id}
             className={`flex message-item ${
               message.sender._id === currentUser.id

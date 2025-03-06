@@ -8,7 +8,7 @@ const MessageItem = ({
   onEdit,
   onDelete,
   onMediaClick,
-  onPin, // Этот пропс должен прийти от ChatMessages.jsx
+  onPin,
 }) => {
   const isOwnMessage = message.sender._id === currentUser.id;
 
@@ -71,7 +71,10 @@ const MessageItem = ({
   );
 
   return (
-    <div className="message-container group relative">
+    <div
+      className={`message-container group relative ${
+        message.isPinned ? "border-l-4 border-yellow-500" : ""
+      }`}>
       <div className="pt-8">
         {isOwnMessage && (
           <div className="absolute -top-2 right-10 hidden group-hover:flex gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10">

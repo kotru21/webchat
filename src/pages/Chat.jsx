@@ -74,7 +74,6 @@ const Chat = () => {
   };
 
   const handlePinMessage = (messageId, isPinned) => {
-    console.log("handlePinMessage called with:", messageId, isPinned);
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
         msg._id === messageId ? { ...msg, isPinned } : msg
@@ -91,7 +90,7 @@ const Chat = () => {
   }, [user]);
 
   useEffect(() => {
-    const socket = api.io; // Предполагается, что Socket.IO интегрирован в api
+    const socket = api.io;
     if (socket) {
       socket.on("message_pinned", ({ messageId, isPinned }) => {
         setMessages((prevMessages) =>
@@ -145,7 +144,7 @@ const Chat = () => {
           onEditMessage={editMessageHandler}
           onDeleteMessage={deleteMessageHandler}
           onMediaClick={handleMediaClick}
-          onPinMessage={handlePinMessage} // Передаем функцию явно
+          onPinMessage={handlePinMessage}
         />
         <ChatInput onSendMessage={sendMessageHandler} loading={loading} />
       </div>
