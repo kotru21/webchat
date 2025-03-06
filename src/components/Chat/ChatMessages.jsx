@@ -80,8 +80,8 @@ const ChatMessages = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
       {pinnedMessages.length > 0 && (
-        <div className="absolute top-0 left-0 z-20 bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 shadow-md ">
-          <div className="flex items-center justify-between">
+        <div className="absolute  top-0 left-0 z-20 bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 shadow-md ">
+          <div className="flex items-center justify-between ">
             <div className="flex-1 overflow-hidden">
               {pinnedMessages.slice(0, 1).map((message) => (
                 <div
@@ -108,7 +108,7 @@ const ChatMessages = ({
                 </div>
               ))}
               {showAllPinned && (
-                <div className="absolute top-full left-4 right-4 bg-gray-100 dark:bg-gray-800 max-h-40 overflow-y-auto border-t dark:border-gray-700 shadow-lg mt-1">
+                <div className="p-4 absolute top-full  bg-gray-100 dark:bg-gray-800 max-h-40 overflow-y-auto border-t dark:border-gray-700 shadow-lg mt-1">
                   {pinnedMessages.slice(1).map((message) => (
                     <div
                       key={message._id}

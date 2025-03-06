@@ -72,13 +72,10 @@ const MessageItem = ({
 
   return (
     <div
-      className={`message-container group relative ${
-        message.isPinned
-          ? "bg-yellow-100 dark:bg-yellow-900/20 border-l-4 border-yellow-500"
-          : ""
-      }`}>
-      <div className="pt-8">
-        {/* Меню управления для всех сообщений */}
+      className={`message-container pb-4 group relative ${
+        message.isPinned ? "   border-yellow-500" : ""
+      } ${isOwnMessage ? "border-r-4 pr-2" : "border-l-4"}`}>
+      <div className="pt-6">
         <div
           className={`absolute -top-2 ${
             isOwnMessage ? "right-10" : "left-10"
