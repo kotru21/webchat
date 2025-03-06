@@ -29,7 +29,7 @@ const ChatMessages = ({
     }
   };
 
-  // Сохраняем позицию скролла перед обновлением
+  // Сохранение позиции скролла только для новых сообщений
   useEffect(() => {
     const chatContainer = document.querySelector(".overflow-y-auto");
     const shouldScrollToBottom =
@@ -78,16 +78,15 @@ const ChatMessages = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Фиксированная область для закрепленных сообщений */}
+    <div className="flex-1 flex flex-col overflow-hidden relative">
       {pinnedMessages.length > 0 && (
-        <div className="pinned-messages bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 sticky top-0 z-10 overflow-y-auto">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex-1">
+        <div className="absolute top-0 left-0 z-20 bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 shadow-md ">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 overflow-hidden">
               {pinnedMessages.slice(0, 1).map((message) => (
                 <div
                   key={message._id}
-                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 flex items-center justify-between">
+                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg flex items-center justify-between">
                   <span
                     className={`text-sm flex-1 ${
                       shouldTruncate(message.content) ? "truncate" : ""
@@ -108,6 +107,31 @@ const ChatMessages = ({
                   </button>
                 </div>
               ))}
+              {showAllPinned && (
+                <div className="absolute top-full left-4 right-4 bg-gray-100 dark:bg-gray-800 max-h-40 overflow-y-auto border-t dark:border-gray-700 shadow-lg mt-1">
+                  {pinnedMessages.slice(1).map((message) => (
+                    <div
+                      key={message._id}
+                      className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mt-2 flex items-center justify-between">
+                      <span
+                        className={`text-sm flex-1 ${
+                          shouldTruncate(message.content) ? "truncate" : ""
+                        }`}>
+                        <span className="font-medium">
+                          {getSenderName(message)}:{" "}
+                        </span>
+                        {message.content || "Медиа-сообщение"}
+                        {shouldTruncate(message.content) && "..."}
+                      </span>
+                      <button
+                        onClick={() => scrollToMessage(message._id)}
+                        className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-xs flex-shrink-0">
+                        Перейти
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             {pinnedMessages.length > 1 && (
               <button
@@ -117,31 +141,6 @@ const ChatMessages = ({
               </button>
             )}
           </div>
-          {showAllPinned && (
-            <div className="mt-2 max-h-40 overflow-y-auto">
-              {pinnedMessages.slice(1).map((message) => (
-                <div
-                  key={message._id}
-                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mb-2 flex items-center justify-between">
-                  <span
-                    className={`text-sm flex-1 ${
-                      shouldTruncate(message.content) ? "truncate" : ""
-                    }`}>
-                    <span className="font-medium">
-                      {getSenderName(message)}:{" "}
-                    </span>
-                    {message.content || "Медиа-сообщение"}
-                    {shouldTruncate(message.content) && "..."}
-                  </span>
-                  <button
-                    onClick={() => scrollToMessage(message._id)}
-                    className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-xs flex-shrink-0">
-                    Перейти
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
