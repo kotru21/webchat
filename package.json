@@ -17,6 +17,7 @@
     "framer-motion": "^10.17.9",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-linkify": "^1.0.0-alpha",
     "react-router-dom": "^6.21.1",
     "socket.io-client": "^4.7.4",
     "tailwindcss": "^4.0.7"

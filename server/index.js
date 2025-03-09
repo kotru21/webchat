@@ -87,6 +87,7 @@ const ensureUploadsDir = async () => {
   const dirs = [
     path.join(__dirname, "uploads"),
     path.join(__dirname, "uploads", "avatars"),
+    path.join(__dirname, "uploads", "banners"),
     path.join(__dirname, "uploads", "media"),
   ];
 

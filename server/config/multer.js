@@ -20,12 +20,18 @@ const processImage = async (file) => {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = file.fieldname === "avatar" ? "avatars" : "media";
-    cb(null, path.join(__dirname, "..", "uploads", uploadPath));
+    let uploadPath;
+    if (file.fieldname === "avatar") {
+      uploadPath = path.join(__dirname, "../uploads/avatars");
+    } else if (file.fieldname === "banner") {
+      uploadPath = path.join(__dirname, "../uploads/banners");
+    } else {
+      uploadPath = path.join(__dirname, "../uploads/media");
+    }
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
 
@@ -50,3 +56,5 @@ export const upload = multer({
   fileFilter,
   limits,
 });
+
+export default upload;

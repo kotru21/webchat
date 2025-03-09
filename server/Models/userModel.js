@@ -40,6 +40,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    description: {
+      type: String,
+      default: "",
+    },
+    banner: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,

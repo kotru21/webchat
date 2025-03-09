@@ -1,4 +1,6 @@
+import { useState } from "react";
 import ReadStatus from "../ReadStatus";
+import UserProfile from "../UserProfile";
 import { pinMessage } from "../../services/api.js";
 
 const MessageItem = ({
@@ -10,15 +12,12 @@ const MessageItem = ({
   onPin,
 }) => {
   const isOwnMessage = message.sender._id === currentUser.id;
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handlePin = async () => {
     try {
       await pinMessage(message._id, !message.isPinned);
-      if (typeof onPin === "function") {
-        onPin(message._id, !message.isPinned);
-      } else {
-        console.warn("onPin is not a function or not provided");
-      }
+      onPin(message._id, !message.isPinned);
     } catch (error) {
       console.error("Ошибка при закреплении:", error);
     }
@@ -108,24 +107,23 @@ const MessageItem = ({
           className={`flex items-start ${
             isOwnMessage ? "flex-row-reverse" : "flex-row"
           } gap-2`}>
-          <img
-            src={
-              message.sender.avatar
-                ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
-                : "/default-avatar.png"
-            }
-            alt={`${message.sender.username || message.sender.email}'s avatar`}
-            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-            onError={(e) => {
-              e.target.src = "/default-avatar.png";
-            }}
-          />
           <div
-            className={`rounded-lg px-4 py-2 ${
-              isOwnMessage
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 dark:bg-gray-700"
-            }`}>
+            onClick={() => setIsProfileOpen(true)}
+            className="cursor-pointer flex items-center gap-2">
+            <img
+              src={
+                message.sender.avatar
+                  ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
+                  : "/default-avatar.png"
+              }
+              alt={`${
+                message.sender.username || message.sender.email
+              }'s avatar`}
+              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+              onError={(e) => {
+                e.target.src = "/default-avatar.png";
+              }}
+            />
             <div
               className={`text-sm font-medium mb-1 ${
                 isOwnMessage ? "text-right" : "text-left"
@@ -134,6 +132,13 @@ const MessageItem = ({
                 ? "Вы"
                 : message.sender.username || message.sender.email}
             </div>
+          </div>
+          <div
+            className={`rounded-lg px-4 py-2 ${
+              isOwnMessage
+                ? "bg-blue-500 text-white"
+                : "bg-gray-200 dark:bg-gray-700"
+            }`}>
             {renderMessageContent()}
             <div className="flex flex-row-reverse gap-2 mt-1">
               <span
@@ -147,6 +152,12 @@ const MessageItem = ({
           </div>
         </div>
       </div>
+      {isProfileOpen && (
+        <UserProfile
+          userId={message.sender._id}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </div>
   );
 };
