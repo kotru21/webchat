@@ -130,6 +130,13 @@ const MessageItem = ({
                 e.target.src = "/default-avatar.png";
               }}
             />
+          </div>
+          <div
+            className={`rounded-lg px-4 py-2 ${
+              isOwnMessage
+                ? "bg-blue-500 text-white"
+                : "bg-gray-200 dark:bg-gray-700"
+            }`}>
             <div
               className={`text-sm font-medium mb-1 ${
                 isOwnMessage ? "text-right" : "text-left"
@@ -138,13 +145,6 @@ const MessageItem = ({
                 ? "Вы"
                 : message.sender.username || message.sender.email}
             </div>
-          </div>
-          <div
-            className={`rounded-lg px-4 py-2 ${
-              isOwnMessage
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 dark:bg-gray-700"
-            }`}>
             {renderMessageContent()}
             <div className="flex flex-row-reverse gap-2 mt-1">
               <span
