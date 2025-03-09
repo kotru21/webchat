@@ -48,7 +48,6 @@ const fileFilter = (req, file, cb) => {
 
 const limits = {
   fileSize: 50 * 1024 * 1024, // 50MB для видео
-  files: 1,
 };
 
 export const upload = multer({
