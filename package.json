@@ -20,6 +20,7 @@
     "react-easy-crop": "^5.4.1",
     "react-linkify": "^1.0.0-alpha",
     "react-router-dom": "^6.21.1",
+    "react-window": "^1.8.11",
     "socket.io-client": "^4.7.4",
     "tailwindcss": "^4.0.7"
   },

@@ -8,7 +8,7 @@ import {
   pinMessage,
 } from "../controllers/messageController.js";
 import protect from "../middleware/authMiddleware.js";
-import { upload } from "../config/multer.js";
+import { mediaUpload } from "../config/multer.js"; // Изменен импорт
 import { messageLimiter } from "../middleware/rateLimiter.js";
 import { validateMessage } from "../middleware/validator.js";
 
@@ -23,7 +23,7 @@ router.post(
   protect,
   messageLimiter,
   validateMessage,
-  upload.single("media"),
+  mediaUpload,
   async (req, res) => {
     try {
       if (!req.user) {
@@ -47,9 +47,7 @@ router.post(
 
       const savedMessage = await saveMessage(messageData);
 
-      // Отправляем сообщение через Socket.IO только один раз
       const io = req.app.get("io");
-
       if (messageData.isPrivate) {
         io.to(messageData.sender.toString())
           .to(messageData.receiver.toString())
@@ -74,7 +72,7 @@ router.put(
   protect,
   messageLimiter,
   validateMessage,
-  upload.single("media"),
+  mediaUpload,
   updateMessage
 );
 

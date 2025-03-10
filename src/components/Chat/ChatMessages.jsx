@@ -13,19 +13,21 @@ const ChatMessages = ({
 }) => {
   const [editingMessage, setEditingMessage] = useState(null);
   const [showAllPinned, setShowAllPinned] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef(null);
   const messageRefs = useRef({});
   const prevMessagesLength = useRef(messages.length);
+  const containerRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    setShowScrollButton(false);
   };
 
   const scrollToMessage = (messageId) => {
     const element = messageRefs.current[messageId];
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Add highlight effect to message when scrolled to
       element.classList.add("highlight-message");
       setTimeout(() => {
         element.classList.remove("highlight-message");
@@ -33,19 +35,29 @@ const ChatMessages = ({
     }
   };
 
-  // Сохранение позиции скролла только для новых сообщений
-  useEffect(() => {
-    const chatContainer = document.querySelector(".overflow-y-auto");
-    const shouldScrollToBottom =
-      prevMessagesLength.current < messages.length && // Только при добавлении нового сообщения
-      chatContainer.scrollTop + chatContainer.clientHeight >=
-        chatContainer.scrollHeight - 50; // Близко к низу
+  const checkNewMessagesVisibility = () => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    if (shouldScrollToBottom) {
-      scrollToBottom();
+    const threshold = 100; // пикселей от нижнего края
+    const isNearBottom =
+      container.scrollHeight - (container.scrollTop + container.clientHeight) <=
+      threshold;
+
+    // Проверяем, есть ли новые сообщения от других пользователей
+    const hasNewMessagesFromOthers =
+      messages.length > prevMessagesLength.current &&
+      messages[messages.length - 1]?.sender._id !== currentUser.id;
+
+    if (!isNearBottom && hasNewMessagesFromOthers) {
+      setShowScrollButton(true);
     }
+  };
+
+  useEffect(() => {
+    checkNewMessagesVisibility();
     prevMessagesLength.current = messages.length;
-  }, [messages]);
+  }, [messages, currentUser.id]); // Сообщения для прокрутки. Для текущего пользователя не считаем его сообщения
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -69,6 +81,19 @@ const ChatMessages = ({
     };
   }, [messages, onMarkAsRead]);
 
+  const handleScroll = () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const isAtBottom =
+      container.scrollHeight - (container.scrollTop + container.clientHeight) <=
+      100;
+
+    if (isAtBottom) {
+      setShowScrollButton(false);
+    }
+  };
+
   const pinnedMessages = messages.filter((msg) => msg.isPinned);
 
   const getSenderName = (message) => {
@@ -78,111 +103,129 @@ const ChatMessages = ({
   };
 
   const shouldTruncate = (text) => {
-    return text && text.length > 50; // Точки добавляем только для длинных сообщений
+    return text && text.length > 50;
   };
+
+  const PinnedMessagePreview = ({ message }) => (
+    <div className="w-full bg-gray-200 dark:bg-gray-700 p-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 mb-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          <img
+            src={
+              message.sender.avatar
+                ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
+                : "/default-avatar.png"
+            }
+            alt="Avatar"
+            className="w-6 h-6 rounded-full"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {getSenderName(message)}
+            </p>
+            <div className="text-sm text-gray-600 dark:text-gray-300 truncate">
+              {message.mediaUrl ? (
+                <span className="flex items-center">
+                  {message.mediaType === "image" ? "🖼️ " : "🎥 "}
+                  {message.content || "Медиа"}
+                </span>
+              ) : (
+                message.content
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 ml-2">
+          <button
+            onClick={() => scrollToMessage(message._id)}
+            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 text-sm px-2 py-1 rounded hover:bg-gray-400/20">
+            Перейти
+          </button>
+          <button
+            onClick={() => onPinMessage(message._id, false)}
+            className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 text-sm px-2 py-1 rounded hover:bg-gray-400/20">
+            Открепить
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
+      {/* Панель закрепленных сообщений */}
       {pinnedMessages.length > 0 && (
-        <div className="absolute top-0 left-0 z-20 bg-gray-100 dark:bg-gray-800 p-4 border-b dark:border-gray-700 shadow-md w-full transition-all duration-300 ease-in-out text-left">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 overflow-hidden">
-              {pinnedMessages.slice(0, 1).map((message) => (
-                <div
-                  key={message._id}
-                  className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg flex items-center justify-between transition-all duration-300 hover:shadow-md transform hover:translate-y-[-2px]">
-                  <span
-                    className={`text-sm flex-1 ${
-                      shouldTruncate(message.content) ? "truncate" : ""
-                    }`}>
-                    <span className="font-medium">
-                      {getSenderName(message)}:{" "}
-                    </span>
-                    {message.content || "Медиа-сообщение"}
-                    {shouldTruncate(message.content) && "..."}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      scrollToMessage(message._id);
-                    }}
-                    className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-xs flex-shrink-0 transition-colors duration-200">
-                    Перейти
-                  </button>
-                </div>
-              ))}
-              {showAllPinned && (
-                <div className="p-4 absolute top-full bg-gray-100 dark:bg-gray-800 max-h-40 overflow-y-auto border-t dark:border-gray-700 shadow-lg mt-1 transition-all duration-300 animate-slideDown w-full -ml-4">
-                  {pinnedMessages.slice(1).map((message) => (
-                    <div
-                      key={message._id}
-                      className="w-full bg-gray-200 dark:bg-gray-700 p-2 rounded-lg mt-2 flex items-center justify-between transition-all duration-300 hover:shadow-md transform hover:translate-y-[-2px]">
-                      <span
-                        className={`text-sm flex-1 ${
-                          shouldTruncate(message.content) ? "truncate" : ""
-                        }`}>
-                        <span className="font-medium">
-                          {getSenderName(message)}:{" "}
-                        </span>
-                        {message.content || "Медиа-сообщение"}
-                        {shouldTruncate(message.content) && "..."}
-                      </span>
-                      <button
-                        onClick={() => scrollToMessage(message._id)}
-                        className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-xs flex-shrink-0 transition-colors duration-200">
-                        Перейти
-                      </button>
-                    </div>
-                  ))}
-                </div>
+        <div className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 shadow-md">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium flex items-center">
+                <span className="text-yellow-500 mr-2">📌</span>
+                Закрепленные сообщения ({pinnedMessages.length})
+              </h3>
+              {pinnedMessages.length > 1 && (
+                <button
+                  onClick={() => setShowAllPinned(!showAllPinned)}
+                  className="text-blue-500 hover:text-blue-700 dark:text-blue-400 text-sm">
+                  {showAllPinned ? "Скрыть" : "Показать все"}
+                </button>
               )}
             </div>
-            {pinnedMessages.length > 1 && (
-              <button
-                onClick={() => setShowAllPinned(!showAllPinned)}
-                className="ml-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 text-sm flex-shrink-0 transition-all duration-200 transform hover:scale-105">
-                {showAllPinned ? "Скрыть" : `Ещё ${pinnedMessages.length - 1}`}
-              </button>
-            )}
+            <div className="space-y-2">
+              {(showAllPinned
+                ? pinnedMessages
+                : pinnedMessages.slice(0, 1)
+              ).map((message) => (
+                <PinnedMessagePreview key={message._id} message={message} />
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Прокручиваемая область для всех сообщений */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-24">
+      {/* Контейнер сообщений */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 messages-container"
+        onScroll={handleScroll}>
         {messages.map((message) => (
           <div
             key={message._id}
             ref={(el) => (messageRefs.current[message._id] = el)}
             data-message-id={message._id}
-            className={`flex message-item transition-all duration-300 ease-in-out ${
-              message.sender._id === currentUser.id
-                ? "justify-end"
-                : "justify-start"
-            }`}>
-            {editingMessage?._id === message._id ? (
-              <MessageEditor
-                message={message}
-                onSave={(formData) => {
-                  onEditMessage(message._id, formData);
-                  setEditingMessage(null);
-                }}
-                onCancel={() => setEditingMessage(null)}
-              />
-            ) : (
-              <MessageItem
-                message={message}
-                currentUser={currentUser}
-                onEdit={() => setEditingMessage(message)}
-                onDelete={() => onDeleteMessage(message._id)}
-                onMediaClick={onMediaClick}
-                onPin={onPinMessage}
-              />
-            )}
+            className="message-item">
+            <MessageItem
+              message={message}
+              currentUser={currentUser}
+              onEdit={() => setEditingMessage(message)}
+              onDelete={() => onDeleteMessage(message._id)}
+              onMediaClick={onMediaClick}
+              onPin={onPinMessage}
+            />
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
+
+      {showScrollButton && (
+        <button
+          onClick={() => scrollToBottom()}
+          className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2 z-50 animate-bounce">
+          <span>↓</span>
+          <span>Перейти к новым сообщениям</span>
+        </button>
+      )}
+
+      {/* Редактор сообщений */}
+      {editingMessage && (
+        <MessageEditor
+          message={editingMessage}
+          onSave={async (formData) => {
+            await onEditMessage(editingMessage._id, formData);
+            setEditingMessage(null);
+          }}
+          onCancel={() => setEditingMessage(null)}
+        />
+      )}
     </div>
   );
 };

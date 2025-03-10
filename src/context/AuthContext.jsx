@@ -1,10 +1,25 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useReducer, useEffect } from "react";
 
 const AuthContext = createContext();
 
+const authReducer = (state, action) => {
+  switch (action.type) {
+    case "LOGIN":
+      return { ...state, user: action.payload, loading: false };
+    case "LOGOUT":
+      return { ...state, user: null, loading: false };
+    case "UPDATE_PROFILE":
+      return { ...state, user: { ...state.user, ...action.payload } };
+    default:
+      return state;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(authReducer, {
+    user: null,
+    loading: true,
+  });
 
   // Функция нормализации данных пользователя
   const normalizeUser = (userData) => {
@@ -22,19 +37,20 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(userData);
         const normalizedUser = normalizeUser(parsedUser);
-        setUser(normalizedUser);
+        dispatch({ type: "LOGIN", payload: normalizedUser });
       } catch (error) {
         console.error("Ошибка парсинга данных из localStorage:", error);
         localStorage.removeItem("user");
       }
+    } else {
+      dispatch({ type: "LOGOUT" });
     }
-    setLoading(false);
   }, []);
 
   // Вход в систему
   const login = (userData, token) => {
     const normalizedUser = normalizeUser(userData);
-    setUser(normalizedUser);
+    dispatch({ type: "LOGIN", payload: normalizedUser });
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(normalizedUser));
   };
@@ -42,20 +58,27 @@ export const AuthProvider = ({ children }) => {
   // Обновление профиля
   const updateUser = (updatedUser) => {
     const normalizedUser = normalizeUser(updatedUser);
-    setUser(normalizedUser);
+    dispatch({ type: "UPDATE_PROFILE", payload: normalizedUser });
     localStorage.setItem("user", JSON.stringify(normalizedUser));
   };
 
   // Выход из системы
   const logout = () => {
-    setUser(null);
+    dispatch({ type: "LOGOUT" });
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, updateUser, logout, loading }}>
-      {!loading && children}
+    <AuthContext.Provider
+      value={{
+        user: state.user,
+        login,
+        updateUser,
+        logout,
+        loading: state.loading,
+      }}>
+      {!state.loading && children}
     </AuthContext.Provider>
   );
 };

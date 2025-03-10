@@ -3,9 +3,16 @@ import path from "path";
 import { fileURLToPath } from "url";
 import sharp from "sharp";
 
+// Базовая конфигурация
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Константы
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+// Обработка изображений
 const processImage = async (file) => {
   if (!file.mimetype.startsWith("image/")) return file.buffer;
 
@@ -18,42 +25,78 @@ const processImage = async (file) => {
     .toBuffer();
 };
 
+// Конфигурация хранилища
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath;
-    if (file.fieldname === "avatar") {
-      uploadPath = path.join(__dirname, "../uploads/avatars");
-    } else if (file.fieldname === "banner") {
-      uploadPath = path.join(__dirname, "../uploads/banners");
-    } else {
-      uploadPath = path.join(__dirname, "../uploads/media");
+
+    switch (file.fieldname) {
+      case "avatar":
+        uploadPath = path.join(__dirname, "../uploads/avatars");
+        break;
+      case "banner":
+        uploadPath = path.join(__dirname, "../uploads/banners");
+        break;
+      default:
+        uploadPath = path.join(__dirname, "../uploads/media");
     }
+
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
 
+// Фильтр файлов
 const fileFilter = (req, file, cb) => {
-  const allowedImageTypes = ["image/jpeg", "image/png", "image/gif"];
-  const allowedVideoTypes = ["video/mp4", "video/webm"];
+  const allowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 
-  if ([...allowedImageTypes, ...allowedVideoTypes].includes(file.mimetype)) {
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error("Неподдерживаемый формат файла"));
   }
 };
 
+// Ограничения
 const limits = {
-  fileSize: 50 * 1024 * 1024, // 50MB для видео
+  fileSize: MAX_FILE_SIZE,
+  files: 1,
 };
 
-export const upload = multer({
+// Экспорт конфигураций для разных типов загрузок
+export const mediaUpload = multer({
+  storage,
+  fileFilter,
+  limits: { ...limits, files: 1 },
+}).single("media");
+
+export const profileUpload = multer({
   storage,
   fileFilter,
   limits,
-});
+}).fields([
+  { name: "avatar", maxCount: 1 },
+  { name: "banner", maxCount: 1 },
+]);
 
-export default upload;
+export const avatarUpload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Разрешены только изображения"));
+    }
+  },
+  limits: { ...limits, fileSize: 5 * 1024 * 1024 }, // 5MB для аватаров
+}).single("avatar");
+
+export default {
+  mediaUpload,
+  profileUpload,
+  avatarUpload,
+  processImage,
+};

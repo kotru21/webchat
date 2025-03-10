@@ -38,122 +38,132 @@ api.interceptors.response.use(
   }
 );
 
-export const login = async (email, password) => {
-  try {
-    const response = await api.post(
-      "/api/auth/login",
-      { email, password },
-      {
+export const authService = {
+  login: async (email, password) => {
+    try {
+      const response = await api.post(
+        "/api/auth/login",
+        { email, password },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Login Error:", {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message,
+      });
+      throw error;
+    }
+  },
+  register: async (formData) => {
+    try {
+      const response = await api.post("/api/auth/register", formData, {
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "multipart/form-data",
         },
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Login Error:", {
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-    });
-    throw error;
-  }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Register Error:", error);
+      throw error;
+    }
+  },
+  updateProfile: async (formData) => {
+    try {
+      const response = await api.put("/api/auth/profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Update Profile Error:", error);
+      throw error;
+    }
+  },
 };
 
-export const register = async (formData) => {
-  try {
-    const response = await api.post("/api/auth/register", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Register Error:", error);
-    throw error;
-  }
-};
-
-// Добавляем функцию получения сообщений
-export const getMessages = async (receiverId = null) => {
-  try {
-    const url = receiverId
-      ? `/api/messages?receiverId=${receiverId}`
-      : "/api/messages";
-    const response = await api.get(url);
-    return response.data;
-  } catch (error) {
-    console.error("Get Messages Error:", error);
-    throw error;
-  }
-};
-
-// Добавляем функцию отправки сообщения
-export const sendMessage = async (formData) => {
-  try {
-    const response = await api.post("/api/messages", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Send Message Error:", error.response?.data || error);
-    throw error;
-  }
-};
-
-// Добавляем функцию отметки сообщения как прочитанного
-export const markMessageAsRead = async (messageId) => {
-  try {
-    const response = await api.post(`/api/messages/${messageId}/read`);
-    return response.data;
-  } catch (error) {
-    console.error("Mark as read error:", error);
-    throw error;
-  }
-};
-
-export const updateMessage = async (messageId, formData) => {
-  try {
-    const response = await api.put(`/api/messages/${messageId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Update Message Error:", error);
-    throw error;
-  }
-};
-
-export const deleteMessage = async (messageId) => {
-  try {
-    const response = await api.delete(`/api/messages/${messageId}`);
-    return response.data;
-  } catch (error) {
-    console.error("Delete Message Error:", error);
-    throw error;
-  }
-};
-
-export const updateProfile = async (formData) => {
-  try {
-    const response = await api.put("/api/auth/profile", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+export const messageService = {
+  getMessages: async (receiverId = null) => {
+    try {
+      const url = receiverId
+        ? `/api/messages?receiverId=${receiverId}`
+        : "/api/messages";
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      console.error("Get Messages Error:", error);
+      throw error;
+    }
+  },
+  sendMessage: async (formData) => {
+    try {
+      const response = await api.post("/api/messages", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Send Message Error:", error.response?.data || error);
+      throw error;
+    }
+  },
+  markAsRead: async (messageId) => {
+    try {
+      const response = await api.post(`/api/messages/${messageId}/read`);
+      return response.data;
+    } catch (error) {
+      console.error("Mark as read error:", error);
+      throw error;
+    }
+  },
+  updateMessage: async (messageId, formData) => {
+    try {
+      const response = await api.put(`/api/messages/${messageId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Update Message Error:", error);
+      throw error;
+    }
+  },
+  deleteMessage: async (messageId) => {
+    try {
+      const response = await api.delete(`/api/messages/${messageId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Delete Message Error:", error);
+      throw error;
+    }
+  },
+  pinMessage: async (messageId, isPinned) => {
+    const response = await api.put(`/api/messages/${messageId}/pin`, {
+      isPinned,
     });
     return response.data;
-  } catch (error) {
-    console.error("Update Profile Error:", error);
-    throw error;
-  }
+  },
 };
-export const pinMessage = async (messageId, isPinned) => {
-  const response = await api.put(`/api/messages/${messageId}/pin`, {
-    isPinned,
-  });
-  return response.data;
-};
+
+export const { login, register, updateProfile } = authService;
+
+export const {
+  getMessages,
+  sendMessage,
+  markMessageAsRead: markAsRead,
+  updateMessage,
+  deleteMessage,
+  pinMessage,
+} = messageService;
+
+// Добавление алиаса для markMessageAsRead
+export const markMessageAsRead = markAsRead;
+
 export default api;
