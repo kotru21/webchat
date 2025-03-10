@@ -19,8 +19,11 @@ const ChatMessages = ({
   const prevMessagesLength = useRef(messages.length);
   const containerRef = useRef(null);
 
+  // Модифицируем функцию scrollToBottom
   const scrollToBottom = (behavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
     setShowScrollButton(false);
   };
 
@@ -150,6 +153,11 @@ const ChatMessages = ({
       </div>
     </div>
   );
+
+  useEffect(() => {
+    checkNewMessagesVisibility();
+    prevMessagesLength.current = messages.length;
+  }, [messages, currentUser.id]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
