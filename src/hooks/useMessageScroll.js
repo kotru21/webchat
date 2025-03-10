@@ -8,85 +8,76 @@ const useMessageScroll = ({
 }) => {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const prevMessagesLength = useRef(messages.length);
-  const messagesEndRef = useRef(null);
+  const shouldScrollToBottom = useRef(true);
 
   const scrollToBottom = (behavior = "smooth") => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior });
-    }
+    const container = containerRef.current;
+    if (!container) return;
+    container.scrollTop = 0;
     setShowScrollButton(false);
   };
 
   const scrollToMessage = (messageId) => {
     const element = messageRefs.current[messageId];
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-      element.classList.add("highlight-message");
-      setTimeout(() => {
-        element.classList.remove("highlight-message");
-      }, 2000);
-    }
+    if (!element) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Вычисляем позицию элемента относительно контейнера
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const scrollOffset =
+      elementRect.top - containerRect.top - containerRect.height / 2;
+
+    container.scrollTop += scrollOffset;
+
+    // Добавляем подсветку
+    element.classList.add("highlight-message");
+    setTimeout(() => {
+      element.classList.remove("highlight-message");
+    }, 2000);
   };
 
   const handleScroll = () => {
     const container = containerRef.current;
     if (!container) return;
 
-    const isAtBottom =
-      container.scrollHeight - (container.scrollTop + container.clientHeight) <=
-      100;
+    // При flex-col-reverse чем больше scrollTop, тем дальше от последних сообщений
+    const threshold = 300;
+    const isNearBottom = container.scrollTop < threshold;
 
-    if (isAtBottom) {
-      setShowScrollButton(false);
-    }
+    setShowScrollButton(!isNearBottom);
+    shouldScrollToBottom.current = container.scrollTop === 0;
   };
 
-  const checkNewMessagesVisibility = () => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const threshold = 100;
-    const isNearBottom =
-      container.scrollHeight - (container.scrollTop + container.clientHeight) <=
-      threshold;
-
-    const hasNewMessagesFromOthers =
-      messages.length > prevMessagesLength.current &&
-      messages[messages.length - 1]?.sender._id !== currentUser.id;
-
-    if (!isNearBottom && hasNewMessagesFromOthers) {
-      setShowScrollButton(true);
-    }
-  };
-
-  // Эффекты для управления прокруткой
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom("auto");
-    }
-  }, []);
-
+  // Автопрокрутка при новых сообщениях
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const isAtBottom =
-      container.scrollHeight - (container.scrollTop + container.clientHeight) <=
-      100;
+    const isNearBottom = container.scrollTop < 300;
+    const hasNewMessages = messages.length > prevMessagesLength.current;
+    const isOwnMessage =
+      messages[messages.length - 1]?.sender._id === currentUser.id;
 
-    if (messages.length > prevMessagesLength.current) {
-      if (
-        isAtBottom ||
-        messages[messages.length - 1]?.sender._id === currentUser.id
-      ) {
+    if (hasNewMessages) {
+      if (isNearBottom || isOwnMessage || shouldScrollToBottom.current) {
         scrollToBottom("smooth");
       } else {
-        checkNewMessagesVisibility();
+        setShowScrollButton(true);
       }
     }
 
     prevMessagesLength.current = messages.length;
   }, [messages, currentUser.id]);
+
+  // Начальная прокрутка при монтировании
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom("auto");
+    }
+  }, []);
 
   return {
     showScrollButton,
