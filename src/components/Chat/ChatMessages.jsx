@@ -159,6 +159,36 @@ const ChatMessages = ({
     prevMessagesLength.current = messages.length;
   }, [messages, currentUser.id]);
 
+  // Добавьте новый useEffect для автоматической прокрутки при первой загрузке сообщений
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom("auto"); // Используем 'auto' вместо 'smooth' для мгновенной прокрутки
+    }
+  }, []); // Пустой массив зависимостей означает, что эффект выполнится только при монтировании
+
+  // Модифицируйте существующий useEffect для новых сообщений
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const isAtBottom =
+      container.scrollHeight - (container.scrollTop + container.clientHeight) <=
+      100;
+
+    if (messages.length > prevMessagesLength.current) {
+      if (
+        isAtBottom ||
+        messages[messages.length - 1]?.sender._id === currentUser.id
+      ) {
+        scrollToBottom("smooth");
+      } else {
+        checkNewMessagesVisibility();
+      }
+    }
+
+    prevMessagesLength.current = messages.length;
+  }, [messages, currentUser.id]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
       {/* Панель закрепленных сообщений */}
@@ -193,7 +223,7 @@ const ChatMessages = ({
       {/* Контейнер сообщений */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 messages-container"
+        className="flex-1 overflow-y-auto p-4 space-y-4 messages-container flex flex-col-reverse"
         onScroll={handleScroll}>
         {messages.map((message) => (
           <div
