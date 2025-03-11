@@ -73,8 +73,8 @@ const UserProfile = ({
             alt="Аватар"
             className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800 object-cover"
           />
-          <div className="flex-1 mt-8">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <div className="flex-1 mt-8 min-w-0">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">
               {profile.username || profile.email}
             </h2>
           </div>
