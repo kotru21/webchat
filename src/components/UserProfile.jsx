@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import Linkify from "react-linkify";
 
-const UserProfile = ({ userId, onClose }) => {
+const UserProfile = ({ userId, onClose, anchorEl }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const popoverRef = useRef(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -20,25 +21,66 @@ const UserProfile = ({ userId, onClose }) => {
     fetchProfile();
   }, [userId]);
 
-  if (loading) return <div className="text-center">Загрузка...</div>;
-  if (!profile) return <div className="text-center">Профиль не найден</div>;
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  if (loading) return null;
+  if (!profile) return null;
+
+  // Вычисляем позицию всплывающего окна
+  const getPopoverPosition = () => {
+    if (!anchorEl) return {};
+
+    const rect = anchorEl.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceRight = window.innerWidth - rect.right;
+
+    let style = {
+      position: "fixed",
+      zIndex: 1000,
+    };
+
+    // Позиционируем окно справа от аватарки
+    if (spaceRight >= 300) {
+      style.left = `${rect.right + 8}px`;
+    } else {
+      style.right = `${window.innerWidth - rect.left + 8}px`;
+    }
+
+    // Позиционируем окно по вертикали
+    if (spaceBelow >= 300) {
+      style.top = `${rect.top}px`;
+    } else {
+      style.bottom = `${window.innerHeight - rect.top}px`;
+    }
+
+    return style;
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:text-gray-300">
-          ×
-        </button>
-        {profile.banner && (
+    <div
+      ref={popoverRef}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[300px]"
+      style={getPopoverPosition()}>
+      {profile.banner && (
+        <div className="h-24 overflow-hidden rounded-t-lg">
           <img
             src={`${import.meta.env.VITE_API_URL}${profile.banner}`}
             alt="Баннер"
-            className="w-full h-32 object-cover rounded-t-lg"
+            className="w-full h-full object-cover"
           />
-        )}
-        <div className="flex items-center space-x-4 mt-4">
+        </div>
+      )}
+      <div className="p-4">
+        <div className="flex items-start gap-4 -mt-8">
           <img
             src={
               profile.avatar
@@ -46,21 +88,21 @@ const UserProfile = ({ userId, onClose }) => {
                 : "/default-avatar.png"
             }
             alt="Аватар"
-            className="w-16 h-16 rounded-full object-cover"
+            className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800 object-cover"
           />
-          <div>
+          <div className="flex-1 mt-8">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {profile.username || profile.email}
             </h2>
-            {profile.description && (
-              <Linkify>
-                <p className="text-gray-600 dark:text-gray-300">
-                  {profile.description}
-                </p>
-              </Linkify>
-            )}
           </div>
         </div>
+        {profile.description && (
+          <Linkify>
+            <p className="text-gray-600 dark:text-gray-300 mt-4 text-sm">
+              {profile.description}
+            </p>
+          </Linkify>
+        )}
       </div>
     </div>
   );

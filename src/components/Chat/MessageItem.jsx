@@ -13,6 +13,7 @@ const MessageItem = ({
 }) => {
   const isOwnMessage = message.sender._id === currentUser.id;
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
 
   const handlePin = async () => {
     try {
@@ -20,6 +21,12 @@ const MessageItem = ({
     } catch (error) {
       console.error("Ошибка при закреплении:", error);
     }
+  };
+
+  const handleProfileClick = (event) => {
+    event.stopPropagation();
+    setProfileAnchorEl(event.currentTarget);
+    setIsProfileOpen(true);
   };
 
   const renderMessageContent = () => (
@@ -106,23 +113,23 @@ const MessageItem = ({
           className={`flex items-start ${
             isOwnMessage ? "flex-row-reverse" : "flex-row"
           } gap-2`}>
-          <div
-            onClick={() => setIsProfileOpen(true)}
-            className="cursor-pointer flex items-center gap-2">
-            <img
-              src={
-                message.sender.avatar
-                  ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
-                  : "/default-avatar.png"
-              }
-              alt={`${
-                message.sender.username || message.sender.email
-              }'s avatar`}
-              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-              onError={(e) => {
-                e.target.src = "/default-avatar.png";
-              }}
-            />
+          <div className="cursor-pointer flex items-center gap-2">
+            <div onClick={handleProfileClick} className="relative">
+              <img
+                src={
+                  message.sender.avatar
+                    ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
+                    : "/default-avatar.png"
+                }
+                alt={`${
+                  message.sender.username || message.sender.email
+                }'s avatar`}
+                className="w-8 h-8 rounded-full object-cover flex-shrink-0 hover:opacity-80 transition-opacity"
+                onError={(e) => {
+                  e.target.src = "/default-avatar.png";
+                }}
+              />
+            </div>
           </div>
           <div
             className={`rounded-lg px-4 py-2 ${
@@ -155,6 +162,7 @@ const MessageItem = ({
         <UserProfile
           userId={message.sender._id}
           onClose={() => setIsProfileOpen(false)}
+          anchorEl={profileAnchorEl}
         />
       )}
     </div>
