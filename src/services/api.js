@@ -10,7 +10,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Добавляем токен к каждому запросу
+// токен к каждому запросу
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -113,7 +113,7 @@ export const messageService = {
       throw error;
     }
   },
-  markAsRead: async (messageId) => {
+  markMessageAsRead: async (messageId) => {
     try {
       const response = await api.post(`/api/messages/${messageId}/read`);
       return response.data;
@@ -157,13 +157,10 @@ export const { login, register, updateProfile } = authService;
 export const {
   getMessages,
   sendMessage,
-  markMessageAsRead: markAsRead,
+  markMessageAsRead,
   updateMessage,
   deleteMessage,
   pinMessage,
 } = messageService;
-
-// Добавление алиаса для markMessageAsRead
-export const markMessageAsRead = markAsRead;
 
 export default api;
