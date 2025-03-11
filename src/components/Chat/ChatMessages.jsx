@@ -30,7 +30,7 @@ const ChatMessages = ({
   } = useMessageScroll({
     containerRef,
     messageRefs,
-    currentUserId: currentUser.id, // Добавляем ID текущего пользователя
+    currentUserId: currentUser.id,
   });
 
   useMessageObserver({
@@ -38,18 +38,22 @@ const ChatMessages = ({
     onMarkAsRead,
   });
 
-  // Отслеживаем только действительно новые сообщения
+  // Отслеживаем только новые непрочитанные сообщения
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessageRef.current !== lastMessage._id) {
+      // Проверяем, что сообщение не прочитано текущим пользователем
+      const isUnread = !lastMessage.readBy?.some(
+        (reader) => reader._id === currentUser.id
+      );
+      if (lastMessageRef.current !== lastMessage._id && isUnread) {
         handleNewMessage(lastMessage);
         lastMessageRef.current = lastMessage._id;
       }
     }
-  }, [messages]);
+  }, [messages, currentUser.id]);
 
-  // При монтировании скроллим в конец
+  // скролл вниз при первой загрузке
   useEffect(() => {
     scrollToBottom(false);
   }, []);

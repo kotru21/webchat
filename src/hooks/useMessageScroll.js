@@ -1,11 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 
 const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
-  // Добавляем currentUserId
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const lastMessageTimeRef = useRef(null);
   const isAtBottomRef = useRef(true);
   const initialLoadRef = useRef(true);
+  const lastViewedMessageRef = useRef(null);
 
   const isAtBottom = () => {
     const container = containerRef.current;
@@ -28,6 +28,13 @@ const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
     });
     setNewMessagesCount(0);
     isAtBottomRef.current = true;
+    // Обновляем последнее просмотренное сообщение
+    const messages = Array.from(container.querySelectorAll(".message-item"));
+    if (messages.length > 0) {
+      const lastMessageId =
+        messages[messages.length - 1].getAttribute("data-message-id");
+      lastViewedMessageRef.current = lastMessageId;
+    }
   };
 
   const scrollToMessage = (messageId) => {
@@ -51,13 +58,16 @@ const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
   };
 
   const handleNewMessage = (message) => {
-    // пропкск обработки при начальной загрузке
-    if (initialLoadRef.current) {
+    if (!message) return;
+
+    // Игнорируем сообщения от текущего пользователя
+    if (message.sender._id === currentUserId) {
+      lastViewedMessageRef.current = message._id;
       return;
     }
 
-    // проверка, что сообщение не от текущего пользователя
-    if (!isAtBottom() && message && message.sender._id !== currentUserId) {
+    // Проверяем, видел ли пользователь это сообщение
+    if (!isAtBottom() && message._id !== lastViewedMessageRef.current) {
       const currentTime = new Date().getTime();
       const lastTime = lastMessageTimeRef.current;
 
@@ -76,6 +86,16 @@ const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
       if (isAtBottom()) {
         setNewMessagesCount(0);
         isAtBottomRef.current = true;
+
+        // Обновляем последнее просмотренное сообщение при скролле вниз
+        const messages = Array.from(
+          container.querySelectorAll(".message-item")
+        );
+        if (messages.length > 0) {
+          const lastMessageId =
+            messages[messages.length - 1].getAttribute("data-message-id");
+          lastViewedMessageRef.current = lastMessageId;
+        }
       } else {
         isAtBottomRef.current = false;
       }
@@ -85,12 +105,18 @@ const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // сброс флага начальной загрузки после монтирования
+  // при первой загрузке устанавливаем последнее просмотренное сообщение
   useEffect(() => {
-    initialLoadRef.current = false;
-    return () => {
-      initialLoadRef.current = true;
-    };
+    const container = containerRef.current;
+    if (container && initialLoadRef.current) {
+      const messages = Array.from(container.querySelectorAll(".message-item"));
+      if (messages.length > 0) {
+        const lastMessageId =
+          messages[messages.length - 1].getAttribute("data-message-id");
+        lastViewedMessageRef.current = lastMessageId;
+        initialLoadRef.current = false;
+      }
+    }
   }, []);
 
   return {
