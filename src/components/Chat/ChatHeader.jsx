@@ -9,14 +9,14 @@ const ChatHeader = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [title, setTitle] = useState(
     selectedUser
-      ? `Чат с ${selectedUser.username || selectedUser.email}`
+      ? `${selectedUser.username || selectedUser.email}`
       : "Общий чат"
   );
 
   useEffect(() => {
     setIsTransitioning(true);
     const newTitle = selectedUser
-      ? `Чат с ${selectedUser.username || selectedUser.email}`
+      ? `${selectedUser.username || selectedUser.email}`
       : "Общий чат";
 
     const timer = setTimeout(() => {
@@ -37,7 +37,7 @@ const ChatHeader = ({
             ☰
           </button>
           <h1
-            className={`text-xl font-semibold chat-title-transition ${
+            className={`text-xl  truncate max-w-[220px] chat-title-transition ${
               isTransitioning ? "chat-title-enter" : "chat-title-enter-active"
             }`}>
             {title}
@@ -55,7 +55,7 @@ const ChatHeader = ({
               className="w-8 h-8 rounded-full cursor-pointer hover:opacity-80 transition-all duration-200 transform hover:scale-105"
               onClick={onOpenProfileEditor}
             />
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="text-sm text-gray-600 dark:text-gray-300 ">
               {user.username || user.email}
             </span>
           </div>
