@@ -91,7 +91,13 @@ const PinnedMessagePreview = ({
           Перейти
         </button>
         <button
-          onClick={() => onPinMessage(message._id, false)}
+          onClick={async () => {
+            try {
+              await onPinMessage(message._id, false);
+            } catch (error) {
+              console.error("Ошибка при открепления сообщения:", error);
+            }
+          }}
           className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 text-sm px-2 py-1 rounded hover:bg-gray-400/20">
           Открепить
         </button>

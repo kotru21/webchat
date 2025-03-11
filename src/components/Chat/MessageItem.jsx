@@ -13,19 +13,12 @@ const MessageItem = ({
 }) => {
   const isOwnMessage = message.sender._id === currentUser.id;
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isPinnedLocally, setIsPinnedLocally] = useState(message.isPinned);
 
   const handlePin = async () => {
-    const newPinnedState = !isPinnedLocally;
-    setIsPinnedLocally(newPinnedState);
-    onPin(message._id, newPinnedState);
-
     try {
-      await pinMessage(message._id, newPinnedState);
+      await onPin(message._id, !message.isPinned);
     } catch (error) {
       console.error("Ошибка при закреплении:", error);
-      setIsPinnedLocally(!newPinnedState);
-      onPin(message._id, !newPinnedState);
     }
   };
 
@@ -77,7 +70,7 @@ const MessageItem = ({
   return (
     <div
       className={`message-container pb-4 group relative ${
-        isPinnedLocally
+        message.isPinned
           ? isOwnMessage
             ? "border-r-4 border-yellow-500 pr-2"
             : "border-l-4 border-yellow-500 pl-2"
@@ -105,7 +98,7 @@ const MessageItem = ({
           <button
             onClick={handlePin}
             className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
-            {isPinnedLocally ? "Открепить" : "Закрепить"}
+            {message.isPinned ? "Открепить" : "Закрепить"}
           </button>
         </div>
 

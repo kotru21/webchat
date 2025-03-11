@@ -73,12 +73,18 @@ const Chat = () => {
     }
   };
 
-  const handlePinMessage = (messageId, isPinned) => {
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) =>
-        msg._id === messageId ? { ...msg, isPinned } : msg
-      )
-    );
+  const handlePinMessage = async (messageId, isPinned) => {
+    try {
+      await api.put(`/api/messages/${messageId}/pin`, { isPinned });
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId ? { ...msg, isPinned } : msg
+        )
+      );
+    } catch (error) {
+      console.error("Ошибка при закреплении/откреплении сообщения:", error);
+      throw error;
+    }
   };
 
   useEffect(() => {
