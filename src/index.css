@@ -168,6 +168,7 @@
   padding: 0rem !important;
 }
 
+/* Обновим анимацию fade-in для более плавного появления */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -243,4 +244,246 @@
 
 .profile-enter-reverse {
   animation: profileSlideInReverse 0.2s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Классы анимаций */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+  will-change: transform, opacity;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
+/* Оптимизация производительности */
+.optimize-gpu {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Hover эффекты */
+.hover-lift {
+  transition: transform 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* Ripple эффект */
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.ripple-effect:active::after {
+  animation: ripple 0.6s ease-out;
+}
+
+@keyframes chatTransitionOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+@keyframes chatTransitionIn {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes headerSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-transition-enter {
+  animation: chatTransitionIn 0.3s ease-out forwards;
+}
+
+.chat-transition-exit {
+  animation: chatTransitionOut 0.3s ease-out forwards;
+}
+
+.header-slide {
+  animation: headerSlide 0.3s ease-out forwards;
+}
+
+/* Обновим стили для контейнера сообщений */
+.messages-container {
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+.messages-container.transitioning {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.message-item {
+  opacity: 1;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Обновляем анимацию для более плавного перехода */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.chat-title-transition {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.chat-title-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.chat-title-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Стили для меню чатов */
+.chat-item {
+  transition: all 0.3s ease;
+}
+
+.chat-item-selected {
+  background-color: rgba(59, 130, 246, 0.1);
+  transform: translateX(4px);
+}
+
+/* Плавное появление контента чата */
+.chat-content-transition {
+  transition: opacity 0.3s ease;
+  will-change: opacity;
+}
+
+.chat-content-hidden {
+  opacity: 0;
+}
+
+.chat-content-visible {
+  opacity: 1;
 }

@@ -47,12 +47,23 @@ const Chat = () => {
   };
 
   const handleUserSelect = (user) => {
-    setSelectedUser(user);
-    setUnreadCounts((prev) => {
-      const newCounts = { ...prev };
-      user ? delete newCounts[user.id] : (newCounts.general = 0);
-      return newCounts;
-    });
+    // Добавляем класс для анимации выхода
+    const container = document.querySelector(".messages-container");
+    container?.classList.add("transitioning");
+
+    // Задержка для анимации
+    setTimeout(() => {
+      setSelectedUser(user);
+      setUnreadCounts((prev) => {
+        const newCounts = { ...prev };
+        user ? delete newCounts[user.id] : (newCounts.general = 0);
+        return newCounts;
+      });
+
+      setTimeout(() => {
+        container?.classList.remove("transitioning");
+      }, 50);
+    }, 300);
   };
 
   const handleProfileUpdate = async (formData) => {

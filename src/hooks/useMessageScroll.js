@@ -1,11 +1,23 @@
 import { useRef, useState, useEffect } from "react";
 
-const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
+const useMessageScroll = ({
+  containerRef,
+  messageRefs,
+  currentUserId,
+  isTransitioning,
+}) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const lastMessageTimeRef = useRef(null);
   const isAtBottomRef = useRef(true);
   const initialLoadRef = useRef(true);
   const lastViewedMessageRef = useRef(null);
+
+  // Сбрасываем счетчик новых сообщений при переходе между чатами
+  useEffect(() => {
+    if (isTransitioning) {
+      setNewMessagesCount(0);
+    }
+  }, [isTransitioning]);
 
   const isAtBottom = () => {
     const container = containerRef.current;
@@ -58,7 +70,7 @@ const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
   };
 
   const handleNewMessage = (message) => {
-    if (!message) return;
+    if (!message || isTransitioning) return; // Игнорируем новые сообщения во время анимации
 
     // Игнорируем сообщения от текущего пользователя
     if (message.sender._id === currentUserId) {
@@ -83,27 +95,30 @@ const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
     if (!container) return;
 
     const handleScroll = () => {
-      if (isAtBottom()) {
-        setNewMessagesCount(0);
-        isAtBottomRef.current = true;
+      // Добавляем проверку, чтобы не обновлять состояние во время скролла
+      if (!isTransitioning) {
+        if (isAtBottom()) {
+          setNewMessagesCount(0);
+          isAtBottomRef.current = true;
 
-        // Обновляем последнее просмотренное сообщение при скролле вниз
-        const messages = Array.from(
-          container.querySelectorAll(".message-item")
-        );
-        if (messages.length > 0) {
-          const lastMessageId =
-            messages[messages.length - 1].getAttribute("data-message-id");
-          lastViewedMessageRef.current = lastMessageId;
+          // Обновляем последнее просмотренное сообщение при скролле вниз
+          const messages = Array.from(
+            container.querySelectorAll(".message-item")
+          );
+          if (messages.length > 0) {
+            const lastMessageId =
+              messages[messages.length - 1].getAttribute("data-message-id");
+            lastViewedMessageRef.current = lastMessageId;
+          }
+        } else {
+          isAtBottomRef.current = false;
         }
-      } else {
-        isAtBottomRef.current = false;
       }
     };
 
-    container.addEventListener("scroll", handleScroll);
+    container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isTransitioning]);
 
   // при первой загрузке устанавливаем последнее просмотренное сообщение
   useEffect(() => {

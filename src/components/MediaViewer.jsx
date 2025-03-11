@@ -7,9 +7,9 @@ const MediaViewer = ({ media, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm "
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in"
       onClick={handleBackdropClick}>
-      <div className="relative max-w-[90vw] max-h-[90vh] m-16">
+      <div className="relative max-w-[90vw] max-h-[90vh] m-16 animate-scale-in">
         <button
           onClick={onClose}
           className="absolute -top-10 -right-6 text-white text-2xl hover:text-gray-300 pt-2">

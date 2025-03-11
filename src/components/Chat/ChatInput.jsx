@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 
-const ChatInput = ({ onSendMessage, loading }) => {
+const ChatInput = memo(({ onSendMessage, loading }) => {
   const [newMessage, setNewMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
@@ -36,7 +36,7 @@ const ChatInput = ({ onSendMessage, loading }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300">
+      className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300 animate-slide-up">
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -62,7 +62,7 @@ const ChatInput = ({ onSendMessage, loading }) => {
         <button
           type="submit"
           disabled={loading}
-          className={`p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 pl-6 pr-6 md:pr-2 md:pl-2 transition-all duration-200 transform hover:scale-105 ${
+          className={`p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 pl-6 pr-6 md:pr-2 md:pl-2 transition-all duration-200 transform hover:scale-105 ripple-effect hover-scale ${
             loading ? "opacity-50 cursor-not-allowed" : ""
           }`}>
           {loading ? (
@@ -104,6 +104,8 @@ const ChatInput = ({ onSendMessage, loading }) => {
       )}
     </form>
   );
-};
+});
+
+ChatInput.displayName = "ChatInput";
 
 export default ChatInput;
