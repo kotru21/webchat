@@ -17,9 +17,9 @@ const PinnedMessagesPanel = ({
   };
 
   return (
-    <div className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 shadow-md pinned-panel-enter">
+    <div className="pinned-panel sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 shadow-md">
       <div className="p-4">
-        <div className="flex items-center justify-between mb-2 animate-fadeIn">
+        <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium flex items-center">
             <span className="text-yellow-500 mr-2 transform hover:scale-110 transition-transform">
               📌
@@ -37,13 +37,10 @@ const PinnedMessagesPanel = ({
         </div>
         <div className="space-y-2">
           {(showAllPinned ? pinnedMessages : pinnedMessages.slice(0, 1)).map(
-            (message, index) => (
+            (message) => (
               <div
                 key={message._id}
-                style={{
-                  animationDelay: `${index * 0.1}s`,
-                }}
-                className="pin-slide-in">
+                className="transform transition-all duration-300 ease-out">
                 <PinnedMessagePreview
                   message={message}
                   getSenderName={getSenderName}

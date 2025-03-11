@@ -554,3 +554,28 @@
   transform: translateX(4px);
   background-color: rgba(0, 0, 0, 0.1);
 }
+
+@keyframes slideDownPanel {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 200px;
+    opacity: 1;
+  }
+}
+
+.pinned-panel {
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  will-change: max-height, opacity;
+}
+
+.pinned-panel-enter {
+  animation: slideDownPanel 0.3s ease-out forwards;
+}
+
+.pinned-panel-exit {
+  animation: slideDownPanel 0.3s ease-out forwards reverse;
+}

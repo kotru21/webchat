@@ -65,20 +65,28 @@ const ChatMessages = memo(
 
     return (
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        <PinnedMessagesPanel
-          pinnedMessages={pinnedMessages}
-          showAllPinned={showAllPinned}
-          setShowAllPinned={setShowAllPinned}
-          currentUser={currentUser}
-          scrollToMessage={scrollToMessage}
-          onPinMessage={onPinMessage}
-        />
+        <div
+          className={`transform transition-all duration-300 ease-in-out ${
+            pinnedMessages.length > 0 ? "translate-y-0" : "-translate-y-full"
+          }`}>
+          <PinnedMessagesPanel
+            pinnedMessages={pinnedMessages}
+            showAllPinned={showAllPinned}
+            setShowAllPinned={setShowAllPinned}
+            currentUser={currentUser}
+            scrollToMessage={scrollToMessage}
+            onPinMessage={onPinMessage}
+          />
+        </div>
 
         <div
           ref={containerRef}
           className={`flex-1 overflow-y-auto p-4 space-y-4 messages-container flex flex-col-reverse chat-content-transition ${
             isTransitioning ? "chat-content-hidden" : "chat-content-visible"
-          }`}>
+          }`}
+          style={{
+            transition: "all 0.3s ease-in-out",
+          }}>
           {[...messages].reverse().map((message) => (
             <div
               key={message._id}
