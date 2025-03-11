@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import ReadStatus from "../ReadStatus";
 import UserProfile from "../UserProfile";
 import { pinMessage } from "../../services/api.js";
@@ -13,7 +13,8 @@ const MessageItem = ({
 }) => {
   const isOwnMessage = message.sender._id === currentUser.id;
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
+  const messageRef = useRef(null);
+  const profileTriggerRef = useRef(null);
 
   const handlePin = async () => {
     try {
@@ -25,8 +26,7 @@ const MessageItem = ({
 
   const handleProfileClick = (event) => {
     event.stopPropagation();
-    setProfileAnchorEl(event.currentTarget);
-    setIsProfileOpen(true);
+    setIsProfileOpen(!isProfileOpen);
   };
 
   const renderMessageContent = () => (
@@ -76,6 +76,7 @@ const MessageItem = ({
 
   return (
     <div
+      ref={messageRef}
       className={`message-container pb-4 group relative ${
         message.isPinned
           ? isOwnMessage
@@ -114,7 +115,10 @@ const MessageItem = ({
             isOwnMessage ? "flex-row-reverse" : "flex-row"
           } gap-2`}>
           <div className="cursor-pointer flex items-center gap-2">
-            <div onClick={handleProfileClick} className="relative">
+            <div
+              ref={profileTriggerRef}
+              onClick={handleProfileClick}
+              className="relative">
               <img
                 src={
                   message.sender.avatar
@@ -129,6 +133,21 @@ const MessageItem = ({
                   e.target.src = "/default-avatar.png";
                 }}
               />
+              {isProfileOpen && (
+                <div className="absolute top-0">
+                  <UserProfile
+                    userId={message.sender._id}
+                    onClose={() => setIsProfileOpen(false)}
+                    anchorEl={profileTriggerRef.current}
+                    isReversed={isOwnMessage}
+                    containerClassName={`${
+                      isOwnMessage
+                        ? "right-full translate-x-[-8px]"
+                        : "left-full translate-x-[8px]"
+                    }`}
+                  />
+                </div>
+              )}
             </div>
           </div>
           <div
@@ -158,13 +177,6 @@ const MessageItem = ({
           </div>
         </div>
       </div>
-      {isProfileOpen && (
-        <UserProfile
-          userId={message.sender._id}
-          onClose={() => setIsProfileOpen(false)}
-          anchorEl={profileAnchorEl}
-        />
-      )}
     </div>
   );
 };

@@ -213,3 +213,34 @@
     background-color: transparent;
   }
 }
+
+/* Добавьте в конец файла */
+@keyframes profileSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes profileSlideInReverse {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.profile-enter {
+  animation: profileSlideIn 0.2s ease-out forwards;
+}
+
+.profile-enter-reverse {
+  animation: profileSlideInReverse 0.2s ease-out forwards;
+}

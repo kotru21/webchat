@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import Linkify from "react-linkify";
 
-const UserProfile = ({ userId, onClose, anchorEl }) => {
+const UserProfile = ({
+  userId,
+  onClose,
+  anchorEl,
+  containerClassName = "",
+  isReversed,
+}) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const popoverRef = useRef(null);
@@ -23,53 +29,30 @@ const UserProfile = ({ userId, onClose, anchorEl }) => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target) &&
+        !anchorEl?.contains(event.target)
+      ) {
         onClose();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
+  }, [onClose, anchorEl]);
 
-  if (loading) return null;
-  if (!profile) return null;
-
-  // Вычисляем позицию всплывающего окна
-  const getPopoverPosition = () => {
-    if (!anchorEl) return {};
-
-    const rect = anchorEl.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceRight = window.innerWidth - rect.right;
-
-    let style = {
-      position: "fixed",
-      zIndex: 1000,
-    };
-
-    // Позиционируем окно справа от аватарки
-    if (spaceRight >= 300) {
-      style.left = `${rect.right + 8}px`;
-    } else {
-      style.right = `${window.innerWidth - rect.left + 8}px`;
-    }
-
-    // Позиционируем окно по вертикали
-    if (spaceBelow >= 300) {
-      style.top = `${rect.top}px`;
-    } else {
-      style.bottom = `${window.innerHeight - rect.top}px`;
-    }
-
-    return style;
-  };
+  if (loading || !profile) return null;
 
   return (
     <div
       ref={popoverRef}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[300px]"
-      style={getPopoverPosition()}>
+      className={`absolute bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[300px] z-[1000] ${
+        isReversed ? "profile-enter" : "profile-enter-reverse"
+      } ${containerClassName}`}
+      style={{
+        willChange: "transform, opacity",
+      }}>
       {profile.banner && (
         <div className="h-24 overflow-hidden rounded-t-lg">
           <img
