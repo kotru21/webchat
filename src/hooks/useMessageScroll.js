@@ -1,20 +1,33 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 
-const useMessageScroll = ({
-  containerRef,
-  messageRefs,
-  messages,
-  currentUser,
-}) => {
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const prevMessagesLength = useRef(messages.length);
-  const shouldScrollToBottom = useRef(true);
+const useMessageScroll = ({ containerRef, messageRefs, currentUserId }) => {
+  // Добавляем currentUserId
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const lastMessageTimeRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const initialLoadRef = useRef(true);
 
-  const scrollToBottom = (behavior = "smooth") => {
+  const isAtBottom = () => {
+    const container = containerRef.current;
+    if (!container) return true;
+
+    const threshold = 100;
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight <=
+      threshold
+    );
+  };
+
+  const scrollToBottom = (smooth = true) => {
     const container = containerRef.current;
     if (!container) return;
-    container.scrollTop = 0;
-    setShowScrollButton(false);
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? "smooth" : "auto",
+    });
+    setNewMessagesCount(0);
+    isAtBottomRef.current = true;
   };
 
   const scrollToMessage = (messageId) => {
@@ -24,7 +37,6 @@ const useMessageScroll = ({
     const container = containerRef.current;
     if (!container) return;
 
-    // Вычисляем позицию элемента относительно контейнера
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
     const scrollOffset =
@@ -32,58 +44,61 @@ const useMessageScroll = ({
 
     container.scrollTop += scrollOffset;
 
-    // Добавляем подсветку
     element.classList.add("highlight-message");
     setTimeout(() => {
       element.classList.remove("highlight-message");
     }, 2000);
   };
 
-  const handleScroll = () => {
-    const container = containerRef.current;
-    if (!container) return;
+  const handleNewMessage = (message) => {
+    // пропкск обработки при начальной загрузке
+    if (initialLoadRef.current) {
+      return;
+    }
 
-    // При flex-col-reverse чем больше scrollTop, тем дальше от последних сообщений
-    const threshold = 300;
-    const isNearBottom = container.scrollTop < threshold;
+    // проверка, что сообщение не от текущего пользователя
+    if (!isAtBottom() && message && message.sender._id !== currentUserId) {
+      const currentTime = new Date().getTime();
+      const lastTime = lastMessageTimeRef.current;
 
-    setShowScrollButton(!isNearBottom);
-    shouldScrollToBottom.current = container.scrollTop === 0;
+      if (!lastTime || currentTime - lastTime > 1000) {
+        setNewMessagesCount((prev) => prev + 1);
+      }
+      lastMessageTimeRef.current = currentTime;
+    }
   };
 
-  // Автопрокрутка при новых сообщениях
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const isNearBottom = container.scrollTop < 300;
-    const hasNewMessages = messages.length > prevMessagesLength.current;
-    const isOwnMessage =
-      messages[messages.length - 1]?.sender._id === currentUser.id;
-
-    if (hasNewMessages) {
-      if (isNearBottom || isOwnMessage || shouldScrollToBottom.current) {
-        scrollToBottom("smooth");
+    const handleScroll = () => {
+      if (isAtBottom()) {
+        setNewMessagesCount(0);
+        isAtBottomRef.current = true;
       } else {
-        setShowScrollButton(true);
+        isAtBottomRef.current = false;
       }
-    }
+    };
 
-    prevMessagesLength.current = messages.length;
-  }, [messages, currentUser.id]);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // Начальная прокрутка при монтировании
+  // сброс флага начальной загрузки после монтирования
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom("auto");
-    }
+    initialLoadRef.current = false;
+    return () => {
+      initialLoadRef.current = true;
+    };
   }, []);
 
   return {
-    showScrollButton,
-    scrollToBottom,
     scrollToMessage,
-    handleScroll,
+    scrollToBottom,
+    handleNewMessage,
+    newMessagesCount,
+    isAtBottom: () => isAtBottomRef.current,
   };
 };
 
