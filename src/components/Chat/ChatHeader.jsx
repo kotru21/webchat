@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import StatusSelector from "../StatusSelector";
 import { useAuth } from "../../context/AuthContext";
+import { FiMenu } from "react-icons/fi";
 
 const ChatHeader = ({
   user,
@@ -37,7 +38,7 @@ const ChatHeader = ({
           <button
             onClick={onOpenSidebar}
             className="md:hidden text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors">
-            ☰
+            <FiMenu size={22} />
           </button>
           <h1
             className={`text-xl  truncate max-w-[220px] chat-title-transition ${

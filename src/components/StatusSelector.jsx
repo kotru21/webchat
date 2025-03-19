@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { STATUS_INFO } from "../constants/statusConstants";
 import StatusIndicator from "./StatusIndicator";
 import statusService from "../services/statusService";
+import { FiChevronDown } from "react-icons/fi";
 
 const StatusSelector = ({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,20 +59,11 @@ const StatusSelector = ({ currentStatus, onStatusChange }) => {
         className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
         <StatusIndicator status={currentStatus} size="sm" />
         <span>{currentStatusInfo.name}</span>
-        <svg
+        <FiChevronDown
           className={`w-4 h-4 transition-transform ${
             isOpen ? "rotate-180" : ""
           }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M19 9l-7 7-7-7"></path>
-        </svg>
+        />
       </button>
 
       {isOpen && (

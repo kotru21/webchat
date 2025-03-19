@@ -1,4 +1,6 @@
 import { useState, useRef, memo } from "react";
+import { IoMdAttach, IoMdSend } from "react-icons/io";
+import { BiLoaderAlt } from "react-icons/bi";
 
 const ChatInput = memo(({ onSendMessage, loading }) => {
   const [newMessage, setNewMessage] = useState("");
@@ -57,7 +59,7 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105">
-          📎
+          <IoMdAttach size={20} />
         </button>
         <button
           type="submit"
@@ -66,34 +68,9 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
             loading ? "opacity-50 cursor-not-allowed" : ""
           }`}>
           {loading ? (
-            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
+            <BiLoaderAlt size={20} className="animate-spin" />
           ) : (
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
+            <IoMdSend size={20} />
           )}
         </button>
       </div>

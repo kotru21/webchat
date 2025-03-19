@@ -1,5 +1,5 @@
 // src/pages/Chat.jsx
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useTransition } from "react";
 import { useAuth } from "../context/AuthContext";
 import ChatHeader from "../components/Chat/ChatHeader";
 import ChatMessages from "../components/Chat/ChatMessages";
@@ -18,6 +18,7 @@ const Chat = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [fullscreenMedia, setFullscreenMedia] = useState(null);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [unreadCounts, setUnreadCounts] = useState({ general: 0 });
   const { user, updateUser } = useAuth();
 
@@ -41,9 +42,11 @@ const Chat = () => {
   });
 
   const handleMediaClick = (mediaUrl, mediaType) => {
-    setFullscreenMedia({
-      url: `${import.meta.env.VITE_API_URL}${mediaUrl}`,
-      type: mediaType,
+    startTransition(() => {
+      setFullscreenMedia({
+        url: `${import.meta.env.VITE_API_URL}${mediaUrl}`,
+        type: mediaType,
+      });
     });
   };
 
@@ -77,7 +80,11 @@ const Chat = () => {
         const userResponse = await api.get("/api/auth/me");
         updateUser(userResponse.data);
       }
-      setIsProfileEditorOpen(false);
+
+      startTransition(() => {
+        setIsProfileEditorOpen(false);
+      });
+
       setError("");
     } catch (error) {
       setError("Ошибка при обновлении профиля");
@@ -146,7 +153,11 @@ const Chat = () => {
           user={user}
           selectedUser={selectedUser}
           onOpenSidebar={() => setIsSidebarOpen(true)}
-          onOpenProfileEditor={() => setIsProfileEditorOpen(true)}
+          onOpenProfileEditor={() => {
+            startTransition(() => {
+              setIsProfileEditorOpen(true);
+            });
+          }}
         />
         {error && (
           <div
@@ -167,17 +178,33 @@ const Chat = () => {
         <ChatInput onSendMessage={sendMessageHandler} loading={loading} />
       </div>
       {fullscreenMedia && (
-        <MediaViewer
-          media={fullscreenMedia}
-          onClose={() => setFullscreenMedia(null)}
-        />
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
+              <div className="text-white text-lg">Загрузка медиа...</div>
+            </div>
+          }>
+          <MediaViewer
+            media={fullscreenMedia}
+            onClose={() => setFullscreenMedia(null)}
+          />
+        </Suspense>
       )}
       {isProfileEditorOpen && (
-        <Suspense fallback={<div>Загрузка...</div>}>
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 z-50">
+              <div className="text-lg">Загрузка редактора профиля...</div>
+            </div>
+          }>
           <ProfileEditor
             user={user}
             onSave={handleProfileUpdate}
-            onClose={() => setIsProfileEditorOpen(false)}
+            onClose={() => {
+              startTransition(() => {
+                setIsProfileEditorOpen(false);
+              });
+            }}
           />
         </Suspense>
       )}

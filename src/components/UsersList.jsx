@@ -1,5 +1,6 @@
 import { memo } from "react";
 import StatusIndicator from "./StatusIndicator";
+import { FiX } from "react-icons/fi";
 
 const UsersList = memo(
   ({ users, isOpen, onClose, onUserSelect, selectedUser, unreadCounts }) => {
@@ -15,7 +16,7 @@ const UsersList = memo(
             <button
               onClick={onClose}
               className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-              ✕
+              <FiX size={18} />
             </button>
           </div>
           <div className="overflow-y-auto h-[calc(100%-4rem)] overflow-x-hidden">

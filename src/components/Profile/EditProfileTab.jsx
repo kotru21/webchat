@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { FiLink } from "react-icons/fi";
 
 const EditProfileTab = ({
   formData,
@@ -180,18 +181,7 @@ const EditProfileTab = ({
               onClick={handleOpenLinkDialog}
               className="p-1.5 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded flex items-center"
               title="Вставить ссылку">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-              </svg>
+              <FiLink className="w-4 h-4" />
             </button>
             <button
               type="button"

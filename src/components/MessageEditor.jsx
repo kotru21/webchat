@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { FiX } from "react-icons/fi";
 
 const MessageEditor = ({ message, onSave, onCancel }) => {
   const [content, setContent] = useState(message.content || "");
@@ -100,7 +101,7 @@ const MessageEditor = ({ message, onSave, onCancel }) => {
                 type="button"
                 onClick={handleRemoveMedia}
                 className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 shadow-lg">
-                ×
+                <FiX size={14} />
               </button>
             </div>
           )}

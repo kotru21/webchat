@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import StatusIndicator from "./StatusIndicator";
 import { STATUS_INFO } from "../constants/statusConstants";
+import { FiLink, FiExternalLink } from "react-icons/fi";
 
 const UserProfile = ({
   userId,
@@ -216,20 +217,7 @@ const UserProfile = ({
                         e.stopPropagation(); // Предотвращение срабатывания обработчиков родительских элементов
                       }}
                       className="inline-flex items-center max-w-full text-blue-500 hover:underline hover:text-blue-600 font-medium my-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800">
-                      {/* Иконка ссылки */}
-                      <svg
-                        className="w-3.5 h-3.5 mr-1.5 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-                      </svg>
-
+                      <FiLink className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
                       {/* Текст ссылки с обрезанием для длинных URL */}
                       <span className="truncate">
                         {part.content.length > 30
@@ -238,18 +226,7 @@ const UserProfile = ({
                       </span>
 
                       {/* Иконка "открыть в новом окне" */}
-                      <svg
-                        className="w-3 h-3 ml-1 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                      </svg>
+                      <FiExternalLink className="w-3 h-3 ml-1 flex-shrink-0" />
                     </a>
                   );
                 } else {
