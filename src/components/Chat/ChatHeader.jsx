@@ -46,7 +46,7 @@ const ChatHeader = ({
             {title}
           </h1>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-8 lg:pr-32">
           <div className="flex items-center space-x-2">
             <img
               src={
@@ -63,11 +63,11 @@ const ChatHeader = ({
                 {user.username || user.email}
               </span>
             </div>
-            <StatusSelector
-              currentStatus={userStatus}
-              onStatusChange={handleStatusChange}
-            />
           </div>
+          <StatusSelector
+            currentStatus={userStatus}
+            onStatusChange={handleStatusChange}
+          />
         </div>
       </div>
     </header>
