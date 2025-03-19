@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, memo, useMemo } from "react";
 import MessageItem from "./MessageItem";
-import MessageEditor from "../MessageEditor";
 import PinnedMessagesPanel from "./PinnedMessagesPanel";
 import NewMessagesButton from "./NewMessagesButton";
 import useMessageScroll from "../../hooks/useMessageScroll";
@@ -16,7 +15,6 @@ const ChatMessages = memo(
     onMediaClick,
     onPinMessage,
   }) => {
-    const [editingMessage, setEditingMessage] = useState(null);
     const [showAllPinned, setShowAllPinned] = useState(false);
     const containerRef = useRef(null);
     const messageRefs = useRef({});
@@ -87,11 +85,11 @@ const ChatMessages = memo(
 
         <div
           ref={containerRef}
-          className={`flex-1 overflow-y-auto py-4 space-y-4 messages-container flex flex-col-reverse chat-content-transition 
-            px-4 
-            md:px-12 
-            lg:px-20 lg:pr-24
-            xl:px-24 xl:pr-64
+          className={`flex-1 overflow-y-auto py-4 space-y-8 messages-container flex flex-col-reverse chat-content-transition 
+          px-4 
+          md:px-12 
+          lg:px-20 
+          xl:px-24 xl:pr-40
           ${isTransitioning ? "chat-content-hidden" : "chat-content-visible"}`}
           style={{
             transition: "all 0.3s ease-in-out",
@@ -111,7 +109,6 @@ const ChatMessages = memo(
               <MessageItem
                 message={message}
                 currentUser={currentUser}
-                onEdit={() => setEditingMessage(message)}
                 onDelete={() => onDeleteMessage(message._id)}
                 onMediaClick={onMediaClick}
                 onPin={onPinMessage}
@@ -121,6 +118,7 @@ const ChatMessages = memo(
                     activeMessageMenu === message._id ? null : message._id
                   );
                 }}
+                onSaveEdit={onEditMessage}
               />
             </div>
           ))}
@@ -130,17 +128,6 @@ const ChatMessages = memo(
           <NewMessagesButton
             count={newMessagesCount}
             onClick={() => scrollToBottom()}
-          />
-        )}
-
-        {editingMessage && (
-          <MessageEditor
-            message={editingMessage}
-            onSave={async (formData) => {
-              await onEditMessage(editingMessage._id, formData);
-              setEditingMessage(null);
-            }}
-            onCancel={() => setEditingMessage(null)}
           />
         )}
       </div>

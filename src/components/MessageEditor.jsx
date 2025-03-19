@@ -67,8 +67,8 @@ const MessageEditor = ({ message, onSave, onCancel }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-lg w-full max-w-2xl">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-lg w-full">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Текстовое поле */}
         <textarea
           value={content}
@@ -117,7 +117,7 @@ const MessageEditor = ({ message, onSave, onCancel }) => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
               {previewUrl ? "Заменить медиа" : "Добавить медиа"}
             </button>
           </div>
@@ -127,13 +127,13 @@ const MessageEditor = ({ message, onSave, onCancel }) => {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+            className="px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
             Сохранить
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+            className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
             Отмена
           </button>
         </div>
