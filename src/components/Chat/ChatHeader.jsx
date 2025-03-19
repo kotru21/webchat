@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import StatusSelector from "../StatusSelector";
+import { useAuth } from "../../context/AuthContext";
 
 const ChatHeader = ({
   user,
@@ -12,6 +14,7 @@ const ChatHeader = ({
       ? `${selectedUser.username || selectedUser.email}`
       : "Общий чат"
   );
+  const { userStatus, handleStatusChange } = useAuth();
 
   useEffect(() => {
     setIsTransitioning(true);
@@ -55,9 +58,15 @@ const ChatHeader = ({
               className="w-8 h-8 rounded-full cursor-pointer hover:opacity-80 transition-all duration-200 transform hover:scale-105"
               onClick={onOpenProfileEditor}
             />
-            <span className="text-sm text-gray-600 dark:text-gray-300 ">
-              {user.username || user.email}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                {user.username || user.email}
+              </span>
+            </div>
+            <StatusSelector
+              currentStatus={userStatus}
+              onStatusChange={handleStatusChange}
+            />
           </div>
         </div>
       </div>

@@ -152,6 +152,36 @@ export const messageService = {
   },
 };
 
+export const statusService = {
+  getUserStatus: async (userId) => {
+    try {
+      const response = await api.get(`/api/status/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get Status Error:", error);
+      throw error;
+    }
+  },
+  updateStatus: async (statusData) => {
+    try {
+      const response = await api.put("/api/status/update", statusData);
+      return response.data;
+    } catch (error) {
+      console.error("Update Status Error:", error);
+      throw error;
+    }
+  },
+  updateActivity: async () => {
+    try {
+      const response = await api.put("/api/status/activity");
+      return response.data;
+    } catch (error) {
+      console.error("Update Activity Error:", error);
+      return null; // Тихая ошибка
+    }
+  },
+};
+
 export const { login, register, updateProfile } = authService;
 
 export const {
@@ -162,5 +192,7 @@ export const {
   deleteMessage,
   pinMessage,
 } = messageService;
+
+export const { getUserStatus, updateStatus, updateActivity } = statusService;
 
 export default api;

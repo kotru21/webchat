@@ -2,17 +2,20 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createServer } from "http";
-import { Server } from "socket.io";
+import { initializeSocket } from "./socket.js";
 import compression from "compression";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import statusRoutes from "./routes/statusRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import helmet from "helmet";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
+import User from "./Models/userModel.js";
+import Status from "./Models/Status.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,6 +75,7 @@ app.use(
 // Маршруты без глобального лимитера
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/status", statusRoutes);
 
 // Обработка ошибок
 app.use((err, req, res, next) => {
@@ -105,12 +109,10 @@ ensureUploadsDir()
   .catch(console.error);
 
 // Настройка Socket.IO
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
+const io = initializeSocket(httpServer, {
+  origin: process.env.CLIENT_URL,
+  methods: ["GET", "POST"],
+  credentials: true,
 });
 
 app.set("io", io);
@@ -137,10 +139,36 @@ io.on("connection", (socket) => {
     console.log(`User joined room: ${roomId}`);
   });
 
-  socket.on("disconnect", () => {
-    onlineUsers.delete(socket.id);
-    io.emit("users_online", Array.from(onlineUsers.values()));
-    console.log("User disconnected:", socket.id);
+  socket.on("disconnect", async () => {
+    try {
+      const userData = onlineUsers.get(socket.id);
+      if (userData && userData._id) {
+        console.log(
+          `User disconnected: ${userData.username || userData.email}`
+        );
+
+        // Обновляем статус пользователя в БД
+        await User.findByIdAndUpdate(userData._id, {
+          status: "offline",
+          lastActivity: new Date(),
+        });
+
+        // Оповещаем других пользователей
+        io.emit("userStatusChanged", {
+          userId: userData._id,
+          status: "offline",
+          lastActivity: new Date(),
+        });
+      }
+
+      // Удаляем из списка онлайн-пользователей
+      onlineUsers.delete(socket.id);
+      io.emit("users_online", Array.from(onlineUsers.values()));
+    } catch (error) {
+      console.error("Error updating status on disconnect:", error);
+      onlineUsers.delete(socket.id);
+      io.emit("users_online", Array.from(onlineUsers.values()));
+    }
   });
 });
 

@@ -149,15 +149,56 @@ export const login = async (req, res) => {
       expiresIn: "30d",
     });
 
+    // Обновляем статус пользователя при входе
+    user.status = "online";
+    user.lastActivity = new Date();
+    await user.save();
+
     res.json({
       id: user._id,
       username: user.username,
       email: user.email,
       avatar: user.avatar,
+      status: user.status,
+      lastActivity: user.lastActivity,
       token,
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Ошибка при входе" });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    // Получаем пользователя из токена
+    const userId = req.user._id;
+
+    // Обновляем статус пользователя на "offline"
+    await User.findByIdAndUpdate(userId, {
+      status: "offline",
+      lastActivity: new Date(),
+    });
+
+    // Обновляем запись в таблице Status, если она существует
+    const statusRecord = await Status.findOne({ userId });
+    if (statusRecord) {
+      await statusRecord.changeStatus("offline");
+    }
+
+    // Оповещаем других пользователей
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("userStatusChanged", {
+        userId,
+        status: "offline",
+        lastActivity: new Date(),
+      });
+    }
+
+    res.json({ message: "Logout successful" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Ошибка при выходе из системы" });
   }
 };

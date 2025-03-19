@@ -1,4 +1,5 @@
 import { memo } from "react";
+import StatusIndicator from "./StatusIndicator";
 
 const UsersList = memo(
   ({ users, isOpen, onClose, onUserSelect, selectedUser, unreadCounts }) => {
@@ -54,7 +55,11 @@ const UsersList = memo(
                           e.target.src = "/default-avatar.png";
                         }}
                       />
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                      <StatusIndicator
+                        status={user.status || "offline"}
+                        size="sm"
+                        customClass="absolute bottom-0 right-0"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">

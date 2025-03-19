@@ -89,6 +89,40 @@ const useChatSocket = ({
       setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
     });
 
+    // Handle user status changes
+    socket.on("userStatusChanged", (data) => {
+      const { userId, status } = data;
+
+      // If it's not the current user, update their status in the contact list
+      if (userId !== user.id) {
+        // Update status in the user/contact list
+        setOnlineUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user._id === userId ? { ...user, status } : user
+          )
+        );
+
+        // Update status in current chats
+        setMessages((prevChats) =>
+          prevChats.map((chat) => {
+            // For private chats
+            if (
+              chat.type === "private" &&
+              chat.participants.some((p) => p._id === userId)
+            ) {
+              return {
+                ...chat,
+                participants: chat.participants.map((p) =>
+                  p._id === userId ? { ...p, status } : p
+                ),
+              };
+            }
+            return chat;
+          })
+        );
+      }
+    });
+
     return () => {
       socket.disconnect();
     };

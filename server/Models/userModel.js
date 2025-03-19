@@ -26,7 +26,12 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
+      enum: ["online", "away", "dnd", "invisible", "offline"],
       default: "offline",
+    },
+    lastActivity: {
+      type: Date,
+      default: Date.now,
     },
     isVerified: {
       type: Boolean,

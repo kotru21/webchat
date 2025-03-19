@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
+import StatusIndicator from "./StatusIndicator";
+import { STATUS_INFO } from "../constants/statusConstants";
 
 const UserProfile = ({
   userId,
@@ -123,14 +125,7 @@ const UserProfile = ({
   }
 
   // Обработка статуса пользователя
-  const statusBadge = {
-    online: { class: "bg-green-500", text: "В сети" },
-    away: { class: "bg-yellow-500", text: "Отошел" },
-    dnd: { class: "bg-red-500", text: "Не беспокоить" },
-    offline: { class: "bg-gray-500", text: "Не в сети" },
-  };
-
-  const statusInfo = statusBadge[profile.status] || statusBadge.offline;
+  const statusInfo = STATUS_INFO[profile.status] || STATUS_INFO.offline;
 
   // Разбиваем описание на части с выделением ссылок
   const descriptionParts = parseDescriptionWithLinks(profile.description);
@@ -159,7 +154,7 @@ const UserProfile = ({
 
       {/* Секция профиля */}
       <div className="relative px-4 pb-4">
-        {/* Аватар пользователя с индикатором статуса и статус пользователя - выровнены по краям */}
+        {/* Аватар пользователя с индикатором статуса и статус пользователя */}
         <div className="flex justify-between items-end -mt-10 mb-3">
           <div className="relative">
             <div className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden bg-gray-200 dark:bg-gray-700">
@@ -176,16 +171,13 @@ const UserProfile = ({
                 }}
               />
             </div>
-            <div
-              className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 ${statusInfo.class}`}
-              title={statusInfo.text}></div>
           </div>
 
           {/* Статус пользователя */}
           <div className="flex items-center gap-2 text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full mb-2">
-            <span className={`w-2 h-2 rounded-full ${statusInfo.class}`}></span>
+            <StatusIndicator status={profile.status || "offline"} size="xs" />
             <span className="text-gray-700 dark:text-gray-300">
-              {statusInfo.text}
+              {statusInfo.name}
             </span>
           </div>
         </div>
@@ -214,7 +206,7 @@ const UserProfile = ({
             <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed break-words">
               {descriptionParts.map((part, index) => {
                 if (part.type === "link") {
-                  // Ссылка - стилизуем отдельно
+                  // Ссылка
                   return (
                     <a
                       key={index}
@@ -222,7 +214,7 @@ const UserProfile = ({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => {
-                        e.stopPropagation(); // Предотвращаем срабатывание обработчиков родительских элементов
+                        e.stopPropagation(); // Предотвращение срабатывания обработчиков родительских элементов
                       }}
                       className="inline-flex items-center max-w-full text-blue-500 hover:underline hover:text-blue-600 font-medium my-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800">
                       {/* Иконка ссылки */}
