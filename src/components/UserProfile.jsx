@@ -62,7 +62,7 @@ const UserProfile = ({
           />
         </div>
       )}
-      <div className="p-4">
+      <div className="p-4 text-left">
         <div className="flex items-start gap-4 -mt-8">
           <img
             src={
