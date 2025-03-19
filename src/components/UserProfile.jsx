@@ -127,7 +127,6 @@ const UserProfile = ({
   // Обработка статуса пользователя
   const statusInfo = STATUS_INFO[profile.status] || STATUS_INFO.offline;
 
-  // Разбиваем описание на части с выделением ссылок
   const descriptionParts = parseDescriptionWithLinks(profile.description);
 
   return (
@@ -182,9 +181,9 @@ const UserProfile = ({
           </div>
         </div>
 
-        {/* Имя пользователя и почта - выровнены по левому краю */}
+        {/* Имя пользователя и почта*/}
         <div className="mb-3 text-left">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">
             {profile.username || "Пользователь"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
