@@ -1,10 +1,18 @@
-import { useState, useRef, memo } from "react";
+import { useState, useRef, memo, useEffect } from "react";
 import ReadStatus from "../ReadStatus";
 import UserProfile from "../UserProfile";
-import { pinMessage } from "../../services/api.js";
 
 const MessageItem = memo(
-  ({ message, currentUser, onEdit, onDelete, onMediaClick, onPin }) => {
+  ({
+    message,
+    currentUser,
+    onEdit,
+    onDelete,
+    onMediaClick,
+    onPin,
+    isMenuOpen,
+    onToggleMenu,
+  }) => {
     const isOwnMessage = message.sender._id === currentUser.id;
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const messageRef = useRef(null);
@@ -22,6 +30,24 @@ const MessageItem = memo(
       event.stopPropagation();
       setIsProfileOpen(!isProfileOpen);
     };
+
+    const handleMessageClick = (e) => {
+      if (e.target.tagName === "IMG" || e.target.tagName === "VIDEO") {
+        return;
+      }
+      // родительская функция для переключения меню
+      onToggleMenu();
+    };
+
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth <= 768);
+      };
+      checkMobile();
+      window.addEventListener("resize", checkMobile);
+      return () => window.removeEventListener("resize", checkMobile);
+    }, []);
 
     const renderMessageContent = () => (
       <>
@@ -78,6 +104,7 @@ const MessageItem = memo(
               : "border-l-4 border-yellow-500 pl-2"
             : ""
         }`}
+        onClick={isMobile ? handleMessageClick : undefined}
         style={{
           animationDelay: "0.1s",
         }}>
@@ -85,7 +112,9 @@ const MessageItem = memo(
           <div
             className={`absolute -top-2 ${
               isOwnMessage ? "right-10" : "left-10"
-            } hidden group-hover:flex gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10`}>
+            } ${
+              isMobile && isMenuOpen ? "flex" : "hidden group-hover:flex"
+            } gap-3 bg-white dark:bg-gray-800 py-2 px-4 rounded-md shadow-lg transition-all duration-200 z-10`}>
             {isOwnMessage && (
               <>
                 <button

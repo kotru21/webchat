@@ -22,6 +22,7 @@ const ChatMessages = memo(
     const messageRefs = useRef({});
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevChatId = useRef(null);
+    const [activeMessageMenu, setActiveMessageMenu] = useState(null);
 
     const { scrollToMessage, scrollToBottom, newMessagesCount } =
       useMessageScroll({
@@ -53,6 +54,13 @@ const ChatMessages = memo(
       }
     }, [currentChatId]);
 
+    // обработчик меню сообщения для мобильной версии
+    const handleContainerClick = (e) => {
+      if (e.target === containerRef.current) {
+        setActiveMessageMenu(null);
+      }
+    };
+
     const pinnedMessages = useMemo(
       () => messages.filter((msg) => msg.isPinned),
       [messages]
@@ -83,7 +91,8 @@ const ChatMessages = memo(
           }`}
           style={{
             transition: "all 0.3s ease-in-out",
-          }}>
+          }}
+          onClick={handleContainerClick}>
           {reversedMessages.map((message) => (
             <div
               key={message._id}
@@ -102,6 +111,12 @@ const ChatMessages = memo(
                 onDelete={() => onDeleteMessage(message._id)}
                 onMediaClick={onMediaClick}
                 onPin={onPinMessage}
+                isMenuOpen={activeMessageMenu === message._id}
+                onToggleMenu={() => {
+                  setActiveMessageMenu(
+                    activeMessageMenu === message._id ? null : message._id
+                  );
+                }}
               />
             </div>
           ))}
