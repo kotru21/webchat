@@ -1,16 +1,17 @@
 // src/pages/Chat.jsx
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../context/AuthContext";
 import ChatHeader from "../components/Chat/ChatHeader";
 import ChatMessages from "../components/Chat/ChatMessages";
 import ChatInput from "../components/Chat/ChatInput";
 import UsersList from "../components/UsersList";
-import MediaViewer from "../components/MediaViewer";
-import ProfileEditor from "../components/ProfileEditor";
 import useChatSocket from "../hooks/useChatSocket";
 import useChatMessages from "../hooks/useChatMessages";
 import { updateProfile } from "../services/api.js";
 import api from "../services/api.js";
+
+const MediaViewer = React.lazy(() => import("../components/MediaViewer"));
+const ProfileEditor = React.lazy(() => import("../components/ProfileEditor"));
 
 const Chat = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -172,11 +173,13 @@ const Chat = () => {
         />
       )}
       {isProfileEditorOpen && (
-        <ProfileEditor
-          user={user}
-          onSave={handleProfileUpdate}
-          onClose={() => setIsProfileEditorOpen(false)}
-        />
+        <Suspense fallback={<div>Загрузка...</div>}>
+          <ProfileEditor
+            user={user}
+            onSave={handleProfileUpdate}
+            onClose={() => setIsProfileEditorOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
