@@ -23,12 +23,40 @@ const ChatMessages = memo(
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevChatId = useRef(null);
     const [activeMessageMenu, setActiveMessageMenu] = useState(null);
+    const [containerWidth, setContainerWidth] = useState(0);
+    // Отслеживание ширины контейнера для ресайза паддинга чата в зависимости от ширины экрана
+    useEffect(() => {
+      if (!containerRef.current) return;
+
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          setContainerWidth(entry.contentRect.width);
+        }
+      });
+
+      resizeObserver.observe(containerRef.current);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }, []);
+
+    const paddingClasses = useMemo(() => {
+      if (containerWidth > 1000) {
+        return "px-12 md:px-16 lg:px-20 xl:pr-36 xl:pl-24";
+      } else if (containerWidth > 768) {
+        return "px-8 md:px-10";
+      } else {
+        return "px-4";
+      }
+    }, [containerWidth]);
 
     const { scrollToMessage, scrollToBottom, newMessagesCount } =
       useMessageScroll({
         containerRef,
         messageRefs,
         currentUserId: currentUser.id,
+        isTransitioning,
       });
 
     useMessageObserver({
@@ -86,9 +114,9 @@ const ChatMessages = memo(
 
         <div
           ref={containerRef}
-          className={`flex-1 overflow-y-auto p-4 space-y-4 messages-container flex flex-col-reverse chat-content-transition ${
+          className={`flex-1 overflow-y-auto py-4 space-y-4 messages-container flex flex-col-reverse chat-content-transition ${
             isTransitioning ? "chat-content-hidden" : "chat-content-visible"
-          }`}
+          } ${paddingClasses}`}
           style={{
             transition: "all 0.3s ease-in-out",
           }}
