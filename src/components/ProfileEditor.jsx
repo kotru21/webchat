@@ -1,226 +1,217 @@
-import { useState, useCallback } from "react";
-import Cropper from "react-easy-crop";
-import getCroppedImg from "./getCroppedImg"; // Утилита для кадрирования
+import { useState, useEffect } from "react";
+import ProfileEditorTabs from "./Profile/ProfileEditorTabs";
+import EditProfileTab from "./Profile/EditProfileTab";
+import PreviewProfileTab from "./Profile/PreviewProfileTab";
+import ImageCropperModal from "./Profile/ImageCropperModal";
+import getCroppedImg from "./getCroppedImg";
 
 const ProfileEditor = ({ user, onSave, onClose }) => {
-  const [username, setUsername] = useState(user.username || "");
-  const [description, setDescription] = useState(user.description || "");
-  const [avatar, setAvatar] = useState(null);
-  const [banner, setBanner] = useState(null);
-  const [cropAvatar, setCropAvatar] = useState({ x: 0, y: 0 });
-  const [zoomAvatar, setZoomAvatar] = useState(1);
-  const [croppedAvatarArea, setCroppedAvatarArea] = useState(null);
-  const [cropBanner, setCropBanner] = useState({ x: 0, y: 0 });
-  const [zoomBanner, setZoomBanner] = useState(1);
-  const [croppedBannerArea, setCroppedBannerArea] = useState(null);
+  const [formData, setFormData] = useState({
+    username: user.username || "",
+    description: user.description || "",
+  });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [bannerPreview, setBannerPreview] = useState(null);
-  const [croppedAvatarPreview, setCroppedAvatarPreview] = useState(null);
-  const [croppedBannerPreview, setCroppedBannerPreview] = useState(null);
-  const [showAvatarCropper, setShowAvatarCropper] = useState(false);
-  const [showBannerCropper, setShowBannerCropper] = useState(false);
+  const [croppedAvatarPreview, setCroppedAvatarPreview] = useState(
+    user.avatar ? `${import.meta.env.VITE_API_URL}${user.avatar}` : null
+  );
+  const [croppedBannerPreview, setCroppedBannerPreview] = useState(
+    user.banner ? `${import.meta.env.VITE_API_URL}${user.banner}` : null
+  );
+  const [cropperState, setCropperState] = useState({
+    show: false,
+    type: null, // "avatar" или "banner"
+    image: null,
+    crop: { x: 0, y: 0 },
+    zoom: 1,
+    aspect: 1,
+    croppedAreaPixels: null,
+  });
+  const [activeTab, setActiveTab] = useState("edit"); // "edit" или "preview"
 
-  // Обработка выбора аватара
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
+  // Обработчик изменения полей формы
+  const handleFormChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Обработчик выбора файла аватара
+  const handleAvatarChange = (file) => {
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Файл слишком большой (максимум 5MB)");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         setAvatarPreview(reader.result);
-        setShowAvatarCropper(true);
+        setCropperState({
+          show: true,
+          type: "avatar",
+          image: reader.result,
+          crop: { x: 0, y: 0 },
+          zoom: 1,
+          aspect: 1,
+          croppedAreaPixels: null,
+        });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Обработка выбора баннера
-  const handleBannerChange = (e) => {
-    const file = e.target.files[0];
+  // Обработчик выбора файла баннера
+  const handleBannerChange = (file) => {
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert("Файл слишком большой (максимум 10MB)");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         setBannerPreview(reader.result);
-        setShowBannerCropper(true);
+        setCropperState({
+          show: true,
+          type: "banner",
+          image: reader.result,
+          crop: { x: 0, y: 0 },
+          zoom: 1,
+          aspect: 4,
+          croppedAreaPixels: null,
+        });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Завершение кадрирования аватара
-  const onCropCompleteAvatar = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAvatarArea(croppedAreaPixels);
-  }, []);
+  // Обработчик завершения кадрирования
+  const handleCropComplete = (croppedAreaPixels) => {
+    setCropperState((prev) => ({ ...prev, croppedAreaPixels }));
+  };
 
-  // Завершение кадрирования баннера
-  const onCropCompleteBanner = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedBannerArea(croppedAreaPixels);
-  }, []);
+  // Обработчик изменения зума
+  const handleZoomChange = (zoom) => {
+    setCropperState((prev) => ({ ...prev, zoom }));
+  };
 
-  // Применение кадрирования для аватара
-  const handleCropAvatar = async () => {
+  // Обработчик изменения положения
+  const handleCropChange = (crop) => {
+    setCropperState((prev) => ({ ...prev, crop }));
+  };
+
+  // Обработчик закрытия модального окна кадрирования
+  const handleCloseCropper = () => {
+    setCropperState((prev) => ({ ...prev, show: false }));
+  };
+
+  // Обработчик применения кадрирования
+  const handleApplyCrop = async () => {
     try {
-      const croppedImage = await getCroppedImg(
-        avatarPreview,
-        croppedAvatarArea
-      );
-      setAvatar(croppedImage);
-      setCroppedAvatarPreview(URL.createObjectURL(croppedImage));
-      setShowAvatarCropper(false); // Скрыть кроппер после применения
+      const { type, image, croppedAreaPixels } = cropperState;
+      const croppedImage = await getCroppedImg(image, croppedAreaPixels);
+
+      if (type === "avatar") {
+        setAvatarFile(croppedImage);
+        setCroppedAvatarPreview(URL.createObjectURL(croppedImage));
+      } else if (type === "banner") {
+        setBannerFile(croppedImage);
+        setCroppedBannerPreview(URL.createObjectURL(croppedImage));
+      }
+
+      setCropperState((prev) => ({ ...prev, show: false }));
     } catch (error) {
-      console.error("Ошибка при кадрировании аватара:", error);
+      console.error(`Ошибка при кадрировании ${cropperState.type}:`, error);
     }
   };
 
-  // Применение кадрирования для баннера
-  const handleCropBanner = async () => {
-    try {
-      const croppedImage = await getCroppedImg(
-        bannerPreview,
-        croppedBannerArea
-      );
-      setBanner(croppedImage);
-      setCroppedBannerPreview(URL.createObjectURL(croppedImage));
-      setShowBannerCropper(false); // Скрыть кроппер после применения
-    } catch (error) {
-      console.error("Ошибка при кадрировании баннера:", error);
-    }
+  // Обработчик отправки формы
+  const handleSubmit = () => {
+    const formDataToSend = new FormData();
+    formDataToSend.append("username", formData.username);
+    formDataToSend.append("description", formData.description);
+    if (avatarFile) formDataToSend.append("avatar", avatarFile);
+    if (bannerFile) formDataToSend.append("banner", bannerFile);
+    onSave(formDataToSend);
   };
 
-  // Отправка данных на сервер
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("username", username);
-    formData.append("description", description);
-    if (avatar) formData.append("avatar", avatar);
-    if (banner) formData.append("banner", banner);
-    onSave(formData);
+  // Создаем объект профиля для предпросмотра
+  const previewProfile = {
+    ...user,
+    username: formData.username,
+    description: formData.description,
+    avatar: croppedAvatarPreview || user.avatar,
+    banner: croppedBannerPreview || user.banner,
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 max-w-md w-full">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-            Никнейм
-          </label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-            Описание
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-            Аватар
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="mt-1 block w-full text-sm text-gray-500"
-          />
-          {croppedAvatarPreview && (
-            <img
-              src={croppedAvatarPreview}
-              alt="Предпросмотр аватара"
-              className="w-24 h-24 rounded-full object-cover mt-2"
-            />
-          )}
-        </div>
-        {showAvatarCropper && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col z-50">
-            <div className="flex-grow relative">
-              <Cropper
-                image={avatarPreview}
-                crop={cropAvatar}
-                zoom={zoomAvatar}
-                aspect={1}
-                onCropChange={setCropAvatar}
-                onZoomChange={setZoomAvatar}
-                onCropComplete={onCropCompleteAvatar}
-                style={{ containerStyle: { height: "100%", width: "100%" } }}
-              />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white flex justify-center">
-              <button
-                type="button"
-                onClick={handleCropAvatar}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                Применить кроп
-              </button>
-            </div>
-          </div>
-        )}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-            Баннер
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleBannerChange}
-            className="mt-1 block w-full text-sm text-gray-500"
-          />
-          {croppedBannerPreview && (
-            <img
-              src={croppedBannerPreview}
-              alt="Предпросмотр баннера"
-              className="w-full h-32 object-cover rounded mt-2"
-            />
-          )}
-        </div>
-        {showBannerCropper && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col z-50">
-            <div className="flex-grow relative">
-              <Cropper
-                image={bannerPreview}
-                crop={cropBanner}
-                zoom={zoomBanner}
-                aspect={16 / 9}
-                onCropChange={setCropBanner}
-                onZoomChange={setZoomBanner}
-                onCropComplete={onCropCompleteBanner}
-                style={{ containerStyle: { height: "100%", width: "100%" } }}
-              />
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white flex justify-center">
-              <button
-                type="button"
-                onClick={handleCropBanner}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                Применить кроп
-              </button>
-            </div>
-          </div>
-        )}
-        <div className="flex gap-2">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
+        <div className="p-4 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+            Редактирование профиля
+          </h2>
           <button
-            type="submit"
-            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
-            Сохранить
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white transition-colors">
+            ✕
           </button>
+        </div>
+
+        {/* Табы */}
+        <ProfileEditorTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+
+        {/* Содержимое таба */}
+        <div className="overflow-y-auto flex-1 p-6">
+          {activeTab === "edit" ? (
+            <EditProfileTab
+              formData={formData}
+              onFormChange={handleFormChange}
+              croppedAvatarPreview={croppedAvatarPreview}
+              croppedBannerPreview={croppedBannerPreview}
+              onAvatarChange={handleAvatarChange}
+              onBannerChange={handleBannerChange}
+            />
+          ) : (
+            <PreviewProfileTab profile={previewProfile} />
+          )}
+        </div>
+
+        {/* Кнопки действий */}
+        <div className="p-4 bg-gray-100 dark:bg-gray-700 border-t dark:border-gray-600 flex justify-end space-x-3">
           <button
             type="button"
             onClick={onClose}
-            className="bg-gray-500 text-white p-2 rounded hover:bg-gray-600">
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none">
             Отмена
           </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Сохранить
+          </button>
         </div>
-      </form>
+
+        {/* Модальное окно для кадрирования */}
+        {cropperState.show && (
+          <ImageCropperModal
+            image={cropperState.image}
+            crop={cropperState.crop}
+            zoom={cropperState.zoom}
+            aspect={cropperState.aspect}
+            onCropChange={handleCropChange}
+            onZoomChange={handleZoomChange}
+            onCropComplete={handleCropComplete}
+            onClose={handleCloseCropper}
+            onApply={handleApplyCrop}
+            title={
+              cropperState.type === "avatar"
+                ? "Настройка аватара"
+                : "Настройка баннера"
+            }
+          />
+        )}
+      </div>
     </div>
   );
 };
