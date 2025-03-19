@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const ReadStatus = ({ message, currentUser }) => {
   const [showReaders, setShowReaders] = useState(false);
+  const [readers, setReaders] = useState([]);
+
+  useEffect(() => {
+    // фильтрация массива прочитавших и исключение отправителя
+    if (Array.isArray(message.readBy)) {
+      const filteredReaders = message.readBy.filter(
+        (reader) => reader._id !== message.sender._id
+      );
+      setReaders(filteredReaders);
+    } else {
+      setReaders([]);
+    }
+  }, [message]);
 
   // не показываем статус прочтения для НЕ отправителя
   if (message.sender._id !== currentUser.id) {
@@ -9,12 +22,7 @@ const ReadStatus = ({ message, currentUser }) => {
   }
 
   const renderReadStatus = () => {
-    // Фильтруем список прочитавших, исключая отправителя
-    const readers =
-      message.readBy?.filter((reader) => reader._id !== message.sender._id) ||
-      [];
-
-    if (readers.length === 0) {
+    if (!Array.isArray(readers) || readers.length === 0) {
       // Сообщение не прочитано никем
       return <span className="text-gray-400">✓</span>;
     }
@@ -36,7 +44,11 @@ const ReadStatus = ({ message, currentUser }) => {
               Прочитали:
               <div className="mt-1">
                 {readers.map((reader) => (
-                  <div key={reader._id}>{reader.username || reader.email}</div>
+                  <div key={reader._id || `reader-${Math.random()}`}>
+                    {reader.username ||
+                      reader.email ||
+                      "Неизвестный пользователь"}
+                  </div>
                 ))}
               </div>
             </div>
