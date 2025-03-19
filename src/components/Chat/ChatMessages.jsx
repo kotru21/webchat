@@ -23,17 +23,12 @@ const ChatMessages = memo(
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevChatId = useRef(null);
 
-    const {
-      scrollToMessage,
-      scrollToBottom,
-      handleNewMessage,
-      newMessagesCount,
-      isAtBottom,
-    } = useMessageScroll({
-      containerRef,
-      messageRefs,
-      currentUserId: currentUser.id,
-    });
+    const { scrollToMessage, scrollToBottom, newMessagesCount } =
+      useMessageScroll({
+        containerRef,
+        messageRefs,
+        currentUserId: currentUser.id,
+      });
 
     useMessageObserver({
       messages,
@@ -63,6 +58,8 @@ const ChatMessages = memo(
       [messages]
     );
 
+    const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
     return (
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div
@@ -87,7 +84,7 @@ const ChatMessages = memo(
           style={{
             transition: "all 0.3s ease-in-out",
           }}>
-          {[...messages].reverse().map((message) => (
+          {reversedMessages.map((message) => (
             <div
               key={message._id}
               ref={(el) => (messageRefs.current[message._id] = el)}
