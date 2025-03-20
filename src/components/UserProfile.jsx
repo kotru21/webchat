@@ -6,6 +6,7 @@ import { FiLink, FiExternalLink } from "react-icons/fi";
 
 const UserProfile = ({
   userId,
+  profileData, // Новый пропс для прямой передачи данных профиля
   onClose,
   anchorEl,
   containerClassName = "",
@@ -16,20 +17,30 @@ const UserProfile = ({
   const [error, setError] = useState(null);
   const popoverRef = useRef(null);
 
+  // для просмоторщика профиля
+  // Если переданы прямые данные профиля, используем их
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get(`/api/auth/users/${userId}`);
-        setProfile(response.data);
-      } catch (error) {
-        console.error("Ошибка при загрузке профиля:", error);
-        setError("Не удалось загрузить профиль");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, [userId]);
+    if (profileData) {
+      setProfile(profileData);
+      setLoading(false);
+    } else if (userId) {
+      const fetchProfile = async () => {
+        try {
+          const response = await api.get(`/api/auth/users/${userId}`);
+          setProfile(response.data);
+        } catch (error) {
+          console.error("Ошибка при загрузке профиля:", error);
+          setError("Не удалось загрузить профиль");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchProfile();
+    } else {
+      setError("Не указаны данные профиля");
+      setLoading(false);
+    }
+  }, [userId, profileData]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

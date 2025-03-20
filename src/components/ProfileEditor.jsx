@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ProfileEditorTabs from "./Profile/ProfileEditorTabs";
 import EditProfileTab from "./Profile/EditProfileTab";
 import PreviewProfileTab from "./Profile/PreviewProfileTab";
@@ -13,8 +13,6 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(null);
-  const [bannerPreview, setBannerPreview] = useState(null);
   const [croppedAvatarPreview, setCroppedAvatarPreview] = useState(
     user.avatar ? `${import.meta.env.VITE_API_URL}${user.avatar}` : null
   );
@@ -23,14 +21,14 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
   );
   const [cropperState, setCropperState] = useState({
     show: false,
-    type: null, // "avatar" или "banner"
+    type: null,
     image: null,
     crop: { x: 0, y: 0 },
     zoom: 1,
     aspect: 1,
     croppedAreaPixels: null,
   });
-  const [activeTab, setActiveTab] = useState("edit"); // "edit" или "preview"
+  const [activeTab, setActiveTab] = useState("edit");
 
   // Обработчик изменения полей формы
   const handleFormChange = (field, value) => {
@@ -46,7 +44,6 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
       }
       const reader = new FileReader();
       reader.onload = () => {
-        setAvatarPreview(reader.result);
         setCropperState({
           show: true,
           type: "avatar",
@@ -70,7 +67,6 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
       }
       const reader = new FileReader();
       reader.onload = () => {
-        setBannerPreview(reader.result);
         setCropperState({
           show: true,
           type: "banner",
@@ -135,13 +131,21 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
     onSave(formDataToSend);
   };
 
-  // Создаем объект профиля для предпросмотра
+  // объект профиля для предпросмотра
   const previewProfile = {
     ...user,
     username: formData.username,
     description: formData.description,
-    avatar: croppedAvatarPreview || user.avatar,
-    banner: croppedBannerPreview || user.banner,
+    // Если у нас есть предпросмотр - используем его, иначе используем текущий аватар
+    avatar: croppedAvatarPreview
+      ? croppedAvatarPreview.replace(import.meta.env.VITE_API_URL, "") // Удаляем базовый URL для соответствия формату
+      : user.avatar,
+    banner: croppedBannerPreview
+      ? croppedBannerPreview.replace(import.meta.env.VITE_API_URL, "") // Удаляем базовый URL для соответствия формату
+      : user.banner,
+    status: user.status,
+    createdAt: user.createdAt,
+    email: user.email,
   };
 
   return (
