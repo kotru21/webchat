@@ -1,4 +1,8 @@
+<center>
+
 # LocalWebChat
+
+</center>
 
 <p align="center">
   <b>Modern web chat with rich functionality and reactive interface</b><br>
