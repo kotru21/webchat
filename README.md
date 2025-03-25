@@ -132,7 +132,6 @@ local-webchat/
     ├── hooks/         # Custom hooks
     ├── pages/         # Application pages
     └── services/      # API services
-
 ```
 
 ## 🤝 Contribution
@@ -151,15 +150,4 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 📬 Contact
 
-Developer Name - [@yourgithub](https://github.com/yourgithub)
-
----
-
-# LocalWebChat 🚀 - Russian Version / Русская версия
-
-<p align="center">
-  <b>Современный веб-чат с богатым функционалом и реактивным интерфейсом</b><br>
-  <i>В активной разработке, возможны изменения</i>
-</p>
-
-![Статус
+Developer Name - [@kotru21](https://github.com/kotru21)
