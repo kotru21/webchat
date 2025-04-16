@@ -12,6 +12,7 @@ const UserProfile = ({
   containerClassName = "",
   isReversed,
   onStartChat, // Добавляем новый обработчик для начала чата
+  currentUserId, // Добавляем ID текущего пользователя для проверки
 }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,12 @@ const UserProfile = ({
     }
 
     return parts;
+  };
+
+  // Проверяем, не является ли профиль текущим пользователем
+  const isCurrentUser = () => {
+    if (!profile || !currentUserId) return false;
+    return profile._id === currentUserId || profile.id === currentUserId;
   };
 
   if (loading) {
@@ -263,26 +270,31 @@ const UserProfile = ({
         </div>
       </div>
 
-      {onStartChat && profile && profile._id !== undefined && (
-        <div className="px-4 pb-4">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onStartChat({
-                id: profile._id,
-                username: profile.username,
-                avatar: profile.avatar,
-                status: profile.status,
-                email: profile.email,
-              });
-              onClose();
-            }}
-            className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2">
-            <FiMessageSquare />
-            <span>Написать сообщение</span>
-          </button>
-        </div>
-      )}
+      {/* Кнопка "Написать сообщение" - показываем, если есть обработчик, 
+          есть профиль с ID и это не профиль текущего пользователя */}
+      {onStartChat &&
+        profile &&
+        (profile._id || profile.id) &&
+        !isCurrentUser() && (
+          <div className="px-4 pb-4 pt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartChat({
+                  id: profile._id || profile.id,
+                  username: profile.username,
+                  avatar: profile.avatar,
+                  status: profile.status,
+                  email: profile.email,
+                });
+                onClose();
+              }}
+              className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
+              <FiMessageSquare className="text-lg" />
+              <span>Написать сообщение</span>
+            </button>
+          </div>
+        )}
     </div>
   );
 };

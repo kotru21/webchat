@@ -191,6 +191,7 @@ const Chat = () => {
           onDeleteMessage={deleteMessageHandler}
           onMediaClick={handleMediaClick}
           onPinMessage={handlePinMessage}
+          onStartChat={handleStartChat} // Добавляем обработчик для начала чата
         />
         <ChatInput onSendMessage={sendMessageHandler} loading={loading} />
       </div>
@@ -233,6 +234,7 @@ const Chat = () => {
           anchorEl={profileAnchorEl}
           containerClassName="mt-2"
           isReversed={isProfileReversed}
+          currentUserId={user?.id} // Передаем ID текущего пользователя
         />
       )}
     </div>

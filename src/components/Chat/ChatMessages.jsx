@@ -14,6 +14,7 @@ const ChatMessages = memo(
     onDeleteMessage,
     onMediaClick,
     onPinMessage,
+    onStartChat, // Добавляем проп для обработки начала чата
   }) => {
     const [showAllPinned, setShowAllPinned] = useState(false);
     const containerRef = useRef(null);
@@ -119,6 +120,7 @@ const ChatMessages = memo(
                   );
                 }}
                 onSaveEdit={onEditMessage}
+                onStartChat={onStartChat} // Передаем обработчик начала чата
               />
             </div>
           ))}

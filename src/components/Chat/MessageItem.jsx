@@ -13,6 +13,7 @@ const MessageItem = memo(
     isMenuOpen,
     onToggleMenu,
     onSaveEdit,
+    onStartChat,
   }) => {
     const isOwnMessage = message.sender._id === currentUser.id;
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -245,6 +246,8 @@ const MessageItem = memo(
                           ? "right-full translate-x-[-8px]"
                           : "left-full translate-x-[8px]"
                       }`}
+                      currentUserId={currentUser.id}
+                      onStartChat={onStartChat} // Используем проп, переданный из родителя
                     />
                   </div>
                 )}
