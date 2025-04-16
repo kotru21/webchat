@@ -13,6 +13,7 @@ const MessageItem = memo(
     isMenuOpen,
     onToggleMenu,
     onSaveEdit,
+    onStartChat, // Добавляем новый обработчик
   }) => {
     const isOwnMessage = message.sender._id === currentUser.id;
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -148,22 +149,137 @@ const MessageItem = memo(
       </div>
     );
 
-    // Если сообщение в режиме редактирования, показываем редактор
-    if (isEditing) {
+    // Компонент отображения сообщения
+    const renderMessage = () => {
+      if (isEditing) {
+        return (
+          <div
+            className={`flex justify-${isOwnMessage ? "end" : "start"} w-full`}>
+            <div
+              className={`max-w-[80%] transition-all duration-300 animate-fade-in`}>
+              <MessageEditor
+                message={message}
+                onSave={handleSaveEdit}
+                onCancel={handleCancelEdit}
+              />
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div
           className={`flex justify-${isOwnMessage ? "end" : "start"} w-full`}>
           <div
-            className={`max-w-[80%] transition-all duration-300 animate-fade-in`}>
-            <MessageEditor
-              message={message}
-              onSave={handleSaveEdit}
-              onCancel={handleCancelEdit}
-            />
+            className={`max-w-[80%] message-wrapper ${
+              message.isPinned ? "pinned-message" : ""
+            }`}>
+            {/* Контекстное меню сообщения */}
+            <div
+              className={`absolute flex flex-col gap-2 transition-all duration-300 ease-in-out ${
+                isMenuOpen
+                  ? "opacity-100 z-20"
+                  : "opacity-0 pointer-events-none"
+              } bg-white dark:bg-gray-800 py-3 px-4 rounded-md shadow-lg transition-all duration-200 z-10`}
+              style={{
+                left: isOwnMessage ? "auto" : `${menuPosition.x}px`,
+                right: isOwnMessage ? `${menuPosition.x}px` : "auto",
+                top: `${menuPosition.y}px`,
+              }}>
+              {isOwnMessage && (
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
+                    Редактировать
+                  </button>
+                  <button
+                    onClick={onDelete}
+                    className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">
+                    Удалить
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handlePin}
+                className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
+                {message.isPinned ? "Открепить" : "Закрепить"}
+              </button>
+            </div>
+
+            <div
+              className={`flex items-start ${
+                isOwnMessage ? "flex-row-reverse" : "flex-row"
+              } gap-2`}>
+              <div className="cursor-pointer flex items-center gap-2">
+                <div
+                  ref={profileTriggerRef}
+                  onClick={handleProfileClick}
+                  className="relative">
+                  <img
+                    src={
+                      message.sender.avatar
+                        ? `${import.meta.env.VITE_API_URL}${
+                            message.sender.avatar
+                          }`
+                        : "/default-avatar.png"
+                    }
+                    alt={`${
+                      message.sender.username || message.sender.email
+                    }'s avatar`}
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0 hover:opacity-80 transition-opacity"
+                    onError={(e) => {
+                      e.target.src = "/default-avatar.png";
+                    }}
+                  />
+                  {isProfileOpen && (
+                    <div className="absolute top-0">
+                      <UserProfile
+                        userId={message.sender._id}
+                        onClose={() => setIsProfileOpen(false)}
+                        onStartChat={onStartChat}
+                        anchorEl={profileTriggerRef.current}
+                        isReversed={isOwnMessage}
+                        containerClassName={`${
+                          isOwnMessage
+                            ? "right-full translate-x-[-8px]"
+                            : "left-full translate-x-[8px]"
+                        }`}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div
+                className={`rounded-lg px-4 py-2 hover-lift ${
+                  isOwnMessage
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 dark:bg-gray-700"
+                }`}>
+                <div
+                  className={`text-sm font-medium mb-1 ${
+                    isOwnMessage ? "text-right" : "text-left"
+                  }`}>
+                  {isOwnMessage
+                    ? "Вы"
+                    : message.sender.username || message.sender.email}
+                </div>
+                {renderMessageContent()}
+                <div className="flex flex-row-reverse gap-2 mt-1">
+                  <span
+                    className={`text-xs opacity-75 ${
+                      isOwnMessage ? "text-right mt-1.5" : "text-left"
+                    }`}>
+                    {new Date(message.createdAt).toLocaleTimeString()}
+                  </span>
+                  <ReadStatus message={message} currentUser={currentUser} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       );
-    }
+    };
 
     return (
       <div
@@ -172,111 +288,9 @@ const MessageItem = memo(
         onContextMenu={handleContextMenu}
         className={`flex ${
           isOwnMessage ? "justify-end" : "justify-start"
-        } w-full relative`}>
-        <div
-          className={`max-w-[80%] message-wrapper ${
-            message.isPinned ? "pinned-message" : ""
-          }`}>
-          {/* Контекстное меню сообщения */}
-          <div
-            className={`absolute flex flex-col gap-2 transition-all duration-300 ease-in-out ${
-              isMenuOpen ? "opacity-100 z-20" : "opacity-0 pointer-events-none"
-            } bg-white dark:bg-gray-800 py-3 px-4 rounded-md shadow-lg transition-all duration-200 z-10`}
-            style={{
-              left: isOwnMessage ? "auto" : `${menuPosition.x}px`,
-              right: isOwnMessage ? `${menuPosition.x}px` : "auto",
-              top: `${menuPosition.y}px`,
-            }}>
-            {isOwnMessage && (
-              <>
-                <button
-                  onClick={handleEdit}
-                  className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
-                  Редактировать
-                </button>
-                <button
-                  onClick={onDelete}
-                  className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">
-                  Удалить
-                </button>
-              </>
-            )}
-            <button
-              onClick={handlePin}
-              className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
-              {message.isPinned ? "Открепить" : "Закрепить"}
-            </button>
-          </div>
-
-          <div
-            className={`flex items-start ${
-              isOwnMessage ? "flex-row-reverse" : "flex-row"
-            } gap-2`}>
-            <div className="cursor-pointer flex items-center gap-2">
-              <div
-                ref={profileTriggerRef}
-                onClick={handleProfileClick}
-                className="relative">
-                <img
-                  src={
-                    message.sender.avatar
-                      ? `${import.meta.env.VITE_API_URL}${
-                          message.sender.avatar
-                        }`
-                      : "/default-avatar.png"
-                  }
-                  alt={`${
-                    message.sender.username || message.sender.email
-                  }'s avatar`}
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0 hover:opacity-80 transition-opacity"
-                  onError={(e) => {
-                    e.target.src = "/default-avatar.png";
-                  }}
-                />
-                {isProfileOpen && (
-                  <div className="absolute top-0">
-                    <UserProfile
-                      userId={message.sender._id}
-                      onClose={() => setIsProfileOpen(false)}
-                      anchorEl={profileTriggerRef.current}
-                      isReversed={isOwnMessage}
-                      containerClassName={`${
-                        isOwnMessage
-                          ? "right-full translate-x-[-8px]"
-                          : "left-full translate-x-[8px]"
-                      }`}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-            <div
-              className={`rounded-lg px-4 py-2 hover-lift ${
-                isOwnMessage
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 dark:bg-gray-700"
-              }`}>
-              <div
-                className={`text-sm font-medium mb-1 ${
-                  isOwnMessage ? "text-right" : "text-left"
-                }`}>
-                {isOwnMessage
-                  ? "Вы"
-                  : message.sender.username || message.sender.email}
-              </div>
-              {renderMessageContent()}
-              <div className="flex flex-row-reverse gap-2 mt-1">
-                <span
-                  className={`text-xs opacity-75 ${
-                    isOwnMessage ? "text-right mt-1.5" : "text-left"
-                  }`}>
-                  {new Date(message.createdAt).toLocaleTimeString()}
-                </span>
-                <ReadStatus message={message} currentUser={currentUser} />
-              </div>
-            </div>
-          </div>
-        </div>
+        } w-full relative mb-2`}>
+        {" "}
+        {renderMessage()}
       </div>
     );
   }

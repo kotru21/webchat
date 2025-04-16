@@ -263,17 +263,19 @@ const UserProfile = ({
         </div>
       </div>
 
-      {onStartChat && profile && profile._id !== undefined && (
-        <div className="px-4 pb-4">
+      {/* Проверяем является ли текущий пользователь отправителем или есть ли обработчик onStartChat */}
+      {onStartChat && profile && profile._id && (
+        <div className="px-4 pb-4 mt-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
+              console.log("Chat button clicked, profile:", profile);
               onStartChat({
                 id: profile._id,
-                username: profile.username,
+                username: profile.username || "Пользователь",
                 avatar: profile.avatar,
-                status: profile.status,
-                email: profile.email,
+                status: profile.status || "offline",
+                email: profile.email || "",
               });
               onClose();
             }}

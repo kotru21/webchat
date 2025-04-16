@@ -583,3 +583,18 @@
 .pinned-panel-exit {
   animation: slideDownPanel 0.3s ease-out forwards reverse;
 }
+
+/* Исправление для наложения сообщений */
+.messages-container > div.space-y-8 {
+  margin-top: auto; /* Перемещает содержимое к нижней части контейнера */
+  width: 100%;
+}
+
+.messages-container .message-item {
+  margin-bottom: 1.5rem; /* Увеличиваем отступ между сообщениями */
+}
+
+/* Исправление для первых двух сообщений */
+.messages-container .message-item:first-child {
+  margin-top: 0.5rem; /* Отступ для первого сообщения */
+}
