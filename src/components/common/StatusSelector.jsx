@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { STATUS_INFO } from "../constants/statusConstants";
+import { STATUS_INFO } from "../../constants/statusConstants";
 import StatusIndicator from "./StatusIndicator";
-import statusService from "../services/statusService";
+import statusService from "../../services/statusService";
 import { FiChevronDown } from "react-icons/fi";
+import { TIMEOUTS } from "../../constants/appConstants";
 
+/**
+ * Компонент выбора статуса пользователя
+ *
+ * @param {string} currentStatus - Текущий статус пользователя
+ * @param {function} onStatusChange - Обработчик изменения статуса
+ */
 const StatusSelector = ({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -27,7 +34,7 @@ const StatusSelector = ({ currentStatus, onStatusChange }) => {
         .catch((err) =>
           console.error("Ошибка при обновлении активности:", err)
         );
-    }, 60000); // Каждую минуту
+    }, TIMEOUTS.ACTIVITY_UPDATE);
 
     return () => clearInterval(activityInterval);
   }, []);

@@ -1,7 +1,14 @@
 import React from "react";
-import { STATUS_INFO, USER_STATUSES } from "../constants/statusConstants";
+import { STATUS_INFO, USER_STATUSES } from "../../constants/statusConstants";
 
-// Принцип SRP: компонент только отображает индикатор статуса
+/**
+ * Компонент индикатора статуса пользователя
+ *
+ * @param {string} status - Статус пользователя (online, away, dnd, offline)
+ * @param {string} size - Размер индикатора (xs, sm, md, lg, xl)
+ * @param {boolean} showTooltip - Показывать всплывающую подсказку при наведении
+ * @param {string} customClass - Дополнительные CSS-классы
+ */
 const StatusIndicator = ({
   status,
   size = "md",

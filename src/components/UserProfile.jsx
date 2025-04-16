@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
-import StatusIndicator from "./StatusIndicator";
+import StatusIndicator from "./common/StatusIndicator";
 import { STATUS_INFO } from "../constants/statusConstants";
 import { FiLink, FiExternalLink, FiMessageSquare } from "react-icons/fi";
 

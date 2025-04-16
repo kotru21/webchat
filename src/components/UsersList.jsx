@@ -1,5 +1,5 @@
 import { memo } from "react";
-import StatusIndicator from "./StatusIndicator";
+import StatusIndicator from "./common/StatusIndicator";
 import { FiX } from "react-icons/fi";
 
 const UsersList = memo(

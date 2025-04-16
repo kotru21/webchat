@@ -2,15 +2,15 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import sharp from "sharp";
+import {
+  FILE_LIMITS,
+  ALLOWED_FILE_TYPES,
+  UPLOAD_PATHS,
+} from "../constants/fileConstants.js";
 
 // Базовая конфигурация
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Константы
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // Обработка изображений
 const processImage = async (file) => {
@@ -32,13 +32,13 @@ const storage = multer.diskStorage({
 
     switch (file.fieldname) {
       case "avatar":
-        uploadPath = path.join(__dirname, "../uploads/avatars");
+        uploadPath = path.join(__dirname, "..", UPLOAD_PATHS.AVATARS);
         break;
       case "banner":
-        uploadPath = path.join(__dirname, "../uploads/banners");
+        uploadPath = path.join(__dirname, "..", UPLOAD_PATHS.BANNERS);
         break;
       default:
-        uploadPath = path.join(__dirname, "../uploads/media");
+        uploadPath = path.join(__dirname, "..", UPLOAD_PATHS.MEDIA);
     }
 
     cb(null, uploadPath);
@@ -51,18 +51,16 @@ const storage = multer.diskStorage({
 
 // Фильтр файлов
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
-
-  if (allowedTypes.includes(file.mimetype)) {
+  if (ALLOWED_FILE_TYPES.ALL.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error("Неподдерживаемый формат файла"));
   }
 };
 
-// Ограничения
+// Базовые ограничения
 const limits = {
-  fileSize: MAX_FILE_SIZE,
+  fileSize: FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE,
   files: 1,
 };
 
@@ -85,13 +83,13 @@ export const profileUpload = multer({
 export const avatarUpload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+    if (ALLOWED_FILE_TYPES.IMAGES.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("Разрешены только изображения"));
     }
   },
-  limits: { ...limits, fileSize: 5 * 1024 * 1024 }, // 5MB для аватаров
+  limits: { ...limits, fileSize: FILE_LIMITS.AVATAR_MAX_SIZE }, // 5MB для аватаров
 }).single("avatar");
 
 export default {

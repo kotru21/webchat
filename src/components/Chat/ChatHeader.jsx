@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import StatusSelector from "../StatusSelector";
+import StatusSelector from "../common/StatusSelector";
 import { useAuth } from "../../context/AuthContext";
 import { FiMenu } from "react-icons/fi";
+import { ANIMATION_DELAYS } from "../../constants/appConstants";
 
 const ChatHeader = ({
   user,
@@ -26,7 +27,7 @@ const ChatHeader = ({
     const timer = setTimeout(() => {
       setTitle(newTitle);
       setIsTransitioning(false);
-    }, 300);
+    }, ANIMATION_DELAYS.CHAT_TRANSITION);
 
     return () => clearTimeout(timer);
   }, [selectedUser]);

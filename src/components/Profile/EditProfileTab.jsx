@@ -8,6 +8,7 @@ import {
   FiCheck,
 } from "react-icons/fi";
 import { BsEmojiSmile, BsHandThumbsUp, BsHeart } from "react-icons/bs";
+import { INPUT_LIMITS, FILE_LIMITS } from "../../constants/appConstants";
 
 const EditProfileTab = ({
   formData,
@@ -152,7 +153,8 @@ const EditProfileTab = ({
             Загрузить аватар
           </button>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Рекомендуется изображение 256x256px (макс. 5MB)
+            Рекомендуется изображение 256x256px (макс.{" "}
+            {FILE_LIMITS.AVATAR_MAX_SIZE / (1024 * 1024)}MB)
           </p>
         </div>
 
@@ -175,7 +177,8 @@ const EditProfileTab = ({
             Загрузить баннер
           </button>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Рекомендуется изображение 960x240px (макс. 10MB)
+            Рекомендуется изображение 960x240px (макс.{" "}
+            {FILE_LIMITS.BANNER_MAX_SIZE / (1024 * 1024)}MB)
           </p>
         </div>
       </div>
@@ -190,7 +193,7 @@ const EditProfileTab = ({
           value={formData.username}
           onChange={(e) => onFormChange("username", e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          maxLength={32}
+          maxLength={INPUT_LIMITS.USERNAME_MAX_LENGTH}
         />
       </div>
 
@@ -236,12 +239,12 @@ const EditProfileTab = ({
           value={formData.description}
           onChange={(e) => onFormChange("description", e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-          maxLength={500}
+          maxLength={INPUT_LIMITS.DESCRIPTION_MAX_LENGTH}
           placeholder="Расскажите немного о себе..."
         />
         <div className="flex justify-end mt-1">
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {formData.description.length}/500
+            {formData.description.length}/{INPUT_LIMITS.DESCRIPTION_MAX_LENGTH}
           </span>
         </div>
       </div>

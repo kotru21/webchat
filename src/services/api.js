@@ -1,9 +1,8 @@
 import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API } from "../constants/appConstants";
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API.BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -42,7 +41,7 @@ export const authService = {
   login: async (email, password) => {
     try {
       const response = await api.post(
-        "/api/auth/login",
+        API.ENDPOINTS.AUTH.LOGIN,
         { email, password },
         {
           headers: {
@@ -61,7 +60,7 @@ export const authService = {
   },
   register: async (formData) => {
     try {
-      const response = await api.post("/api/auth/register", formData, {
+      const response = await api.post(API.ENDPOINTS.AUTH.REGISTER, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -91,8 +90,8 @@ export const messageService = {
   getMessages: async (receiverId = null) => {
     try {
       const url = receiverId
-        ? `/api/messages?receiverId=${receiverId}`
-        : "/api/messages";
+        ? `${API.ENDPOINTS.CHAT.MESSAGES}?receiverId=${receiverId}`
+        : API.ENDPOINTS.CHAT.MESSAGES;
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -102,7 +101,7 @@ export const messageService = {
   },
   sendMessage: async (formData) => {
     try {
-      const response = await api.post("/api/messages", formData, {
+      const response = await api.post(API.ENDPOINTS.CHAT.MESSAGES, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -115,7 +114,9 @@ export const messageService = {
   },
   markMessageAsRead: async (messageId) => {
     try {
-      const response = await api.post(`/api/messages/${messageId}/read`);
+      const response = await api.post(
+        `${API.ENDPOINTS.CHAT.MESSAGES}/${messageId}/read`
+      );
       return response.data;
     } catch (error) {
       console.error("Mark as read error:", error);
@@ -124,11 +125,15 @@ export const messageService = {
   },
   updateMessage: async (messageId, formData) => {
     try {
-      const response = await api.put(`/api/messages/${messageId}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await api.put(
+        `${API.ENDPOINTS.CHAT.MESSAGES}/${messageId}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Update Message Error:", error);
@@ -137,7 +142,9 @@ export const messageService = {
   },
   deleteMessage: async (messageId) => {
     try {
-      const response = await api.delete(`/api/messages/${messageId}`);
+      const response = await api.delete(
+        `${API.ENDPOINTS.CHAT.MESSAGES}/${messageId}`
+      );
       return response.data;
     } catch (error) {
       console.error("Delete Message Error:", error);
@@ -145,9 +152,12 @@ export const messageService = {
     }
   },
   pinMessage: async (messageId, isPinned) => {
-    const response = await api.put(`/api/messages/${messageId}/pin`, {
-      isPinned,
-    });
+    const response = await api.put(
+      `${API.ENDPOINTS.CHAT.MESSAGES}/${messageId}/pin`,
+      {
+        isPinned,
+      }
+    );
     return response.data;
   },
 };
@@ -155,7 +165,7 @@ export const messageService = {
 export const statusService = {
   getUserStatus: async (userId) => {
     try {
-      const response = await api.get(`/api/status/${userId}`);
+      const response = await api.get(`${API.ENDPOINTS.STATUS}/${userId}`);
       return response.data;
     } catch (error) {
       console.error("Get Status Error:", error);
@@ -164,7 +174,10 @@ export const statusService = {
   },
   updateStatus: async (statusData) => {
     try {
-      const response = await api.put("/api/status/update", statusData);
+      const response = await api.put(
+        `${API.ENDPOINTS.STATUS}/update`,
+        statusData
+      );
       return response.data;
     } catch (error) {
       console.error("Update Status Error:", error);
@@ -173,7 +186,7 @@ export const statusService = {
   },
   updateActivity: async () => {
     try {
-      const response = await api.put("/api/status/activity");
+      const response = await api.put(`${API.ENDPOINTS.STATUS}/activity`);
       return response.data;
     } catch (error) {
       console.error("Update Activity Error:", error);

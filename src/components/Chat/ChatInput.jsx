@@ -1,37 +1,92 @@
-import { useState, useRef, memo } from "react";
+import { useState, useRef, memo, useEffect } from "react";
 import { IoMdAttach, IoMdSend } from "react-icons/io";
 import { BiLoaderAlt } from "react-icons/bi";
+import { FiAlertCircle } from "react-icons/fi";
+import { FILE_LIMITS, INPUT_LIMITS } from "../../constants/appConstants";
 
 const ChatInput = memo(({ onSendMessage, loading }) => {
   const [newMessage, setNewMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Автоматически скрывать сообщение об ошибке после 5 секунд
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
-    if (file && file.size <= 50 * 1024 * 1024) {
-      setSelectedFile(file);
-    } else {
-      // Handle error - file too large
-      console.error("Файл слишком большой (максимум 50MB)");
+    if (!file) return;
+
+    if (file.size > FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE) {
+      setError(
+        `Файл слишком большой. Максимальный размер: ${
+          FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE / (1024 * 1024)
+        }MB`
+      );
+      fileInputRef.current.value = "";
+      return;
     }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "video/mp4",
+      "video/webm",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setError(
+        "Неподдерживаемый формат файла. Разрешены только изображения (JPEG, PNG, GIF) и видео (MP4, WebM)."
+      );
+      fileInputRef.current.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+    setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() && !selectedFile) return;
 
+    if (newMessage.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
+      setError(
+        `Сообщение слишком длинное. Максимальная длина: ${INPUT_LIMITS.MESSAGE_MAX_LENGTH} символов`
+      );
+      return;
+    }
+
     try {
       const formData = new FormData();
       if (newMessage.trim()) formData.append("text", newMessage);
       if (selectedFile) formData.append("media", selectedFile);
 
-      await onSendMessage(formData);
-      setNewMessage("");
-      setSelectedFile(null);
-      fileInputRef.current.value = "";
+      const result = await onSendMessage(formData);
+      if (result) {
+        setNewMessage("");
+        setSelectedFile(null);
+        fileInputRef.current.value = "";
+        setError(null);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
+      if (error.response?.status === 429) {
+        setError(
+          "Вы отправляете сообщения слишком часто. Пожалуйста, подождите немного."
+        );
+      } else {
+        setError(
+          "Не удалось отправить сообщение. Пожалуйста, попробуйте позже."
+        );
+      }
     }
   };
 
@@ -39,6 +94,12 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
     <form
       onSubmit={handleSubmit}
       className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300 animate-slide-up">
+      {error && (
+        <div className="mb-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm p-2 rounded-lg flex items-center animate-fade-in">
+          <FiAlertCircle className="mr-2 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -47,6 +108,7 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
           placeholder="Сообщение..."
           className="flex-1 px-3 py-2 text-sm rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white min-w-0 transition-all duration-200 focus:shadow-md"
           disabled={loading}
+          maxLength={INPUT_LIMITS.MESSAGE_MAX_LENGTH}
         />
         <input
           type="file"

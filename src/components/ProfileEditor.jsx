@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ProfileEditorTabs from "./Profile/ProfileEditorTabs";
 import EditProfileTab from "./Profile/EditProfileTab";
 import PreviewProfileTab from "./Profile/PreviewProfileTab";
 import ImageCropperModal from "./Profile/ImageCropperModal";
-import getCroppedImg from "./getCroppedImg";
-import { FiX } from "react-icons/fi";
+import { getCroppedImg } from "../utils/imageUtils";
+import { FiX, FiAlertCircle } from "react-icons/fi";
+import { FILE_LIMITS, INPUT_LIMITS } from "../constants/appConstants";
 
 const ProfileEditor = ({ user, onSave, onClose }) => {
   const [formData, setFormData] = useState({
@@ -19,6 +20,7 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
   const [croppedBannerPreview, setCroppedBannerPreview] = useState(
     user.banner ? `${import.meta.env.VITE_API_URL}${user.banner}` : null
   );
+  const [error, setError] = useState(null);
   const [cropperState, setCropperState] = useState({
     show: false,
     type: null,
@@ -30,55 +32,124 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
   });
   const [activeTab, setActiveTab] = useState("edit");
 
+  // Автоматически скрывать сообщение об ошибке после 5 секунд
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   // Обработчик изменения полей формы
   const handleFormChange = (field, value) => {
+    if (
+      field === "username" &&
+      value.length > INPUT_LIMITS.USERNAME_MAX_LENGTH
+    ) {
+      setError(
+        `Никнейм не может быть длиннее ${INPUT_LIMITS.USERNAME_MAX_LENGTH} символов`
+      );
+      return;
+    }
+
+    if (
+      field === "description" &&
+      value.length > INPUT_LIMITS.DESCRIPTION_MAX_LENGTH
+    ) {
+      setError(
+        `Описание не может быть длиннее ${INPUT_LIMITS.DESCRIPTION_MAX_LENGTH} символов`
+      );
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setError(null);
   };
 
   // Обработчик выбора файла аватара
   const handleAvatarChange = (file) => {
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Файл слишком большой (максимум 5MB)");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setCropperState({
-          show: true,
-          type: "avatar",
-          image: reader.result,
-          crop: { x: 0, y: 0 },
-          zoom: 1,
-          aspect: 1,
-          croppedAreaPixels: null,
-        });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > FILE_LIMITS.AVATAR_MAX_SIZE) {
+      setError(
+        `Аватар слишком большой. Максимальный размер: ${
+          FILE_LIMITS.AVATAR_MAX_SIZE / (1024 * 1024)
+        }MB`
+      );
+      return;
     }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      setError(
+        "Неподдерживаемый формат файла для аватара. Разрешены только изображения (JPEG, PNG, GIF)."
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropperState({
+        show: true,
+        type: "avatar",
+        image: reader.result,
+        crop: { x: 0, y: 0 },
+        zoom: 1,
+        aspect: 1,
+        croppedAreaPixels: null,
+      });
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError(
+        "Не удалось прочитать файл. Попробуйте выбрать другое изображение."
+      );
+    };
+    reader.readAsDataURL(file);
   };
 
   // Обработчик выбора файла баннера
   const handleBannerChange = (file) => {
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert("Файл слишком большой (максимум 10MB)");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setCropperState({
-          show: true,
-          type: "banner",
-          image: reader.result,
-          crop: { x: 0, y: 0 },
-          zoom: 1,
-          aspect: 4,
-          croppedAreaPixels: null,
-        });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > FILE_LIMITS.BANNER_MAX_SIZE) {
+      setError(
+        `Баннер слишком большой. Максимальный размер: ${
+          FILE_LIMITS.BANNER_MAX_SIZE / (1024 * 1024)
+        }MB`
+      );
+      return;
     }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      setError(
+        "Неподдерживаемый формат файла для баннера. Разрешены только изображения (JPEG, PNG, GIF)."
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropperState({
+        show: true,
+        type: "banner",
+        image: reader.result,
+        crop: { x: 0, y: 0 },
+        zoom: 1,
+        aspect: 4,
+        croppedAreaPixels: null,
+      });
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError(
+        "Не удалось прочитать файл. Попробуйте выбрать другое изображение."
+      );
+    };
+    reader.readAsDataURL(file);
   };
 
   // Обработчик завершения кадрирования
@@ -116,18 +187,53 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
       }
 
       setCropperState((prev) => ({ ...prev, show: false }));
+      setError(null);
     } catch (error) {
       console.error(`Ошибка при кадрировании ${cropperState.type}:`, error);
+      setError(
+        `Не удалось обработать изображение. Попробуйте другое или уменьшите размер.`
+      );
     }
+  };
+
+  // Валидация формы
+  const validateForm = () => {
+    if (!formData.username || formData.username.trim() === "") {
+      setError("Никнейм не может быть пустым");
+      return false;
+    }
+
+    if (formData.username.length > INPUT_LIMITS.USERNAME_MAX_LENGTH) {
+      setError(
+        `Никнейм не может быть длиннее ${INPUT_LIMITS.USERNAME_MAX_LENGTH} символов`
+      );
+      return false;
+    }
+
+    if (
+      formData.description &&
+      formData.description.length > INPUT_LIMITS.DESCRIPTION_MAX_LENGTH
+    ) {
+      setError(
+        `Описание не может быть длиннее ${INPUT_LIMITS.DESCRIPTION_MAX_LENGTH} символов`
+      );
+      return false;
+    }
+
+    return true;
   };
 
   // Обработчик отправки формы
   const handleSubmit = () => {
+    if (!validateForm()) return;
+
     const formDataToSend = new FormData();
     formDataToSend.append("username", formData.username);
     formDataToSend.append("description", formData.description);
+
     if (avatarFile) formDataToSend.append("avatar", avatarFile);
     if (bannerFile) formDataToSend.append("banner", bannerFile);
+
     onSave(formDataToSend);
   };
 
@@ -164,6 +270,14 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
 
         {/* Табы */}
         <ProfileEditorTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+
+        {/* Сообщение об ошибке */}
+        {error && (
+          <div className="mx-6 mt-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm p-2 rounded-lg flex items-center animate-fade-in">
+            <FiAlertCircle className="mr-2 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Содержимое таба */}
         <div className="overflow-y-auto flex-1 p-6">

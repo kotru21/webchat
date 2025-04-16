@@ -9,8 +9,11 @@ import useChatSocket from "../hooks/useChatSocket";
 import useChatMessages from "../hooks/useChatMessages";
 import { updateProfile } from "../services/api.js";
 import api from "../services/api.js";
+import { ANIMATION_DELAYS } from "../constants/appConstants";
+import UserProfile from "../components/UserProfile";
+import { FiAlertCircle, FiX } from "react-icons/fi";
 
-const MediaViewer = React.lazy(() => import("../components/MediaViewer"));
+const MediaViewer = React.lazy(() => import("../components/media/MediaViewer"));
 const ProfileEditor = React.lazy(() => import("../components/ProfileEditor"));
 
 const Chat = () => {
@@ -21,8 +24,13 @@ const Chat = () => {
   const [isPending, startTransition] = useTransition();
   const [unreadCounts, setUnreadCounts] = useState({ general: 0 });
   const { user, updateUser } = useAuth();
+  const [errorInfo, setErrorInfo] = useState({
+    message: "",
+    visible: false,
+    type: "error",
+  });
+  const [errorTimeout, setErrorTimeout] = useState(null);
 
-  // Добавляем состояние для отображения профиля пользователя
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileUserId, setProfileUserId] = useState(null);
   const [profileAnchorEl, setProfileAnchorEl] = useState(null);
@@ -47,6 +55,37 @@ const Chat = () => {
     setUnreadCounts,
   });
 
+  const showErrorMessage = (message, type = "error") => {
+    if (errorTimeout) {
+      clearTimeout(errorTimeout);
+    }
+
+    setErrorInfo({ message, visible: true, type });
+
+    const timeout = setTimeout(() => {
+      setErrorInfo((prev) => ({ ...prev, visible: false }));
+    }, 5000);
+
+    setErrorTimeout(timeout);
+  };
+
+  // Очистка таймаута при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (errorTimeout) {
+        clearTimeout(errorTimeout);
+      }
+    };
+  }, [errorTimeout]);
+
+  // Синхронизация с ошибками из useChatMessages
+  useEffect(() => {
+    if (error) {
+      showErrorMessage(error);
+      setError("");
+    }
+  }, [error, setError]);
+
   const handleMediaClick = (mediaUrl, mediaType) => {
     startTransition(() => {
       setFullscreenMedia({
@@ -57,11 +96,9 @@ const Chat = () => {
   };
 
   const handleUserSelect = (user) => {
-    // Добавляем класс для анимации выхода
     const container = document.querySelector(".messages-container");
     container?.classList.add("transitioning");
 
-    // Задержка для анимации
     setTimeout(() => {
       setSelectedUser(user);
       setUnreadCounts((prev) => {
@@ -73,7 +110,7 @@ const Chat = () => {
       setTimeout(() => {
         container?.classList.remove("transitioning");
       }, 50);
-    }, 300);
+    }, ANIMATION_DELAYS.CHAT_TRANSITION);
   };
 
   const handleProfileUpdate = async (formData) => {
@@ -91,10 +128,36 @@ const Chat = () => {
         setIsProfileEditorOpen(false);
       });
 
-      setError("");
+      showErrorMessage("Профиль успешно обновлен", "success");
     } catch (error) {
-      setError("Ошибка при обновлении профиля");
       console.error("Profile update error:", error);
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            showErrorMessage("Некорректные данные для обновления профиля");
+            break;
+          case 413:
+            showErrorMessage("Загружаемый файл слишком большой");
+            break;
+          case 415:
+            showErrorMessage("Неподдерживаемый формат файла");
+            break;
+          case 429:
+            showErrorMessage(
+              "Слишком много запросов. Пожалуйста, повторите позже"
+            );
+            break;
+          default:
+            showErrorMessage("Ошибка при обновлении профиля. Попробуйте позже");
+        }
+      } else if (error.request) {
+        showErrorMessage(
+          "Сервер не отвечает. Проверьте подключение к интернету"
+        );
+      } else {
+        showErrorMessage("Ошибка при обновлении профиля");
+      }
     }
   };
 
@@ -106,8 +169,23 @@ const Chat = () => {
           msg._id === messageId ? { ...msg, isPinned } : msg
         )
       );
+
+      showErrorMessage(
+        isPinned ? "Сообщение закреплено" : "Сообщение откреплено",
+        "success"
+      );
     } catch (error) {
       console.error("Ошибка при закреплении/откреплении сообщения:", error);
+
+      // Более информативные ошибки
+      if (error.response?.status === 403) {
+        showErrorMessage("У вас нет прав для закрепления этого сообщения");
+      } else if (error.response?.status === 429) {
+        showErrorMessage("Слишком много запросов. Пожалуйста, повторите позже");
+      } else {
+        showErrorMessage("Не удалось изменить статус закрепления сообщения");
+      }
+
       throw error;
     }
   };
@@ -122,6 +200,15 @@ const Chat = () => {
   // Обработчик для закрытия профиля
   const handleCloseProfile = () => {
     setIsProfileOpen(false);
+  };
+
+  // Обработчик для закрытия сообщения об ошибке вручную
+  const handleCloseError = () => {
+    setErrorInfo((prev) => ({ ...prev, visible: false }));
+    if (errorTimeout) {
+      clearTimeout(errorTimeout);
+      setErrorTimeout(null);
+    }
   };
 
   useEffect(() => {
@@ -176,13 +263,28 @@ const Chat = () => {
             });
           }}
         />
-        {error && (
+
+        {/* Улучшенное сообщение об ошибке/успехе */}
+        {errorInfo.visible && (
           <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4"
+            className={`mx-4 mt-2 p-3 rounded-lg flex items-center justify-between animate-fade-in ${
+              errorInfo.type === "success"
+                ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+            }`}
             role="alert">
-            <span className="block sm:inline">{error}</span>
+            <div className="flex items-center">
+              <FiAlertCircle className="mr-2 flex-shrink-0" />
+              <span className="block sm:inline">{errorInfo.message}</span>
+            </div>
+            <button
+              onClick={handleCloseError}
+              className="ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+              <FiX size={18} />
+            </button>
           </div>
         )}
+
         <ChatMessages
           messages={messages}
           currentUser={user}
