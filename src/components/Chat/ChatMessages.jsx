@@ -14,7 +14,7 @@ const ChatMessages = memo(
     onDeleteMessage,
     onMediaClick,
     onPinMessage,
-    onStartChat, // Добавляем проп для обработки начала чата
+    onStartChat,
   }) => {
     const [showAllPinned, setShowAllPinned] = useState(false);
     const containerRef = useRef(null);
@@ -36,7 +36,7 @@ const ChatMessages = memo(
       onMarkAsRead,
     });
 
-    // Определяем ID текущего чата
+    // ID текущего чата
     const currentChatId =
       messages[0]?.sender._id === currentUser.id
         ? messages[0]?.receiver
@@ -120,7 +120,7 @@ const ChatMessages = memo(
                   );
                 }}
                 onSaveEdit={onEditMessage}
-                onStartChat={onStartChat} // Передаем обработчик начала чата
+                onStartChat={onStartChat}
               />
             </div>
           ))}
