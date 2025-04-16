@@ -86,7 +86,7 @@ const ChatMessages = memo(
 
         <div
           ref={containerRef}
-          className={`flex-1 overflow-y-auto py-4 space-y-8 messages-container flex flex-col-reverse chat-content-transition 
+          className={`flex-1 overflow-y-auto py-4 messages-container flex flex-col-reverse chat-content-transition 
           px-4 
           md:px-12 
           lg:px-20 
@@ -96,12 +96,12 @@ const ChatMessages = memo(
             transition: "all 0.3s ease-in-out",
           }}
           onClick={handleContainerClick}>
-          {reversedMessages.map((message) => (
+          {reversedMessages.map((message, index) => (
             <div
               key={message._id}
               ref={(el) => (messageRefs.current[message._id] = el)}
               data-message-id={message._id}
-              className="message-item"
+              className="message-item mb-8"
               style={{
                 opacity: isTransitioning ? 0 : 1,
                 transform: `translateY(${isTransitioning ? "10px" : "0"})`,

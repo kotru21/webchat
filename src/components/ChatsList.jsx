@@ -161,20 +161,18 @@ const ChatsList = memo(
                         <StatusIndicator
                           status={chat.user.status || "offline"}
                           size="sm"
-                          customClass="absolute bottom-0 right-0"
+                          customClass="absolute -top-4 -right-7"
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between">
-                          <p className="text-sm font-medium truncate">
-                            {chat.user.username || chat.user.email}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatMessageTime(chat.lastMessage?.createdAt)}
-                          </p>
-                        </div>
+                      <div className="flex-1 min-w-0 -mt-4">
+                        <p className="text-sm font-medium truncate">
+                          {chat.user.username || chat.user.email}
+                        </p>
                         <p className="text-xs text-gray-500 truncate">
                           {formatLastMessage(chat.lastMessage)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatMessageTime(chat.lastMessage?.createdAt)}
                         </p>
                       </div>
                     </div>
