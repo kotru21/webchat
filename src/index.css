@@ -469,9 +469,13 @@
   transition: all 0.3s ease;
 }
 
+.chat-item:hover {
+  transform: translateX(2px);
+}
+
 .chat-item-selected {
   background-color: rgba(59, 130, 246, 0.1);
-  transform: translateX(4px);
+  border-left: 3px solid rgba(59, 130, 246, 0.8);
 }
 
 /* Плавное появление контента чата */

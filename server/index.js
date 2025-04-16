@@ -8,6 +8,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import statusRoutes from "./routes/statusRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
@@ -76,6 +77,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/status", statusRoutes);
+app.use("/api/chats", chatRoutes);
 
 // Обработка ошибок
 app.use((err, req, res, next) => {

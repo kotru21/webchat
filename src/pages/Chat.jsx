@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import ChatHeader from "../components/Chat/ChatHeader";
 import ChatMessages from "../components/Chat/ChatMessages";
 import ChatInput from "../components/Chat/ChatInput";
-import UsersList from "../components/UsersList";
+import ChatsList from "../components/ChatsList";
 import useChatSocket from "../hooks/useChatSocket";
 import useChatMessages from "../hooks/useChatMessages";
 import { updateProfile } from "../services/api.js";
@@ -21,6 +21,12 @@ const Chat = () => {
   const [isPending, startTransition] = useTransition();
   const [unreadCounts, setUnreadCounts] = useState({ general: 0 });
   const { user, updateUser } = useAuth();
+
+  // Добавляем состояние для отображения профиля пользователя
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileUserId, setProfileUserId] = useState(null);
+  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
+  const [isProfileReversed, setIsProfileReversed] = useState(false);
 
   const {
     messages,
@@ -106,6 +112,18 @@ const Chat = () => {
     }
   };
 
+  const handleStartChat = (user) => {
+    if (user) {
+      setIsSidebarOpen(false); // Закрываем сайдбар на мобильных
+      handleUserSelect(user); // Используем существующий обработчик
+    }
+  };
+
+  // Обработчик для закрытия профиля
+  const handleCloseProfile = () => {
+    setIsProfileOpen(false);
+  };
+
   useEffect(() => {
     if (user && user.id) {
       console.log("Sending user_connected with:", user);
@@ -139,8 +157,7 @@ const Chat = () => {
         />
       )}
       <div className="flex-none md:w-72">
-        <UsersList
-          users={onlineUsers.filter((u) => u.id !== user.id)}
+        <ChatsList
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           onUserSelect={handleUserSelect}
@@ -207,6 +224,16 @@ const Chat = () => {
             }}
           />
         </Suspense>
+      )}
+      {isProfileOpen && (
+        <UserProfile
+          userId={profileUserId}
+          onClose={handleCloseProfile}
+          onStartChat={handleStartChat} // Добавляем обработчик для начала чата
+          anchorEl={profileAnchorEl}
+          containerClassName="mt-2"
+          isReversed={isProfileReversed}
+        />
       )}
     </div>
   );

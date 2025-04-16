@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import StatusIndicator from "./StatusIndicator";
 import { STATUS_INFO } from "../constants/statusConstants";
-import { FiLink, FiExternalLink } from "react-icons/fi";
+import { FiLink, FiExternalLink, FiMessageSquare } from "react-icons/fi";
 
 const UserProfile = ({
   userId,
@@ -11,6 +11,7 @@ const UserProfile = ({
   anchorEl,
   containerClassName = "",
   isReversed,
+  onStartChat, // Добавляем новый обработчик для начала чата
 }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,7 +88,6 @@ const UserProfile = ({
       lastIndex = match.index + match[0].length;
     }
 
-    // Добавляем оставшийся текст после последней ссылки
     if (lastIndex < text.length) {
       parts.push({
         type: "text",
@@ -203,12 +203,10 @@ const UserProfile = ({
           </p>
         </div>
 
-        {/* Разделитель */}
         {profile.description && (
           <div className="border-t border-gray-200 dark:border-gray-700 my-3"></div>
         )}
 
-        {/* Описание профиля с выделенными ссылками - выровнено по левому краю */}
         {profile.description && (
           <div className="mt-3 text-left">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -258,13 +256,33 @@ const UserProfile = ({
           </div>
         )}
 
-        {/* Дополнительная информация - выровнена по левому краю */}
         <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-left">
           <p>
             Зарегистрирован: {new Date(profile.createdAt).toLocaleDateString()}
           </p>
         </div>
       </div>
+
+      {onStartChat && profile && profile._id !== undefined && (
+        <div className="px-4 pb-4">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartChat({
+                id: profile._id,
+                username: profile.username,
+                avatar: profile.avatar,
+                status: profile.status,
+                email: profile.email,
+              });
+              onClose();
+            }}
+            className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2">
+            <FiMessageSquare />
+            <span>Написать сообщение</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

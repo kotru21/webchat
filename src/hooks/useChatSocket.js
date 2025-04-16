@@ -10,8 +10,17 @@ const useChatSocket = ({
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
+    if (!user) return;
+
     const socket = io(import.meta.env.VITE_API_URL, {
       withCredentials: true,
+    });
+
+    socket.emit("user_connected", {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      status: user.status,
     });
 
     // Connect and join rooms
