@@ -114,12 +114,8 @@ const Chat = () => {
 
   const handleStartChat = (user) => {
     if (user) {
-      console.log("Starting chat with user:", user);
       setIsSidebarOpen(false); // Закрываем сайдбар на мобильных
       handleUserSelect(user); // Используем существующий обработчик
-      if (isProfileOpen) {
-        setIsProfileOpen(false); // Закрываем профиль если открыт
-      }
     }
   };
 
@@ -195,7 +191,6 @@ const Chat = () => {
           onDeleteMessage={deleteMessageHandler}
           onMediaClick={handleMediaClick}
           onPinMessage={handlePinMessage}
-          onStartChat={handleStartChat} // Передаем обработчик
         />
         <ChatInput onSendMessage={sendMessageHandler} loading={loading} />
       </div>

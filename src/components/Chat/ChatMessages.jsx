@@ -14,7 +14,6 @@ const ChatMessages = memo(
     onDeleteMessage,
     onMediaClick,
     onPinMessage,
-    onStartChat,
   }) => {
     const [showAllPinned, setShowAllPinned] = useState(false);
     const containerRef = useRef(null);
@@ -86,7 +85,7 @@ const ChatMessages = memo(
 
         <div
           ref={containerRef}
-          className={`flex-1 overflow-y-auto py-4 messages-container flex flex-col-reverse chat-content-transition 
+          className={`flex-1 overflow-y-auto py-4 space-y-8 messages-container flex flex-col-reverse chat-content-transition 
           px-4 
           md:px-12 
           lg:px-20 
@@ -96,37 +95,33 @@ const ChatMessages = memo(
             transition: "all 0.3s ease-in-out",
           }}
           onClick={handleContainerClick}>
-          <div className="space-y-8 w-full">
-            {" "}
-            {reversedMessages.map((message) => (
-              <div
-                key={message._id}
-                ref={(el) => (messageRefs.current[message._id] = el)}
-                data-message-id={message._id}
-                className="message-item"
-                style={{
-                  opacity: isTransitioning ? 0 : 1,
-                  transform: `translateY(${isTransitioning ? "10px" : "0"})`,
-                  transition: "opacity 0.3s ease, transform 0.3s ease",
-                }}>
-                <MessageItem
-                  message={message}
-                  currentUser={currentUser}
-                  onDelete={() => onDeleteMessage(message._id)}
-                  onMediaClick={onMediaClick}
-                  onPin={onPinMessage}
-                  isMenuOpen={activeMessageMenu === message._id}
-                  onToggleMenu={() => {
-                    setActiveMessageMenu(
-                      activeMessageMenu === message._id ? null : message._id
-                    );
-                  }}
-                  onSaveEdit={onEditMessage}
-                  onStartChat={onStartChat}
-                />
-              </div>
-            ))}
-          </div>
+          {reversedMessages.map((message) => (
+            <div
+              key={message._id}
+              ref={(el) => (messageRefs.current[message._id] = el)}
+              data-message-id={message._id}
+              className="message-item"
+              style={{
+                opacity: isTransitioning ? 0 : 1,
+                transform: `translateY(${isTransitioning ? "10px" : "0"})`,
+                transition: "opacity 0.3s ease, transform 0.3s ease",
+              }}>
+              <MessageItem
+                message={message}
+                currentUser={currentUser}
+                onDelete={() => onDeleteMessage(message._id)}
+                onMediaClick={onMediaClick}
+                onPin={onPinMessage}
+                isMenuOpen={activeMessageMenu === message._id}
+                onToggleMenu={() => {
+                  setActiveMessageMenu(
+                    activeMessageMenu === message._id ? null : message._id
+                  );
+                }}
+                onSaveEdit={onEditMessage}
+              />
+            </div>
+          ))}
         </div>
 
         {!isTransitioning && newMessagesCount > 0 && (
