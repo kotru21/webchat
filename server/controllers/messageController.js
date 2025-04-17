@@ -118,7 +118,13 @@ export const updateMessage = async (req, res) => {
       return res.status(404).json({ message: "Сообщение не найдено" });
     }
 
-    // Проверяем права на редактирование
+    if (message.isDeleted) {
+      return res
+        .status(400)
+        .json({ message: "Нельзя редактировать удаленное сообщение" });
+    }
+
+    // права на редактирование
     if (message.sender.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Нет прав на редактирование" });
     }

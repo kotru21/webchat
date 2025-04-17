@@ -105,7 +105,7 @@ const MessageItem = memo(
             <p
               className={`text-sm break-words ${
                 isOwnMessage ? "text-right" : "text-left"
-              }`}>
+              } ${message.isDeleted ? "italic text-opacity-70" : ""}`}>
               {message.content}
             </p>
             {(message.isEdited || message.isDeleted) && (
@@ -190,11 +190,13 @@ const MessageItem = memo(
             }}>
             {isOwnMessage && (
               <>
-                <button
-                  onClick={handleEdit}
-                  className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
-                  Редактировать
-                </button>
+                {!message.isDeleted && (
+                  <button
+                    onClick={handleEdit}
+                    className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
+                    Редактировать
+                  </button>
+                )}
                 <button
                   onClick={onDelete}
                   className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">

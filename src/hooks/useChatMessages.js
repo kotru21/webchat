@@ -169,7 +169,15 @@ const useChatMessages = (selectedUser) => {
         return false;
       }
 
-      await updateMessage(messageId, formData);
+      const updatedMessage = await updateMessage(messageId, formData);
+
+      // обновление сообщения в локальном состоянии
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId ? updatedMessage : msg
+        )
+      );
+
       return true;
     } catch (error) {
       console.error("Ошибка при редактировании сообщения:", error);
