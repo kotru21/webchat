@@ -25,7 +25,14 @@ export const getMessages = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .populate("sender", "username email avatar")
+      .populate("readBy", "username email")
       .lean();
+
+    // Manually populate receiver if it exists
+    await Message.populate(messages, {
+      path: "receiver",
+      select: "username email avatar",
+    });
 
     res.json(messages.reverse());
   } catch (error) {
@@ -49,7 +56,7 @@ export const pinMessage = async function (messageId, isPinned, io) {
     return message;
   } catch (error) {
     console.error("Ошибка в pinMessage:", error);
-    throw error; // Пробрасываем ошибку для обработки в маршруте
+    throw error;
   }
 };
 
@@ -84,7 +91,6 @@ export const markAsRead = async (req, res) => {
       .populate("receiver", "username email avatar")
       .populate("readBy", "username email");
 
-    // Оповещаем всех о прочтении через Socket.IO
     const io = req.app.get("io");
     if (message.isPrivate) {
       io.to(message.sender.toString())

@@ -20,37 +20,7 @@ const useChatMessages = (selectedUser) => {
     const fetchMessages = async () => {
       try {
         const data = await getMessages(selectedUser?.id);
-
-        // Mark messages as read locally
-        const updatedMessages = data.map((message) => {
-          if (
-            message.sender._id !== user.id &&
-            !message.readBy?.some((reader) => reader._id === user.id)
-          ) {
-            return {
-              ...message,
-              readBy: [...(message.readBy || []), { _id: user.id }],
-            };
-          }
-          return message;
-        });
-        setMessages(updatedMessages);
-
-        // Send read confirmations to server
-        const unreadMessages = data.filter(
-          (message) =>
-            message.sender._id !== user.id &&
-            !message.readBy?.some((reader) => reader._id === user.id)
-        );
-
-        for (const message of unreadMessages) {
-          try {
-            await markMessageAsRead(message._id);
-          } catch (error) {
-            console.error("Ошибка при отметке сообщения:", error);
-          }
-        }
-
+        setMessages(data); // Set original data
         setError("");
       } catch (error) {
         console.error("Ошибка при загрузке сообщений:", error);
@@ -166,24 +136,20 @@ const useChatMessages = (selectedUser) => {
 
   // Mark message as read handler
   const markAsReadHandler = async (message) => {
-    if (!message.readBy?.some((reader) => reader._id === user.id)) {
+    // Check if message exists, is not sent by the current user, and is not already read by the current user
+    if (
+      message &&
+      message.sender._id !== user.id &&
+      !message.readBy?.some((reader) => reader._id === user.id)
+    ) {
       try {
         await markMessageAsRead(message._id);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === message._id
-              ? { ...msg, readBy: [...(msg.readBy || []), { _id: user.id }] }
-              : msg
-          )
-        );
       } catch (error) {
-        console.error("Ошибка при отметке сообщения:", error);
-        // Здесь не показываем пользователю ошибку, так как это фоновая операция
+        console.error("Ошибка при отметке сообщения как прочитанного:", error);
       }
     }
   };
 
-  // Edit message handler
   const editMessageHandler = async (messageId, formData) => {
     try {
       // Проверка на содержимое сообщения перед отправкой
