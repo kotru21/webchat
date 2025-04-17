@@ -2,6 +2,7 @@ import { useState, useRef, memo, useEffect } from "react";
 import ReadStatus from "../ReadStatus";
 import UserProfile from "../UserProfile";
 import MessageEditor from "../MessageEditor";
+import AudioMessage from "./AudioMessage";
 
 const MessageItem = memo(
   ({
@@ -145,6 +146,16 @@ const MessageItem = memo(
                 onMediaClick(message.mediaUrl, "video");
               }}
             />
+          )}
+        {!message.isDeleted &&
+          message.mediaUrl &&
+          message.mediaType === "audio" && (
+            <div className=" w-full">
+              <AudioMessage
+                audioUrl={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
+                duration={message.audioDuration}
+              />
+            </div>
           )}
       </div>
     );

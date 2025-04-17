@@ -18,7 +18,7 @@ const messageSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      default: "", // для картинок
+      default: "", // для медиа без текста
     },
     mediaUrl: {
       type: String,
@@ -26,8 +26,12 @@ const messageSchema = new mongoose.Schema(
     },
     mediaType: {
       type: String,
-      enum: ["image", "video", null],
+      enum: ["image", "video", "audio", null],
       default: null,
+    },
+    audioDuration: {
+      type: Number,
+      default: null, // длительность голосового сообщения в секундах
     },
     roomId: {
       type: String,

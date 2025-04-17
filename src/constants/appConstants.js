@@ -7,6 +7,8 @@ export const FILE_LIMITS = {
   AVATAR_MAX_SIZE: 5 * 1024 * 1024, // 5MB
   BANNER_MAX_SIZE: 10 * 1024 * 1024, // 10MB
   MESSAGE_MEDIA_MAX_SIZE: 50 * 1024 * 1024, // 50MB
+  VOICE_MESSAGE_MAX_DURATION: 180, // 180 секунд (3 минуты)
+  VOICE_MESSAGE_MAX_SIZE: 10 * 1024 * 1024, // 10MB
 };
 
 // Задержки анимаций

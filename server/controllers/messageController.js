@@ -62,6 +62,20 @@ export const pinMessage = async function (messageId, isPinned, io) {
 
 export const saveMessage = async (messageData) => {
   try {
+    if (
+      messageData.mediaType === "audio" &&
+      messageData.audioDuration !== undefined
+    ) {
+      const audioDuration = parseInt(messageData.audioDuration);
+      if (
+        isNaN(audioDuration) ||
+        !isFinite(audioDuration) ||
+        audioDuration <= 0
+      ) {
+        messageData.audioDuration = 1;
+      }
+    }
+
     const message = new Message(messageData);
     await message.save();
 
@@ -144,9 +158,33 @@ export const updateMessage = async (req, res) => {
         await fs.unlink(oldFilePath).catch(console.error);
       }
       updateData.mediaUrl = `/uploads/media/${req.file.filename}`;
-      updateData.mediaType = req.file.mimetype.startsWith("image/")
-        ? "image"
-        : "video";
+
+      // Определяем тип медиа
+      if (req.file.mimetype.startsWith("image/")) {
+        updateData.mediaType = "image";
+      } else if (req.file.mimetype.startsWith("video/")) {
+        updateData.mediaType = "video";
+      } else if (req.file.mimetype.startsWith("audio/")) {
+        updateData.mediaType = "audio";
+
+        // Безопасная обработка длительности аудио
+        if (req.body.audioDuration) {
+          const audioDuration = parseInt(req.body.audioDuration);
+          // Проверка на корректное числовое значение
+          if (
+            !isNaN(audioDuration) &&
+            isFinite(audioDuration) &&
+            audioDuration > 0
+          ) {
+            updateData.audioDuration = audioDuration;
+          } else {
+            // Если значение некорректное, используем стандартное
+            updateData.audioDuration = 1; // 1 секунда по умолчанию
+          }
+        } else {
+          updateData.audioDuration = 1; // 1 секунда по умолчанию если не указана длительность
+        }
+      }
     } else if (req.body.removeMedia === "true") {
       // Удаляем медиафайл, если получен флаг removeMedia
       if (message.mediaUrl) {
@@ -155,6 +193,7 @@ export const updateMessage = async (req, res) => {
       }
       updateData.mediaUrl = null;
       updateData.mediaType = null;
+      updateData.audioDuration = null;
     }
 
     const updatedMessage = await Message.findByIdAndUpdate(
@@ -207,6 +246,7 @@ export const deleteMessage = async (req, res) => {
         content: "Сообщение удалено",
         mediaUrl: null,
         mediaType: null,
+        audioDuration: null,
       },
       { new: true }
     )

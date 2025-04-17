@@ -2,12 +2,15 @@ import { useState, useRef, memo, useEffect } from "react";
 import { IoMdAttach, IoMdSend } from "react-icons/io";
 import { BiLoaderAlt } from "react-icons/bi";
 import { FiAlertCircle } from "react-icons/fi";
+import { BsMicFill } from "react-icons/bs";
 import { FILE_LIMITS, INPUT_LIMITS } from "../../constants/appConstants";
+import VoiceRecorder from "./VoiceRecorder";
 
 const ChatInput = memo(({ onSendMessage, loading }) => {
   const [newMessage, setNewMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
 
   // Автоматически скрывать сообщение об ошибке после 5 секунд
@@ -90,16 +93,45 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
     }
   };
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300 animate-slide-up">
-      {error && (
-        <div className="mb-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm p-2 rounded-lg flex items-center animate-fade-in">
-          <FiAlertCircle className="mr-2 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+  // Обработка голосовых сообщений
+  const handleVoiceRecorded = async (audioFile, duration) => {
+    try {
+      const formData = new FormData();
+      formData.append("media", audioFile);
+      formData.append("mediaType", "audio");
+      formData.append("audioDuration", duration);
+
+      const result = await onSendMessage(formData);
+      if (result) {
+        setIsRecording(false);
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error sending voice message:", error);
+      if (error.response?.status === 429) {
+        setError(
+          "Вы отправляете сообщения слишком часто. Пожалуйста, подождите немного."
+        );
+      } else {
+        setError(
+          "Не удалось отправить голосовое сообщение. Пожалуйста, попробуйте позже."
+        );
+      }
+    }
+  };
+
+  // Отображение компонента записи или поля ввода
+  const renderInputArea = () => {
+    if (isRecording) {
+      return (
+        <VoiceRecorder
+          onVoiceRecorded={handleVoiceRecorded}
+          onCancel={() => setIsRecording(false)}
+        />
+      );
+    }
+
+    return (
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -120,8 +152,16 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105">
+          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105"
+          aria-label="Прикрепить файл">
           <IoMdAttach size={20} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsRecording(true)}
+          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105"
+          aria-label="Записать голосовое сообщение">
+          <BsMicFill size={20} />
         </button>
         <button
           type="submit"
@@ -136,7 +176,23 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
           )}
         </button>
       </div>
-      {selectedFile && (
+    );
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300 animate-slide-up">
+      {error && (
+        <div className="mb-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm p-2 rounded-lg flex items-center animate-fade-in">
+          <FiAlertCircle className="mr-2 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {renderInputArea()}
+
+      {selectedFile && !isRecording && (
         <div className="mt-2 text-xs text-gray-500 truncate px-2 animate-fadeIn">
           Файл: {selectedFile.name}
         </div>

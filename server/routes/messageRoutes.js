@@ -40,9 +40,40 @@ router.post(
 
       if (req.file) {
         messageData.mediaUrl = `/uploads/media/${req.file.filename}`;
-        messageData.mediaType = req.file.mimetype.startsWith("image/")
-          ? "image"
-          : "video";
+
+        // Определение типа медиа
+        if (req.body.mediaType === "audio") {
+          messageData.mediaType = "audio";
+          // Безопасная обработка длительности аудио
+          if (req.body.audioDuration) {
+            const audioDuration = parseInt(req.body.audioDuration);
+            // Проверка на корректное числовое значение
+            if (
+              !isNaN(audioDuration) &&
+              isFinite(audioDuration) &&
+              audioDuration > 0
+            ) {
+              messageData.audioDuration = audioDuration;
+            } else {
+              // Если значение некорректное, используем стандартное
+              messageData.audioDuration = 1; // 1 секунда по умолчанию
+            }
+          } else {
+            messageData.audioDuration = 1; // 1 секунда по умолчанию если не указана длительность
+          }
+        } else {
+          // Стандартное определение типа медиа по mimetype
+          messageData.mediaType = req.file.mimetype.startsWith("image/")
+            ? "image"
+            : req.file.mimetype.startsWith("audio/")
+            ? "audio"
+            : "video";
+
+          // Если тип медиа аудио, но не указана длительность
+          if (messageData.mediaType === "audio" && !messageData.audioDuration) {
+            messageData.audioDuration = 1; // 1 секунда по умолчанию
+          }
+        }
       }
 
       const savedMessage = await saveMessage(messageData);
