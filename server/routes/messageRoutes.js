@@ -85,12 +85,10 @@ router.post(
           .to(messageData.receiver.toString())
           .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
         // legacy
-        io.to(messageData.sender.toString())
-          .to(messageData.receiver.toString())
-          .emit("receive_private_message", savedMessage);
+        // legacy removed
       } else {
         io.to("general").emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
-        io.to("general").emit("receive_message", savedMessage); // legacy
+        // legacy removed
       }
 
       res.status(201).json(savedMessage);

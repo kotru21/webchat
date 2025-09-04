@@ -4,7 +4,7 @@ import { BiLoaderAlt } from "react-icons/bi";
 import { FiAlertCircle } from "react-icons/fi";
 import { BsMicFill } from "react-icons/bs";
 import { FILE_LIMITS, INPUT_LIMITS } from "../../constants/appConstants";
-import VoiceRecorder from "./VoiceRecorder";
+import VoiceRecorder from "../../features/messaging/ui/components/VoiceRecorder";
 
 const ChatInput = memo(({ onSendMessage, loading }) => {
   const [newMessage, setNewMessage] = useState("");

@@ -28,25 +28,19 @@ const MediaViewer = ({ media, onClose }) => {
     setIsLoaded(false);
     setHasError(false);
 
-    // Таймаут на случай, если событие onLoad не сработает
     loadTimeoutRef.current = setTimeout(() => {
-      if (!isLoaded && !hasError) {
-        console.log("Media load timeout triggered");
-        setIsLoaded(true);
-      }
+      // двойная проверка чтобы не перезаписывать успешную загрузку
+      setIsLoaded((prev) => prev || true);
     }, 5000);
 
-    // Проверяем, загружено ли текущее изображение из кэша
     if (media.type === "image" && imageRef.current) {
       checkIfImageLoaded(imageRef.current);
     }
 
     return () => {
-      if (loadTimeoutRef.current) {
-        clearTimeout(loadTimeoutRef.current);
-      }
+      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     };
-  }, [media.url]);
+  }, [media.url, media.type]);
 
   const handleLoad = () => {
     if (loadTimeoutRef.current) {

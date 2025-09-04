@@ -1,10 +1,9 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import UserProfile from "../UserProfile";
 
 const PreviewProfileTab = ({ profile }) => {
   const containerRef = useRef(null);
 
-  // Функция-заглушка для обработки начала чата в предпросмотре
   const handleStartChat = (user) => {
     console.log("Предпросмотр: попытка начать чат с", user);
     // В режиме предпросмотра просто выводим сообщение в консоль

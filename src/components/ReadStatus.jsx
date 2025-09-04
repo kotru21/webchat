@@ -43,13 +43,17 @@ const ReadStatus = ({ message, currentUser }) => {
             <div className="text-gray-700 dark:text-gray-300">
               Прочитали:
               <div className="mt-1">
-                {readers.map((reader) => (
-                  <div key={reader._id || `reader-${Math.random()}`}>
-                    {reader.username ||
-                      reader.email ||
-                      "Неизвестный пользователь"}
-                  </div>
-                ))}
+                {readers.map((reader, idx) => {
+                  const key =
+                    reader._id || reader.email || reader.username || idx;
+                  return (
+                    <div key={key}>
+                      {reader.username ||
+                        reader.email ||
+                        "Неизвестный пользователь"}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             {/* Треугольник снизу */}

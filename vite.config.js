@@ -5,7 +5,13 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    include: ["zustand"],
+  },
   server: {
     host: true,
+    hmr: {
+      overlay: true,
+    },
   },
 });

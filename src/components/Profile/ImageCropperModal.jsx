@@ -1,4 +1,4 @@
-import React from "react";
+// React import не нужен с новым JSX runtime
 import Cropper from "react-easy-crop";
 
 const ImageCropperModal = ({

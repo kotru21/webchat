@@ -1,26 +1,42 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
-import {
-  getMessages,
-  sendMessage,
-  markMessageAsRead,
-  updateMessage,
-  deleteMessage,
-} from "../services/api";
-import { FILE_LIMITS, INPUT_LIMITS } from "../constants/appConstants";
+import { getMessages } from "../services/api";
+import { useMessagesStore } from "../features/messaging/store/messagesStore";
+import { sendMessageUsecase } from "../features/messaging/usecases/sendMessage";
+import { notify } from "../features/notifications/notify";
+import { editMessageUsecase } from "../features/messaging/usecases/editMessage";
+import { deleteMessageUsecase } from "../features/messaging/usecases/deleteMessage";
+import { markReadUsecase } from "../features/messaging/usecases/markRead";
+import { pinMessageUsecase } from "../features/messaging/usecases/pinMessage";
 
 const useChatMessages = (selectedUser) => {
-  const [messages, setMessages] = useState([]);
+  // локальный стейт сообщений больше не используем — переходим на прямое чтение из zustand
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { user } = useAuth();
 
-  // fetch при смене пользователя
+  const storeSetChatMessages = useMessagesStore((s) => s.setChatMessages);
+  const storeUpdateMessage = useMessagesStore((s) => s.updateMessage);
+  const storeRemoveMessage = useMessagesStore((s) => s.removeMessage);
+  const storeMarkRead = useMessagesStore((s) => s.markRead);
+  const addPending = useMessagesStore((s) => s.addPendingMessage);
+  const finalizePending = useMessagesStore((s) => s.finalizePendingMessage);
+  const failPending = useMessagesStore((s) => s.failPendingMessage);
+
+  // реактивное чтение сообщений текущего чата напрямую из zustand
+  const chatKey = selectedUser?.id ? `private:${selectedUser.id}` : "general";
+  // используем useMemo для стабильной пустой ссылки
+  const EMPTY = useMemo(() => [], []);
+  const reactiveMessages = useMessagesStore(
+    (state) => state.chats[chatKey]?.messages ?? EMPTY
+  );
+
+  // fetch при смене пользователя (если не загружено)
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         const data = await getMessages(selectedUser?.id);
-        setMessages(data); // Set original data
+        storeSetChatMessages(selectedUser?.id, data); // reactiveMessages обновится сам
         setError("");
       } catch (error) {
         console.error("Ошибка при загрузке сообщений:", error);
@@ -53,42 +69,74 @@ const useChatMessages = (selectedUser) => {
       }
     };
     fetchMessages();
-  }, [selectedUser, user.id]);
+  }, [selectedUser, user.id, storeSetChatMessages]);
 
   // send
   const sendMessageHandler = async (formData) => {
     setLoading(true);
+    const text = formData.get("text");
+    const file = formData.get("media");
+    const receiverId = selectedUser?.id;
+    const tempId = `temp-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    // optimistic temp message (минимальный набор полей)
+    addPending(selectedUser?.id, {
+      _id: tempId,
+      content: text || (file ? "Медиа" : ""),
+      sender: {
+        _id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+      },
+      receiver: receiverId,
+      createdAt: new Date().toISOString(),
+      isPinned: false,
+      isDeleted: false,
+      isEdited: false,
+      mediaUrl: null,
+      mediaType: null,
+      optimistic: true,
+    });
     try {
-      if (selectedUser) formData.append("receiverId", selectedUser.id);
-
-      // валидация содержимого
-      const messageText = formData.get("text");
-      const messageMedia = formData.get("media");
-
-      if (!messageText && !messageMedia) {
-        setError("Сообщение не может быть пустым");
+      const res = await sendMessageUsecase({ text, file, receiverId });
+      if (!res.ok) {
+        failPending(tempId);
+        setError(res.error);
+        notify("error", res.error, {
+          actions: [
+            {
+              label: "Повторить",
+              onClick: () => {
+                const retryForm = new FormData();
+                if (text) retryForm.append("text", text);
+                if (file) retryForm.append("media", file);
+                sendMessageHandler(retryForm);
+              },
+            },
+          ],
+        });
         return false;
       }
-
-      if (messageText && messageText.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
-        setError(
-          `Сообщение не может быть длиннее ${INPUT_LIMITS.MESSAGE_MAX_LENGTH} символов`
-        );
-        return false;
-      }
-
-      if (
-        messageMedia &&
-        messageMedia.size > FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE
-      ) {
-        const sizeInMB = FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE / (1024 * 1024);
-        setError(`Файл слишком большой. Максимальный размер: ${sizeInMB} МБ`);
-        return false;
-      }
-
-      await sendMessage(formData);
+      // финализируем, заменяя temp на реальное сообщение
+      finalizePending(tempId, res.value);
       return true;
     } catch (error) {
+      failPending(tempId);
+      notify("error", "Не удалось отправить сообщение", {
+        actions: [
+          {
+            label: "Повторить",
+            onClick: () => {
+              const retryForm = new FormData();
+              if (text) retryForm.append("text", text);
+              if (file) retryForm.append("media", file);
+              sendMessageHandler(retryForm);
+            },
+          },
+        ],
+      });
       console.error("Ошибка при отправке сообщения:", error);
 
       if (error.response) {
@@ -143,7 +191,14 @@ const useChatMessages = (selectedUser) => {
       !message.readBy?.some((reader) => reader._id === user.id)
     ) {
       try {
-        await markMessageAsRead(message._id);
+        const res = await markReadUsecase(message);
+        if (res.ok) {
+          // optimistic: добавляем current user в readBy
+          storeMarkRead(message._id, [
+            ...(message.readBy || []),
+            { _id: user.id },
+          ]);
+        }
       } catch (error) {
         console.error("Ошибка при отметке сообщения как прочитанного:", error);
       }
@@ -152,32 +207,19 @@ const useChatMessages = (selectedUser) => {
 
   const editMessageHandler = async (messageId, formData) => {
     try {
-      // валидация перед редактированием
-      const messageText = formData.get("content");
-      const messageMedia = formData.get("media");
+      const content = formData.get("content");
+      const file = formData.get("media");
       const removeMedia = formData.get("removeMedia") === "true";
-
-      if (!messageText && !messageMedia && removeMedia) {
-        setError("Сообщение не может быть пустым. Добавьте текст или медиа.");
+      const res = await editMessageUsecase(messageId, {
+        content,
+        file,
+        removeMedia,
+      });
+      if (!res.ok) {
+        setError(res.error);
         return false;
       }
-
-      if (messageText && messageText.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
-        setError(
-          `Сообщение не может быть длиннее ${INPUT_LIMITS.MESSAGE_MAX_LENGTH} символов`
-        );
-        return false;
-      }
-
-      const updatedMessage = await updateMessage(messageId, formData);
-
-      // локальное обновление
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg._id === messageId ? updatedMessage : msg
-        )
-      );
-
+      storeUpdateMessage(messageId, res.value);
       return true;
     } catch (error) {
       console.error("Ошибка при редактировании сообщения:", error);
@@ -220,9 +262,11 @@ const useChatMessages = (selectedUser) => {
   // delete
   const deleteMessageHandler = async (messageId) => {
     try {
-      await deleteMessage(messageId);
-      // удаление через socket
-      return true;
+      const res = await deleteMessageUsecase(messageId);
+      if (res.ok) {
+        storeRemoveMessage(messageId);
+      }
+      return res.ok;
     } catch (error) {
       console.error("Ошибка при удалении сообщения:", error);
 
@@ -253,16 +297,29 @@ const useChatMessages = (selectedUser) => {
     }
   };
 
+  const pinMessageHandler = async (messageId, isPinned) => {
+    try {
+      const res = await pinMessageUsecase(messageId, isPinned);
+      if (res.ok) {
+        useMessagesStore.getState().pinMessage(messageId, isPinned);
+      }
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
   return {
-    messages,
+    messages: reactiveMessages,
     loading,
     error,
     setError,
-    setMessages,
+    setMessages: () => {}, // внешнее обновление более не поддерживается напрямую
     sendMessageHandler,
     markAsReadHandler,
     editMessageHandler,
     deleteMessageHandler,
+    pinMessageHandler,
   };
 };
 

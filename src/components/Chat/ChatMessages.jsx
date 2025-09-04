@@ -19,8 +19,7 @@ const ChatMessages = memo(
     const [showAllPinned, setShowAllPinned] = useState(false);
     const containerRef = useRef(null);
     const messageRefs = useRef({});
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const prevChatId = useRef(null);
+    // переходы отключены
     const [activeMessageMenu, setActiveMessageMenu] = useState(null);
 
     const { scrollToMessage, scrollToBottom, newMessagesCount } =
@@ -28,7 +27,7 @@ const ChatMessages = memo(
         containerRef,
         messageRefs,
         currentUserId: currentUser.id,
-        isTransitioning,
+        isTransitioning: false,
       });
 
     useMessageObserver({
@@ -36,23 +35,11 @@ const ChatMessages = memo(
       onMarkAsRead,
     });
 
-    // ID текущего чата
-    const currentChatId =
-      messages[0]?.sender._id === currentUser.id
-        ? messages[0]?.receiver
-        : messages[0]?.sender._id;
+    // chatId теперь приходит извне (упрощение компонента)
+    // currentChatId снят — не используется
 
     // Эффект для анимации при смене чата
-    useEffect(() => {
-      if (prevChatId.current !== currentChatId) {
-        setIsTransitioning(true);
-        const timer = setTimeout(() => {
-          setIsTransitioning(false);
-        }, 300);
-        prevChatId.current = currentChatId;
-        return () => clearTimeout(timer);
-      }
-    }, [currentChatId]);
+    // анимация переключения отключена
 
     // обработчик меню сообщения для мобильной версии
     const handleContainerClick = (e) => {
@@ -66,7 +53,22 @@ const ChatMessages = memo(
       [messages]
     );
 
-    const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+    // Порядок: ожидаем что массив messages уже в порядке от старых к новым.
+    // Раньше был flex-col-reverse + reverse() -> дублирование.
+    // Убираем это чтобы корректно работала логика scroll (берёт последний DOM элемент как последний message).
+
+    // Автоскролл при первой загрузке / добавлении сообщений
+    const initialScrolledRef = useRef(false);
+    useEffect(() => {
+      if (!initialScrolledRef.current && messages.length > 0) {
+        // мгновенно в конец
+        scrollToBottom(false);
+        initialScrolledRef.current = true;
+      }
+    }, [messages.length, scrollToBottom]);
+
+    useEffect(() => {
+  });
 
     return (
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -86,47 +88,47 @@ const ChatMessages = memo(
 
         <div
           ref={containerRef}
-          className={`flex-1 overflow-y-auto py-4 messages-container flex flex-col-reverse chat-content-transition 
-          px-4 
-          md:px-12 
-          lg:px-20 
-          xl:px-24 xl:pr-40
-          ${isTransitioning ? "chat-content-hidden" : "chat-content-visible"}`}
+          className={`flex-1 overflow-y-auto py-4 messages-container px-4 md:px-12 lg:px-20 xl:px-24 xl:pr-40`}
           style={{
             transition: "all 0.3s ease-in-out",
           }}
           onClick={handleContainerClick}>
-          {reversedMessages.map((message) => (
-            <div
-              key={message._id}
-              ref={(el) => (messageRefs.current[message._id] = el)}
-              data-message-id={message._id}
-              className="message-item mb-8"
-              style={{
-                opacity: isTransitioning ? 0 : 1,
-                transform: `translateY(${isTransitioning ? "10px" : "0"})`,
-                transition: "opacity 0.3s ease, transform 0.3s ease",
-              }}>
-              <MessageItem
-                message={message}
-                currentUser={currentUser}
-                onDelete={() => onDeleteMessage(message._id)}
-                onMediaClick={onMediaClick}
-                onPin={onPinMessage}
-                isMenuOpen={activeMessageMenu === message._id}
-                onToggleMenu={() => {
-                  setActiveMessageMenu(
-                    activeMessageMenu === message._id ? null : message._id
-                  );
-                }}
-                onSaveEdit={onEditMessage}
-                onStartChat={onStartChat}
-              />
+          {messages.length === 0 && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-10 select-none">
+              Сообщений пока нет
             </div>
-          ))}
+          )}
+          {messages.map((message) => {
+            const mid = message._id || message.id || message.tempId;
+            return (
+              <div
+                key={mid}
+                ref={(el) => (messageRefs.current[mid] = el)}
+                data-message-id={mid}
+                className="message-item mb-8">
+                <MessageItem
+                  message={message}
+                  currentUser={currentUser}
+                  onDelete={() => onDeleteMessage(message._id || message.id)}
+                  onMediaClick={onMediaClick}
+                  onPin={onPinMessage}
+                  isMenuOpen={activeMessageMenu === (message._id || message.id)}
+                  onToggleMenu={() => {
+                    setActiveMessageMenu(
+                      activeMessageMenu === (message._id || message.id)
+                        ? null
+                        : message._id || message.id
+                    );
+                  }}
+                  onSaveEdit={onEditMessage}
+                  onStartChat={onStartChat}
+                />
+              </div>
+            );
+          })}
         </div>
 
-        {!isTransitioning && newMessagesCount > 0 && (
+        {newMessagesCount > 0 && (
           <NewMessagesButton
             count={newMessagesCount}
             onClick={() => scrollToBottom()}

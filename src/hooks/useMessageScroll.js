@@ -95,30 +95,37 @@ const useMessageScroll = ({
     if (!container) return;
 
     const handleScroll = () => {
-      // Добавляем проверку, чтобы не обновлять состояние во время скролла
-      if (!isTransitioning) {
-        if (isAtBottom()) {
-          setNewMessagesCount(0);
-          isAtBottomRef.current = true;
+      if (isTransitioning) return;
+      // инлайн проверка низа без зависимости на функцию isAtBottom
+      const atBottom = (() => {
+        const threshold = 100;
+        return (
+          container.scrollHeight -
+            container.scrollTop -
+            container.clientHeight <=
+          threshold
+        );
+      })();
 
-          // Обновляем последнее просмотренное сообщение при скролле вниз
-          const messages = Array.from(
-            container.querySelectorAll(".message-item")
-          );
-          if (messages.length > 0) {
-            const lastMessageId =
-              messages[messages.length - 1].getAttribute("data-message-id");
-            lastViewedMessageRef.current = lastMessageId;
-          }
-        } else {
-          isAtBottomRef.current = false;
+      if (atBottom) {
+        setNewMessagesCount(0);
+        isAtBottomRef.current = true;
+        const messages = Array.from(
+          container.querySelectorAll(".message-item")
+        );
+        if (messages.length > 0) {
+          const lastMessageId =
+            messages[messages.length - 1].getAttribute("data-message-id");
+          lastViewedMessageRef.current = lastMessageId;
         }
+      } else {
+        isAtBottomRef.current = false;
       }
     };
 
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [isTransitioning]);
+  }, [isTransitioning, containerRef]);
 
   // при первой загрузке устанавливаем последнее просмотренное сообщение
   useEffect(() => {
@@ -132,7 +139,7 @@ const useMessageScroll = ({
         initialLoadRef.current = false;
       }
     }
-  }, []);
+  }, [containerRef]);
 
   return {
     scrollToMessage,

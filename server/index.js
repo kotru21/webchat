@@ -133,7 +133,6 @@ io.on("connection", (socket) => {
       socket.join(userData.id.toString());
       const list = Array.from(onlineUsers.values());
       io.emit(SOCKET_EVENTS.USERS_ONLINE, list);
-      io.emit("users_online", list); // legacy
     } else {
       console.error("Invalid userData:", userData);
     }
@@ -170,12 +169,10 @@ io.on("connection", (socket) => {
         io.to(saved.sender._id.toString())
           .to(saved.receiver._id.toString())
           .emit(SOCKET_EVENTS.MESSAGE_NEW, saved);
-        io.to(saved.sender._id.toString())
-          .to(saved.receiver._id.toString())
-          .emit("receive_private_message", saved); // legacy
+        // legacy removed
       } else {
         io.to("general").emit(SOCKET_EVENTS.MESSAGE_NEW, saved);
-        io.to("general").emit("receive_message", saved); // legacy
+        // legacy removed
       }
       cb?.({ ok: true, id: saved._id });
     } catch (e) {
@@ -205,20 +202,18 @@ io.on("connection", (socket) => {
           lastActivity: new Date(),
         };
         io.emit(SOCKET_EVENTS.USER_STATUS_CHANGED, statusPayload);
-        io.emit("userStatusChanged", statusPayload); // legacy
+        // legacy removed
       }
 
       // удалить из онлайн
       onlineUsers.delete(socket.id);
       const list = Array.from(onlineUsers.values());
       io.emit(SOCKET_EVENTS.USERS_ONLINE, list);
-      io.emit("users_online", list); // legacy
     } catch (error) {
       console.error("Error updating status on disconnect:", error);
       onlineUsers.delete(socket.id);
       const list = Array.from(onlineUsers.values());
       io.emit(SOCKET_EVENTS.USERS_ONLINE, list);
-      io.emit("users_online", list); // legacy
     }
   });
 });

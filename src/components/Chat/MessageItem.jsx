@@ -1,8 +1,10 @@
-import { useState, useRef, memo, useEffect } from "react";
+import { useState, useRef, memo } from "react";
 import ReadStatus from "../ReadStatus";
-import UserProfile from "../UserProfile";
+import UserProfileWidget from "../../features/profile/widgets/UserProfileWidget";
 import MessageEditor from "../MessageEditor";
-import AudioMessage from "./AudioMessage";
+import MessageMedia from "../../features/messaging/ui/components/MessageMedia";
+import { formatTime } from "../../utils/date";
+import useMessageMenu from "../../features/messaging/ui/hooks/useMessageMenu";
 
 const MessageItem = memo(
   ({
@@ -17,12 +19,18 @@ const MessageItem = memo(
     onStartChat,
   }) => {
     const isOwnMessage = message.sender._id === currentUser.id;
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const messageRef = useRef(null);
-    const profileTriggerRef = useRef(null);
-    const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
     const messageContentRef = useRef(null);
+    const {
+      messageRef,
+      profileTriggerRef,
+      isProfileOpen,
+      setIsProfileOpen,
+      menuPosition,
+      handleProfileClick,
+      handleContextMenu,
+      handleClick,
+    } = useMessageMenu(isOwnMessage, onToggleMenu);
 
     const handlePin = async () => {
       try {
@@ -32,50 +40,9 @@ const MessageItem = memo(
       }
     };
 
-    const handleProfileClick = (event) => {
-      event.stopPropagation();
-      setIsProfileOpen(!isProfileOpen);
-    };
+    // контекстное меню вынесено в хук
 
-    // Заменяем обычный клик на contextmenu (правый клик)
-    const handleContextMenu = (e) => {
-      e.preventDefault(); // Предотвращаем стандартное контекстное меню браузера
-
-      // Определяем позицию меню относительно точки клика
-      const rect = messageRef.current.getBoundingClientRect();
-
-      // Вычисляем позицию относительно контейнера сообщения
-      // Для собственных сообщений используем другой расчет
-      if (isOwnMessage) {
-        // Получаем ширину контейнера сообщения
-        const containerWidth = rect.width;
-        // Вычисляем расстояние от правого края до точки клика
-        const rightOffset = containerWidth - (e.clientX - rect.left);
-
-        setMenuPosition({
-          x: rightOffset,
-          y: e.clientY - rect.top,
-        });
-      } else {
-        setMenuPosition({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        });
-      }
-
-      // Отображаем меню
-      onToggleMenu();
-    };
-
-    // Закрываем меню при клике на сообщение
-    const handleClick = (e) => {
-      if (isMenuOpen) {
-        onToggleMenu(); // Закрываем меню
-      }
-    };
-
-    const handleEdit = (e) => {
-      e.stopPropagation();
+    const handleEdit = () => {
       setIsEditing(true);
       onToggleMenu(); // закрываем меню
     };
@@ -89,15 +56,7 @@ const MessageItem = memo(
       setIsEditing(false);
     };
 
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-      const checkMobile = () => {
-        setIsMobile(window.innerWidth <= 768);
-      };
-      checkMobile();
-      window.addEventListener("resize", checkMobile);
-      return () => window.removeEventListener("resize", checkMobile);
-    }, []);
+    // мобильная адаптация может быть вынесена во внешний хук при необходимости
 
     const renderMessageContent = () => (
       <div ref={messageContentRef}>
@@ -121,42 +80,7 @@ const MessageItem = memo(
             )}
           </div>
         )}
-        {!message.isDeleted &&
-          message.mediaUrl &&
-          message.mediaType === "image" && (
-            <img
-              src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-              alt="Изображение"
-              className="lg:max-w-[400px] lg:max-h-[400px] max-w-[200px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMediaClick(message.mediaUrl, "image");
-              }}
-            />
-          )}
-        {!message.isDeleted &&
-          message.mediaUrl &&
-          message.mediaType === "video" && (
-            <video
-              src={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-              className="max-w-[400px] max-h-[400px] rounded-lg mt-2 cursor-pointer hover:opacity-90 transition-opacity"
-              controls
-              onClick={(e) => {
-                e.stopPropagation();
-                onMediaClick(message.mediaUrl, "video");
-              }}
-            />
-          )}
-        {!message.isDeleted &&
-          message.mediaUrl &&
-          message.mediaType === "audio" && (
-            <div className=" w-full">
-              <AudioMessage
-                audioUrl={`${import.meta.env.VITE_API_URL}${message.mediaUrl}`}
-                duration={message.audioDuration}
-              />
-            </div>
-          )}
+        <MessageMedia message={message} onMediaClick={onMediaClick} />
       </div>
     );
 
@@ -177,6 +101,9 @@ const MessageItem = memo(
       );
     }
 
+    const isOptimistic =
+      message.optimistic || String(message._id).startsWith("temp-");
+    const isFailed = message.failed;
     return (
       <div
         ref={messageRef}
@@ -249,7 +176,7 @@ const MessageItem = memo(
                 />
                 {isProfileOpen && (
                   <div className="absolute top-0">
-                    <UserProfile
+                    <UserProfileWidget
                       userId={message.sender._id}
                       onClose={() => setIsProfileOpen(false)}
                       anchorEl={profileTriggerRef.current}
@@ -260,18 +187,30 @@ const MessageItem = memo(
                           : "left-full translate-x-[8px]"
                       }`}
                       currentUserId={currentUser.id}
-                      onStartChat={onStartChat} // Используем проп, переданный из родителя
+                      onStartChat={onStartChat}
                     />
                   </div>
                 )}
               </div>
             </div>
             <div
-              className={`rounded-lg px-4 py-2 hover-lift ${
+              className={`rounded-lg px-4 py-2 hover-lift relative ${
                 isOwnMessage
                   ? "bg-blue-500 text-white"
                   : "bg-gray-200 dark:bg-gray-700"
+              } ${isOptimistic ? "opacity-60" : ""} ${
+                isFailed ? "ring-2 ring-red-400" : ""
               }`}>
+              {isOptimistic && !isFailed && (
+                <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] px-1 py-[2px] rounded shadow animate-pulse select-none">
+                  ...
+                </span>
+              )}
+              {isFailed && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1 py-[2px] rounded shadow select-none">
+                  fail
+                </span>
+              )}
               <div
                 className={`text-sm font-medium mb-1 ${
                   isOwnMessage ? "text-right" : "text-left"
@@ -286,7 +225,7 @@ const MessageItem = memo(
                   className={`text-xs opacity-75 ${
                     isOwnMessage ? "text-right mt-1.5" : "text-left"
                   }`}>
-                  {new Date(message.createdAt).toLocaleTimeString()}
+                  {formatTime(message.createdAt)}
                 </span>
                 <ReadStatus message={message} currentUser={currentUser} />
               </div>

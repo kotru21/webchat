@@ -1,4 +1,4 @@
-import React from "react";
+// React import не требуется
 
 const ProfileEditorTabs = ({ activeTab, setActiveTab }) => {
   return (
