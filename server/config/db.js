@@ -7,13 +7,13 @@ import path from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Загружаем .env из корневой папки сервера
+// .env загрузка
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI;
-    console.log("Attempting to connect to MongoDB at:", mongoUri); // Логируем URI
+    console.log("MongoDB connect uri:", mongoUri);
 
     if (!mongoUri) {
       throw new Error("MONGODB_URI is not defined in environment variables");
@@ -22,7 +22,7 @@ const connectDB = async () => {
     const conn = await mongoose.connect(mongoUri);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 
-    // Добавляем обработчики событий соединения
+    // события соединения
     mongoose.connection.on("error", (err) => {
       console.error("Ошибка подключения к MongoDB:", err);
     });

@@ -17,7 +17,6 @@ import helmet from "helmet";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
 import User from "./Models/userModel.js";
-import Status from "./Models/Status.js";
 import { createMessage } from "./services/messageService.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -82,7 +81,7 @@ app.use("/api/status", statusRoutes);
 app.use("/api/chats", chatRoutes);
 
 // обработчик ошибок
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.error(err.stack);
   res.status(500).json({
     message: "Что-то пошло не так!",

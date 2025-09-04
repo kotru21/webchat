@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from "react";
 import StatusIndicator from "./common/StatusIndicator";
-import { FiX, FiMessageCircle, FiUsers } from "react-icons/fi";
+import { FiX, FiUsers } from "react-icons/fi";
 import chatService from "../services/chatService";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";

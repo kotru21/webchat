@@ -1,4 +1,3 @@
-import React from "react";
 import { STATUS_INFO, USER_STATUSES } from "../../constants/statusConstants";
 
 /**

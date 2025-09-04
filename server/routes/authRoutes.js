@@ -8,7 +8,7 @@ import {
 } from "../controllers/authController.js";
 import auth from "../middleware/authMiddleware.js";
 import { profileUpload, avatarUpload } from "../config/multer.js";
-import { authLimiter, profileLimiter } from "../middleware/rateLimiter.js";
+import { authLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 

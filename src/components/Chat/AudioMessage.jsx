@@ -13,7 +13,6 @@ const AudioMessage = ({ audioUrl, duration }) => {
 
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
-  const canvasRef = useRef(null);
   const analyzerRef = useRef(null);
   const audioContextRef = useRef(null);
   const animationRef = useRef(null);

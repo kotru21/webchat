@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import StatusSelector from "../common/StatusSelector";
 import { useAuth } from "../../context/AuthContext";
 import { FiMenu } from "react-icons/fi";

@@ -1,5 +1,3 @@
-import React from "react";
-
 const PinnedMessagesPanel = ({
   pinnedMessages,
   showAllPinned,

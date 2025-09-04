@@ -13,7 +13,6 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
   const [duration, setDuration] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [isAudioReady, setIsAudioReady] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -76,7 +75,6 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
         // Если таймер записи работал, используем его значение для длительности
         if (recordingTime > 0) {
           setDuration(recordingTime);
-          setIsAudioReady(true);
         }
       };
 
@@ -125,7 +123,6 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
     setAudioUrl(null);
     setRecordingTime(0);
     setDuration(0);
-    setIsAudioReady(false);
     audioChunksRef.current = [];
   };
 
@@ -145,11 +142,9 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
     ) {
       const audioDuration = Math.round(audioRef.current.duration);
       setDuration(audioDuration);
-      setIsAudioReady(true);
     } else if (recordingTime > 0) {
       // Если не удалось получить длительность через метаданные, используем время записи
       setDuration(recordingTime);
-      setIsAudioReady(true);
     }
   };
 

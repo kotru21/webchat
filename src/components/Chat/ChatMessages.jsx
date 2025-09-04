@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, memo, useMemo } from "react";
+import { useState, useRef, useEffect, memo, useMemo } from "react";
 import MessageItem from "./MessageItem";
 import PinnedMessagesPanel from "./PinnedMessagesPanel";
 import NewMessagesButton from "./NewMessagesButton";
@@ -96,7 +96,7 @@ const ChatMessages = memo(
             transition: "all 0.3s ease-in-out",
           }}
           onClick={handleContainerClick}>
-          {reversedMessages.map((message, index) => (
+          {reversedMessages.map((message) => (
             <div
               key={message._id}
               ref={(el) => (messageRefs.current[message._id] = el)}
