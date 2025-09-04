@@ -15,7 +15,7 @@ const useChatMessages = (selectedUser) => {
   const [error, setError] = useState("");
   const { user } = useAuth();
 
-  // Fetch messages when selected user changes
+  // fetch при смене пользователя
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -55,13 +55,13 @@ const useChatMessages = (selectedUser) => {
     fetchMessages();
   }, [selectedUser, user.id]);
 
-  // Send message handler
+  // send
   const sendMessageHandler = async (formData) => {
     setLoading(true);
     try {
       if (selectedUser) formData.append("receiverId", selectedUser.id);
 
-      // Проверка на содержимое сообщения
+      // валидация содержимого
       const messageText = formData.get("text");
       const messageMedia = formData.get("media");
 
@@ -134,9 +134,9 @@ const useChatMessages = (selectedUser) => {
     }
   };
 
-  // Mark message as read handler
+  // mark read
   const markAsReadHandler = async (message) => {
-    // Check if message exists, is not sent by the current user, and is not already read by the current user
+    // проверка условий
     if (
       message &&
       message.sender._id !== user.id &&
@@ -152,7 +152,7 @@ const useChatMessages = (selectedUser) => {
 
   const editMessageHandler = async (messageId, formData) => {
     try {
-      // Проверка на содержимое сообщения перед отправкой
+      // валидация перед редактированием
       const messageText = formData.get("content");
       const messageMedia = formData.get("media");
       const removeMedia = formData.get("removeMedia") === "true";
@@ -171,7 +171,7 @@ const useChatMessages = (selectedUser) => {
 
       const updatedMessage = await updateMessage(messageId, formData);
 
-      // обновление сообщения в локальном состоянии
+      // локальное обновление
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg._id === messageId ? updatedMessage : msg
@@ -217,11 +217,11 @@ const useChatMessages = (selectedUser) => {
     }
   };
 
-  // Delete message handler
+  // delete
   const deleteMessageHandler = async (messageId) => {
     try {
       await deleteMessage(messageId);
-      // Socket будет обрабатывать удаление из списка сообщений
+      // удаление через socket
       return true;
     } catch (error) {
       console.error("Ошибка при удалении сообщения:", error);

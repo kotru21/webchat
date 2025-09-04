@@ -65,5 +65,9 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ sender: 1, receiver: 1 });
 messageSchema.index({ createdAt: -1 });
 messageSchema.index({ isPrivate: 1 });
+// Дополнительные индексы для диалогов и приватных выборок
+messageSchema.index({ receiver: 1, createdAt: -1 });
+messageSchema.index({ sender: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, sender: 1, createdAt: -1 });
 
 export default mongoose.model("Message", messageSchema);

@@ -23,7 +23,7 @@ const useChatSocket = ({
       status: user.status,
     });
 
-    // Connect and join rooms
+    // connect + join
     socket.on("connect", () => {
       socket.emit("join_room", "general");
       socket.emit("user_connected", {
@@ -34,7 +34,7 @@ const useChatSocket = ({
       });
     });
 
-    // Handle general messages
+    // general
     socket.on("receive_message", (newMessage) => {
       if (newMessage.sender._id === user.id) {
         if (!selectedUser) {
@@ -53,33 +53,40 @@ const useChatSocket = ({
       }
     });
 
-    // Handle private messages
+    // private (только выбранный чат)
     socket.on("receive_private_message", (newMessage) => {
-      const isCurrentChat =
-        selectedUser &&
-        (newMessage.sender._id === selectedUser.id ||
-          newMessage.receiver === selectedUser.id);
+      const senderId = newMessage.sender?._id || newMessage.sender;
+      const receiverId =
+        (newMessage.receiver && newMessage.receiver._id) || newMessage.receiver;
+      const currentSelectedId = selectedUser?.id;
 
-      if (
-        isCurrentChat ||
-        newMessage.sender._id === user.id ||
-        newMessage.receiver === user.id
-      ) {
+      const isCurrentChat =
+        currentSelectedId &&
+        (senderId === currentSelectedId || receiverId === currentSelectedId);
+      const isOwn = senderId === user.id;
+
+      if (isCurrentChat) {
         setMessages((prev) => [...prev, newMessage]);
-      } else if (newMessage.sender._id !== user.id) {
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [newMessage.sender._id]: (prev[newMessage.sender._id] || 0) + 1,
-        }));
+      } else if (!isOwn) {
+        // инкремент unread
+        const otherId = senderId !== user.id ? senderId : receiverId;
+        if (otherId) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [otherId]: (prev[otherId] || 0) + 1,
+          }));
+        }
+        // refresh список чатов
+        window.dispatchEvent(new CustomEvent("chat:refresh"));
       }
     });
 
-    // Handle online users
+    // онлайн
     socket.on("users_online", (users) => {
       setOnlineUsers(users);
     });
 
-    // Handle message updates
+    // обновления сообщений
     socket.on("message_read", ({ messageId, readBy }) => {
       setMessages((prev) =>
         prev.map((msg) => (msg._id === messageId ? { ...msg, readBy } : msg))
@@ -98,23 +105,23 @@ const useChatSocket = ({
       setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
     });
 
-    // Handle user status changes
+    // статус пользователя
     socket.on("userStatusChanged", (data) => {
       const { userId, status } = data;
 
-      // If it's not the current user, update their status in the contact list
+      // не текущий
       if (userId !== user.id) {
-        // Update status in the user/contact list
+        // статус в списке
         setOnlineUsers((prevUsers) =>
           prevUsers.map((user) =>
             user._id === userId ? { ...user, status } : user
           )
         );
 
-        // Update status in current chats
+        // статус в чатах
         setMessages((prevChats) =>
           prevChats.map((chat) => {
-            // For private chats
+            // private
             if (
               chat.type === "private" &&
               chat.participants.some((p) => p._id === userId)

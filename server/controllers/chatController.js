@@ -1,74 +1,89 @@
 import mongoose from "mongoose";
 import Message from "../Models/messageModel.js";
-import User from "../Models/userModel.js";
 
-// Получение списка чатов пользователя
+// aggregation pipeline
 export const getUserChats = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log("Получение чатов для пользователя:", userId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    // Находим все сообщения, где пользователь является отправителем или получателем
-    const messages = await Message.find({
-      $or: [{ sender: userId }, { receiver: userId }],
-    })
-      .sort({ createdAt: -1 })
-      .populate("sender", "username email avatar status")
-      .populate("receiver", "username email avatar status");
-
-    // Создаем Map для хранения уникальных чатов
-    const uniqueChats = new Map();
-
-    for (const message of messages) {
-      // Пропускаем групповые сообщения (если в receiver нет данных)
-      if (!message.receiver || !message.receiver._id) continue;
-
-      // Определяем, кто является другим участником чата
-      const otherUserId =
-        message.sender._id.toString() === userId.toString()
-          ? message.receiver._id.toString()
-          : message.sender._id.toString();
-
-      // Пропускаем сообщения, отправленные самому себе или в общий чат
-      if (otherUserId === userId.toString()) continue;
-
-      // Если этот чат еще не добавлен, добавляем его
-      if (!uniqueChats.has(otherUserId)) {
-        const otherUser =
-          message.sender._id.toString() === userId.toString()
-            ? message.receiver
-            : message.sender;
-
-        // Считаем непрочитанные сообщения
-        const unreadCount = messages.filter(
-          (msg) =>
-            msg.sender._id.toString() === otherUserId &&
-            !msg.readBy?.some(
-              (reader) => reader.toString() === userId.toString()
-            )
-        ).length;
-
-        uniqueChats.set(otherUserId, {
-          user: {
-            _id: otherUser._id,
-            username: otherUser.username,
-            email: otherUser.email,
-            avatar: otherUser.avatar,
-            status: otherUser.status || "offline",
+    const pipeline = [
+      {
+        $match: {
+          isPrivate: true,
+          isDeleted: { $ne: true },
+          $or: [{ sender: userObjectId }, { receiver: userObjectId }],
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      // otherUser и флаг непрочитанного
+      {
+        $addFields: {
+          otherUser: {
+            $cond: [{ $eq: ["$sender", userObjectId] }, "$receiver", "$sender"],
           },
-          lastMessage: message,
-          unreadCount,
-        });
-      }
-    }
+          isUnreadForCurrentUser: {
+            $cond: [
+              {
+                $and: [
+                  { $ne: ["$sender", userObjectId] }, // сообщение не от нас
+                  { $not: [{ $in: [userObjectId, "$readBy"] }] }, // мы не прочитали
+                  { $ne: ["$isDeleted", true] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      { $match: { otherUser: { $ne: userObjectId } } },
+      {
+        $group: {
+          _id: "$otherUser",
+          lastMessage: { $first: "$$ROOT" },
+          unreadCount: { $sum: "$isUnreadForCurrentUser" },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          user: {
+            _id: "$user._id",
+            username: "$user.username",
+            email: "$user.email",
+            avatar: "$user.avatar",
+            status: { $ifNull: ["$user.status", "offline"] },
+          },
+          lastMessage: {
+            _id: "$lastMessage._id",
+            content: "$lastMessage.content",
+            mediaUrl: "$lastMessage.mediaUrl",
+            mediaType: "$lastMessage.mediaType",
+            isDeleted: "$lastMessage.isDeleted",
+            createdAt: "$lastMessage.createdAt",
+            sender: "$lastMessage.sender",
+            receiver: "$lastMessage.receiver",
+            isPinned: "$lastMessage.isPinned",
+          },
+          unreadCount: 1,
+        },
+      },
+      { $sort: { "lastMessage.createdAt": -1 } },
+    ];
 
-    // Преобразуем Map в массив
-    const chats = Array.from(uniqueChats.values());
-
-    console.log("Получено чатов:", chats.length);
+    const chats = await Message.aggregate(pipeline).exec();
     res.json(chats);
   } catch (error) {
-    console.error("Ошибка при получении списка чатов:", error);
+    console.error("Ошибка при получении списка чатов (agg):", error);
     res.status(500).json({ message: "Ошибка при получении списка чатов" });
   }
 };

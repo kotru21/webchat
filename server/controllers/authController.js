@@ -1,8 +1,7 @@
 import User from "../Models/userModel.js";
+import Status from "../Models/Status.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import path from "path";
-import { fileURLToPath } from "url";
 import passwordValidator from "password-validator";
 
 export const updateProfile = async (req, res) => {
@@ -49,8 +48,9 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __filename/__dirname не используются здесь; удалить если не понадобится позже
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 const schema = new passwordValidator();
 schema
@@ -189,7 +189,7 @@ export const logout = async (req, res) => {
     // Оповещаем других пользователей
     const io = req.app.get("io");
     if (io) {
-      io.emit("userStatusChanged", {
+      io.emit("user_status_changed", {
         userId,
         status: "offline",
         lastActivity: new Date(),

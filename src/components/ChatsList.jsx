@@ -25,14 +25,15 @@ const ChatsList = memo(
           setLoading(false);
         }
       };
-
       loadChats();
-
-      // Добавим интервал для периодического обновления чатов
-      const interval = setInterval(loadChats, 60000); // Обновлять каждую минуту
-
-      return () => clearInterval(interval);
-    }, [selectedUser]); // Перезагружаем при смене выбранного пользователя
+      const interval = setInterval(loadChats, 60000);
+      const refreshListener = () => loadChats();
+      window.addEventListener("chat:refresh", refreshListener);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("chat:refresh", refreshListener);
+      };
+    }, [selectedUser]);
 
     // Форматирование времени последнего сообщения
     const formatMessageTime = (date) => {
@@ -72,7 +73,7 @@ const ChatsList = memo(
           </div>
 
           <div className="overflow-y-auto h-[calc(100%-4rem)] overflow-x-hidden">
-            {/* Общий чат */}
+            {/* общий чат */}
             <div
               onClick={() => onUserSelect(null)}
               className={`chat-item p-3 cursor-pointer rounded-lg flex items-center justify-between ${
@@ -96,15 +97,15 @@ const ChatsList = memo(
               )}
             </div>
 
-            {/* Разделитель */}
+            {/* разделитель */}
             <div className="my-2 border-t border-gray-200 dark:border-gray-700"></div>
 
-            {/* Заголовок для личных чатов */}
+            {/* заголовок личные */}
             <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-3 mb-1">
               Личные сообщения
             </h3>
 
-            {/* Список чатов */}
+            {/* список чатов */}
             {loading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-pulse flex space-x-3">

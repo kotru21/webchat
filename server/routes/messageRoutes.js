@@ -7,17 +7,18 @@ import {
   deleteMessage,
   pinMessage,
 } from "../controllers/messageController.js";
+import { SOCKET_EVENTS } from "../src/shared/socketEvents.js";
 import protect from "../middleware/authMiddleware.js";
-import { mediaUpload } from "../config/multer.js"; // Изменен импорт
+import { mediaUpload } from "../config/multer.js"; // импорт multer
 import { messageLimiter } from "../middleware/rateLimiter.js";
 import { validateMessage } from "../middleware/validator.js";
 
 const router = express.Router();
 
-// Маршрут получения сообщений без лимитера
+// get сообщения (без лимитера)
 router.get("/", protect, getMessages);
 
-// Применяем лимитер только к отправке/редактированию сообщений
+// лимитер только для create/update
 router.post(
   "/",
   protect,
@@ -41,13 +42,13 @@ router.post(
       if (req.file) {
         messageData.mediaUrl = `/uploads/media/${req.file.filename}`;
 
-        // Определение типа медиа
+        // тип медиа
         if (req.body.mediaType === "audio") {
           messageData.mediaType = "audio";
-          // Безопасная обработка длительности аудио
+          // длительность аудио
           if (req.body.audioDuration) {
             const audioDuration = parseInt(req.body.audioDuration);
-            // Проверка на корректное числовое значение
+            // проверка значения
             if (
               !isNaN(audioDuration) &&
               isFinite(audioDuration) &&
@@ -55,23 +56,23 @@ router.post(
             ) {
               messageData.audioDuration = audioDuration;
             } else {
-              // Если значение некорректное, используем стандартное
-              messageData.audioDuration = 1; // 1 секунда по умолчанию
+              // fallback
+              messageData.audioDuration = 1; // 1 сек
             }
           } else {
-            messageData.audioDuration = 1; // 1 секунда по умолчанию если не указана длительность
+            messageData.audioDuration = 1; // default
           }
         } else {
-          // Стандартное определение типа медиа по mimetype
+          // по mimetype
           messageData.mediaType = req.file.mimetype.startsWith("image/")
             ? "image"
             : req.file.mimetype.startsWith("audio/")
             ? "audio"
             : "video";
 
-          // Если тип медиа аудио, но не указана длительность
+          // если аудио без длительности
           if (messageData.mediaType === "audio" && !messageData.audioDuration) {
-            messageData.audioDuration = 1; // 1 секунда по умолчанию
+            messageData.audioDuration = 1; // default
           }
         }
       }
@@ -82,9 +83,14 @@ router.post(
       if (messageData.isPrivate) {
         io.to(messageData.sender.toString())
           .to(messageData.receiver.toString())
+          .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
+        // legacy
+        io.to(messageData.sender.toString())
+          .to(messageData.receiver.toString())
           .emit("receive_private_message", savedMessage);
       } else {
-        io.to("general").emit("receive_message", savedMessage);
+        io.to("general").emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
+        io.to("general").emit("receive_message", savedMessage); // legacy
       }
 
       res.status(201).json(savedMessage);
