@@ -1,9 +1,9 @@
 // src/pages/Chat.jsx
 import React, { useState, Suspense, useTransition, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import ChatHeader from "../components/Chat/ChatHeader";
-import ChatMessages from "../components/Chat/ChatMessages";
-import ChatInput from "../components/Chat/ChatInput";
+import ChatHeader from "@widgets/chat/ChatHeader.jsx";
+import { MessagesList } from "@entities/message/ui/MessagesList.jsx";
+import { SendMessageForm } from "@features/sendMessage/ui/SendMessageForm.jsx";
 import ChatsList from "../components/ChatsList";
 import useChatFeature from "../features/messaging/facade/useChatFeature";
 import { updateProfile } from "../services/api.js";
@@ -161,8 +161,7 @@ const Chat = () => {
 
         {/* ToastContainer рендерится глобально ниже */}
 
-        <ChatMessages
-          chatId={selectedUser?.id || "general"}
+        <MessagesList
           messages={messages}
           currentUser={user}
           onMarkAsRead={api.markRead}
@@ -172,7 +171,7 @@ const Chat = () => {
           onPinMessage={api.pin}
           onStartChat={handleStartChat}
         />
-        <ChatInput onSendMessage={api.send} loading={loading} />
+        <SendMessageForm onSendMessage={api.send} loading={loading} />
       </div>
       {fullscreenMedia && (
         <Suspense

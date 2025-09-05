@@ -4,10 +4,11 @@ import { getMessages } from "../services/api";
 import { useMessagesStore } from "../features/messaging/store/messagesStore";
 import { sendMessageUsecase } from "../features/messaging/usecases/sendMessage";
 import { notify } from "../features/notifications/notify";
-import { editMessageUsecase } from "../features/messaging/usecases/editMessage";
-import { deleteMessageUsecase } from "../features/messaging/usecases/deleteMessage";
-import { markReadUsecase } from "../features/messaging/usecases/markRead";
-import { pinMessageUsecase } from "../features/messaging/usecases/pinMessage";
+// legacy usecases replaced by feature hooks bridges
+import { useEditMessage } from "@features/editMessage";
+import { useDeleteMessage } from "@features/deleteMessage";
+import { useMarkRead } from "@features/markRead";
+import { usePinMessage } from "@features/pinMessage";
 
 const useChatMessages = (selectedUser) => {
   // локальный стейт сообщений больше не используем — переходим на прямое чтение из zustand
@@ -16,9 +17,7 @@ const useChatMessages = (selectedUser) => {
   const { user } = useAuth();
 
   const storeSetChatMessages = useMessagesStore((s) => s.setChatMessages);
-  const storeUpdateMessage = useMessagesStore((s) => s.updateMessage);
-  const storeRemoveMessage = useMessagesStore((s) => s.removeMessage);
-  const storeMarkRead = useMessagesStore((s) => s.markRead);
+  // (update/remove/markRead теперь обрабатываются внутри feature хуков)
   const addPending = useMessagesStore((s) => s.addPendingMessage);
   const finalizePending = useMessagesStore((s) => s.finalizePendingMessage);
   const failPending = useMessagesStore((s) => s.failPendingMessage);
@@ -182,131 +181,39 @@ const useChatMessages = (selectedUser) => {
     }
   };
 
-  // mark read
+  // feature hooks usage
+  const { editMessage: editMessageBridge } = useEditMessage();
+  const { deleteMessage: deleteMessageBridge } = useDeleteMessage();
+  const { mark: markReadBridge } = useMarkRead();
+  const { togglePin: pinMessageBridge } = usePinMessage();
+
   const markAsReadHandler = async (message) => {
-    // проверка условий
-    if (
-      message &&
-      message.sender._id !== user.id &&
-      !message.readBy?.some((reader) => reader._id === user.id)
-    ) {
-      try {
-        const res = await markReadUsecase(message);
-        if (res.ok) {
-          // optimistic: добавляем current user в readBy
-          storeMarkRead(message._id, [
-            ...(message.readBy || []),
-            { _id: user.id },
-          ]);
-        }
-      } catch (error) {
-        console.error("Ошибка при отметке сообщения как прочитанного:", error);
-      }
-    }
+    await markReadBridge(message, user.id);
   };
 
   const editMessageHandler = async (messageId, formData) => {
-    try {
-      const content = formData.get("content");
-      const file = formData.get("media");
-      const removeMedia = formData.get("removeMedia") === "true";
-      const res = await editMessageUsecase(messageId, {
-        content,
-        file,
-        removeMedia,
-      });
-      if (!res.ok) {
-        setError(res.error);
-        return false;
-      }
-      storeUpdateMessage(messageId, res.value);
-      return true;
-    } catch (error) {
-      console.error("Ошибка при редактировании сообщения:", error);
-
-      if (error.response) {
-        switch (error.response.status) {
-          case 400:
-            setError("Некорректные данные для редактирования");
-            break;
-          case 401:
-            setError("Требуется авторизация. Пожалуйста, войдите заново");
-            break;
-          case 403:
-            setError("У вас нет прав для редактирования этого сообщения");
-            break;
-          case 404:
-            setError("Сообщение не найдено");
-            break;
-          case 413:
-            setError(
-              "Файл слишком большой. Пожалуйста, выберите файл меньшего размера"
-            );
-            break;
-          case 429:
-            setError("Слишком много запросов. Пожалуйста, повторите позже");
-            break;
-          default:
-            setError("Не удалось отредактировать сообщение");
-        }
-      } else if (error.request) {
-        setError("Сервер недоступен. Проверьте подключение к интернету");
-      } else {
-        setError("Ошибка при редактировании сообщения");
-      }
-
-      return false;
-    }
+    const content = formData.get("content");
+    const file = formData.get("media");
+    const removeMedia = formData.get("removeMedia") === "true";
+    const res = await editMessageBridge(messageId, {
+      content,
+      file,
+      removeMedia,
+    });
+    if (!res.ok) setError(res.error);
+    return !!res.ok;
   };
 
   // delete
   const deleteMessageHandler = async (messageId) => {
-    try {
-      const res = await deleteMessageUsecase(messageId);
-      if (res.ok) {
-        storeRemoveMessage(messageId);
-      }
-      return res.ok;
-    } catch (error) {
-      console.error("Ошибка при удалении сообщения:", error);
-
-      if (error.response) {
-        switch (error.response.status) {
-          case 401:
-            setError("Требуется авторизация. Пожалуйста, войдите заново");
-            break;
-          case 403:
-            setError("У вас нет прав для удаления этого сообщения");
-            break;
-          case 404:
-            setError("Сообщение не найдено или уже удалено");
-            break;
-          case 429:
-            setError("Слишком много запросов. Пожалуйста, повторите позже");
-            break;
-          default:
-            setError("Не удалось удалить сообщение");
-        }
-      } else if (error.request) {
-        setError("Сервер недоступен. Проверьте подключение к интернету");
-      } else {
-        setError("Ошибка при удалении сообщения");
-      }
-
-      return false;
-    }
+    const res = await deleteMessageBridge(messageId);
+    if (!res.ok && res.error) setError(res.error);
+    return !!res.ok;
   };
 
   const pinMessageHandler = async (messageId, isPinned) => {
-    try {
-      const res = await pinMessageUsecase(messageId, isPinned);
-      if (res.ok) {
-        useMessagesStore.getState().pinMessage(messageId, isPinned);
-      }
-      return res.ok;
-    } catch {
-      return false;
-    }
+    const res = await pinMessageBridge(messageId, isPinned);
+    return !!res.ok;
   };
 
   return {

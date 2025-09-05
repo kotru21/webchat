@@ -1,4 +1,3 @@
-// TODO: legacy file pending removal after full migration. Use entity AudioMessage.
 import AudioMessage from "@entities/message/ui/AudioMessage";
 
 export default function MessageMedia({ message, onMediaClick }) {

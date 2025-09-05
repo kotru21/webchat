@@ -6,7 +6,6 @@ const PreviewProfileTab = ({ profile }) => {
 
   const handleStartChat = (user) => {
     console.log("Предпросмотр: попытка начать чат с", user);
-    // В режиме предпросмотра просто выводим сообщение в консоль
   };
 
   return (

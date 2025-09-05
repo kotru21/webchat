@@ -37,6 +37,10 @@ export default [
         "warn",
         { allowConstantExport: true },
       ],
+      // FSD layering (soft guidance comments):
+      // Дополнительно можно подключить eslint-plugin-boundaries и заменить эти комментарии на реальные правила.
+      // Слои: shared -> entities -> features -> widgets -> pages -> processes -> app
+      // Запрет обратных зависимостей следует обеспечить отдельно (скриптом или плагином).
     },
   },
 ];

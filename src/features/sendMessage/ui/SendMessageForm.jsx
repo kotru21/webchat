@@ -1,32 +1,33 @@
-import { useState, useRef, memo, useEffect } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { IoMdAttach, IoMdSend } from "react-icons/io";
 import { BiLoaderAlt } from "react-icons/bi";
 import { FiAlertCircle } from "react-icons/fi";
 import { BsMicFill } from "react-icons/bs";
-import { FILE_LIMITS, INPUT_LIMITS } from "../../constants/appConstants";
-import VoiceRecorder from "../../features/messaging/ui/components/VoiceRecorder";
+import { useSendMessage } from "../index";
+import VoiceRecorder from "../../messaging/ui/components/VoiceRecorder"; // bridge, позже перенести в feature recordVoice
+import { FILE_LIMITS, INPUT_LIMITS } from "../../../constants/appConstants";
 
-const ChatInput = memo(({ onSendMessage, loading }) => {
-  const [newMessage, setNewMessage] = useState("");
+export const SendMessageForm = memo(function SendMessageForm({
+  receiverId,
+  onSent,
+}) {
+  const { send, loading } = useSendMessage({ receiverId });
+  const [text, setText] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Автоматически скрывать сообщение об ошибке после 5 секунд
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(t);
     }
   }, [error]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     if (file.size > FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE) {
       setError(
         `Файл слишком большой. Максимальный размер: ${
@@ -36,7 +37,6 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
       fileInputRef.current.value = "";
       return;
     }
-
     const allowedTypes = [
       "image/jpeg",
       "image/png",
@@ -46,81 +46,55 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
     ];
     if (!allowedTypes.includes(file.type)) {
       setError(
-        "Неподдерживаемый формат файла. Разрешены только изображения (JPEG, PNG, GIF) и видео (MP4, WebM)."
+        "Неподдерживаемый формат файла. Разрешены: JPEG, PNG, GIF, MP4, WebM"
       );
       fileInputRef.current.value = "";
       return;
     }
-
     setSelectedFile(file);
     setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() && !selectedFile) return;
-
-    if (newMessage.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
+    if (!text.trim() && !selectedFile) return;
+    if (text.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
       setError(
-        `Сообщение слишком длинное. Максимальная длина: ${INPUT_LIMITS.MESSAGE_MAX_LENGTH} символов`
+        `Сообщение слишком длинное. Максимум: ${INPUT_LIMITS.MESSAGE_MAX_LENGTH}`
       );
       return;
     }
-
-    try {
-      const formData = new FormData();
-      if (newMessage.trim()) formData.append("text", newMessage);
-      if (selectedFile) formData.append("media", selectedFile);
-
-      const result = await onSendMessage(formData);
-      if (result) {
-        setNewMessage("");
-        setSelectedFile(null);
-        fileInputRef.current.value = "";
-        setError(null);
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      if (error.response?.status === 429) {
-        setError(
-          "Вы отправляете сообщения слишком часто. Пожалуйста, подождите немного."
-        );
-      } else {
-        setError(
-          "Не удалось отправить сообщение. Пожалуйста, попробуйте позже."
-        );
-      }
+    const result = await send({ text: text.trim(), file: selectedFile });
+    if (result?.ok) {
+      setText("");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      onSent?.(result.value);
+    } else if (result?.error?.response?.status === 429) {
+      setError("Слишком часто. Подождите.");
+    } else if (result && !result.ok) {
+      setError(result.error?.message || "Не удалось отправить сообщение");
     }
   };
 
-  // Обработка голосовых сообщений
   const handleVoiceRecorded = async (audioFile, duration) => {
-    try {
-      const formData = new FormData();
-      formData.append("media", audioFile);
-      formData.append("mediaType", "audio");
-      formData.append("audioDuration", duration);
-
-      const result = await onSendMessage(formData);
-      if (result) {
-        setIsRecording(false);
-        setError(null);
-      }
-    } catch (error) {
-      console.error("Error sending voice message:", error);
-      if (error.response?.status === 429) {
-        setError(
-          "Вы отправляете сообщения слишком часто. Пожалуйста, подождите немного."
-        );
-      } else {
-        setError(
-          "Не удалось отправить голосовое сообщение. Пожалуйста, попробуйте позже."
-        );
-      }
+    const result = await send({
+      file: audioFile,
+      mediaType: "audio",
+      audioDuration: duration,
+    });
+    if (result?.ok) {
+      setIsRecording(false);
+      onSent?.(result.value);
+    } else if (result?.error?.response?.status === 429) {
+      setError("Слишком часто. Подождите.");
+    } else if (result && !result.ok) {
+      setError(
+        result.error?.message || "Не удалось отправить голосовое сообщение"
+      );
     }
   };
 
-  // Отображение компонента записи или поля ввода
   const renderInputArea = () => {
     if (isRecording) {
       return (
@@ -130,13 +104,12 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
         />
       );
     }
-
     return (
       <div className="flex items-center gap-2">
         <input
           type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
           placeholder="Сообщение..."
           className="flex-1 px-3 py-2 text-sm rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white min-w-0 transition-all duration-200 focus:shadow-md"
           disabled={loading}
@@ -189,9 +162,7 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
           <span>{error}</span>
         </div>
       )}
-
       {renderInputArea()}
-
       {selectedFile && !isRecording && (
         <div className="mt-2 text-xs text-gray-500 truncate px-2 animate-fadeIn">
           Файл: {selectedFile.name}
@@ -200,7 +171,3 @@ const ChatInput = memo(({ onSendMessage, loading }) => {
     </form>
   );
 });
-
-ChatInput.displayName = "ChatInput";
-
-export default ChatInput;
