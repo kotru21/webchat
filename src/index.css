@@ -1,0 +1,5 @@
+/* Tailwind entry point */
+@import "tailwindcss";
+
+@layer base {
+}
