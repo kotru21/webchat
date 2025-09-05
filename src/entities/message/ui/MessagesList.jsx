@@ -310,7 +310,8 @@ export const MessagesList = memo(function MessagesList({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative">
+    // min-h-0 критично внутри flex-колонок родителя для корректного рассчёта высоты и работы overflow
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
       {enablePinnedPanel && pinnedMessages.length > 0 && (
         <div className="z-20 bg-transparent">
           <div className="px-2">
@@ -351,7 +352,7 @@ export const MessagesList = memo(function MessagesList({
       )}
       <div
         ref={listContainerRef}
-        className="flex-1 relative opacity-100 transition-opacity duration-250 ease-in-out will-change-[opacity] backface-visibility-hidden messages-list-container">
+        className="flex-1 min-h-0 relative opacity-100 transition-opacity duration-250 ease-in-out will-change-[opacity] backface-visibility-hidden messages-list-container">
         {dataItems.length === 0 ? (
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-10 select-none">
             Сообщений пока нет
