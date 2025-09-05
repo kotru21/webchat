@@ -1,37 +1,9 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useState,
-} from "react";
+import { useReducer, useEffect, useState } from "react";
 import { USER_STATUSES } from "../constants/statusConstants";
-import statusService from "../services/statusService";
-import api from "../services/api";
-
-const AuthContext = createContext();
-
-const authReducer = (state, action) => {
-  switch (action.type) {
-    case "LOGIN":
-      return { ...state, user: action.payload, loading: false };
-    case "LOGOUT":
-      return { ...state, user: null, loading: false };
-    case "UPDATE_PROFILE":
-      return { ...state, user: { ...state.user, ...action.payload } };
-    default:
-      return state;
-  }
-};
-
-const normalizeUser = (userData) => {
-  if (!userData) return null;
-  return {
-    ...userData,
-    id: userData._id || userData.id, // преобразование _id в id
-  };
-};
-
+import { updateStatus as setStatus } from "@features/status/api/statusApi";
+import { authReducer, normalizeUser } from "@features/auth/model/authState";
+import apiClient from "@shared/api/client";
+import { AuthContext } from "./AuthContextBase";
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, {
     user: null,
@@ -71,7 +43,7 @@ export const AuthProvider = ({ children }) => {
 
     // Устанавливаем статус при входе
     try {
-      await statusService.updateStatus(USER_STATUSES.ONLINE);
+      await setStatus(USER_STATUSES.ONLINE);
       setUserStatus(USER_STATUSES.ONLINE);
     } catch (error) {
       console.error("Ошибка при установке статуса online:", error);
@@ -89,10 +61,10 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       // Устанавливаем статус offline перед выходом
-      await statusService.setOfflineStatus();
+      await setStatus(USER_STATUSES.OFFLINE);
 
       // Выполняем выход на сервере
-      await api.post("/api/auth/logout");
+      await apiClient.post("/api/auth/logout");
     } catch (error) {
       console.error("Ошибка при выходе:", error);
     } finally {
@@ -106,7 +78,7 @@ export const AuthProvider = ({ children }) => {
   // Обработчик изменения статуса
   const handleStatusChange = async (newStatus) => {
     try {
-      await statusService.updateStatus(newStatus);
+      await setStatus(newStatus);
       setUserStatus(newStatus);
 
       // Обновляем пользователя
@@ -135,10 +107,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth должен использоваться внутри AuthProvider");
-  }
-  return context;
-};
+// useAuth вынесен в отдельный файл @context/useAuth для корректного Fast Refresh.

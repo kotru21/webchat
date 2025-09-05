@@ -1,4 +1,4 @@
-import { updateMessage } from "../../../services/api";
+import { updateMessage } from "@features/messaging/api/messagesApi";
 import { validateEditMessage } from "../domain/validators/messageValidator";
 import { mapMessageDto } from "../mappers/messageMapper";
 

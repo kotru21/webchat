@@ -1,4 +1,4 @@
-import { deleteMessage } from "../../../services/api";
+import { deleteMessage } from "@features/messaging/api/messagesApi";
 
 export async function deleteMessageUsecase(messageId) {
   await deleteMessage(messageId);

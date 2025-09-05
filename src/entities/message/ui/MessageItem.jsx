@@ -1,10 +1,10 @@
-import { useState, useRef, memo } from "react";
+import { memo } from "react";
 import ReadStatus from "./ReadStatus";
 import UserProfileWidget from "@features/profile/widgets/UserProfileWidget";
 import MessageEditor from "@features/editMessage/ui/MessageEditor.jsx";
 import MessageMedia from "./MessageMedia.jsx";
 import { formatTime } from "@shared/lib/date";
-import useMessageMenu from "@entities/message/lib/useMessageMenu.js";
+import { useMessageItem } from "@entities/message/model/useMessageItem";
 
 export const MessageItem = memo(function MessageItem({
   message,
@@ -17,10 +17,13 @@ export const MessageItem = memo(function MessageItem({
   onSaveEdit,
   onStartChat,
 }) {
-  const isOwnMessage = message.sender._id === currentUser.id;
-  const [isEditing, setIsEditing] = useState(false);
-  const messageContentRef = useRef(null);
   const {
+    isOwnMessage,
+    isEditing,
+    startEdit,
+    cancelEdit,
+    saveEdit,
+    togglePin,
     messageRef,
     profileTriggerRef,
     isProfileOpen,
@@ -29,24 +32,16 @@ export const MessageItem = memo(function MessageItem({
     handleProfileClick,
     handleContextMenu,
     handleClick,
-  } = useMessageMenu(isOwnMessage, onToggleMenu);
-
-  const handlePin = async () => {
-    try {
-      await onPin(message._id, !message.isPinned);
-    } catch (e) {
-      console.error("Ошибка при закреплении:", e);
-    }
-  };
-  const handleEdit = () => {
-    setIsEditing(true);
-    onToggleMenu();
-  };
-  const handleSaveEdit = async (formData) => {
-    await onSaveEdit(message._id, formData);
-    setIsEditing(false);
-  };
-  const handleCancelEdit = () => setIsEditing(false);
+    messageContentRef,
+    isOptimistic,
+    isFailed,
+  } = useMessageItem({
+    message,
+    currentUserId: currentUser.id,
+    onToggleMenu,
+    onPin,
+    onSaveEdit,
+  });
 
   const renderMessageContent = () => (
     <div ref={messageContentRef}>
@@ -80,17 +75,13 @@ export const MessageItem = memo(function MessageItem({
         <div className="max-w-[80%] transition-all duration-300 animate-fade-in">
           <MessageEditor
             message={message}
-            onSave={handleSaveEdit}
-            onCancel={handleCancelEdit}
+            onSave={saveEdit}
+            onCancel={cancelEdit}
           />
         </div>
       </div>
     );
   }
-
-  const isOptimistic =
-    message.optimistic || String(message._id).startsWith("temp-");
-  const isFailed = message.failed;
 
   return (
     <div
@@ -101,7 +92,7 @@ export const MessageItem = memo(function MessageItem({
         isOwnMessage ? "justify-end" : "justify-start"
       } w-full relative`}>
       <div
-        className={`max-w-[80%] message-wrapper ${
+        className={`max-w-[80%] message-wrapper uniform-message-spacing ${
           message.isPinned ? "pinned-message" : ""
         }`}>
         <div
@@ -117,8 +108,8 @@ export const MessageItem = memo(function MessageItem({
             <>
               {!message.isDeleted && (
                 <button
-                  onClick={handleEdit}
-                  className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
+                  onClick={startEdit}
+                  className="text-sm text-blue-500 hover:text-blue-700 dark:hover текст-blue-400">
                   Редактировать
                 </button>
               )}
@@ -130,7 +121,7 @@ export const MessageItem = memo(function MessageItem({
             </>
           )}
           <button
-            onClick={handlePin}
+            onClick={togglePin}
             className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
             {message.isPinned ? "Открепить" : "Закрепить"}
           </button>
@@ -144,20 +135,36 @@ export const MessageItem = memo(function MessageItem({
               ref={profileTriggerRef}
               onClick={handleProfileClick}
               className="relative">
-              <img
-                src={
-                  message.sender.avatar
-                    ? `${import.meta.env.VITE_API_URL}${message.sender.avatar}`
-                    : "/default-avatar.png"
-                }
-                alt={`${
-                  message.sender.username || message.sender.email
-                }'s avatar`}
-                className="w-8 h-8 rounded-full object-cover flex-shrink-0 hover:opacity-80 transition-opacity"
-                onError={(e) => {
-                  e.target.src = "/default-avatar.png";
-                }}
-              />
+              <picture>
+                <source
+                  srcSet={
+                    message.sender.avatar
+                      ? `${import.meta.env.VITE_API_URL}${
+                          message.sender.avatar
+                        }`.replace(/(\.[a-zA-Z0-9]+)$/i, ".webp")
+                      : "/default-avatar.png"
+                  }
+                  type="image/webp"
+                />
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={
+                    message.sender.avatar
+                      ? `${import.meta.env.VITE_API_URL}${
+                          message.sender.avatar
+                        }`
+                      : "/default-avatar.png"
+                  }
+                  alt={`${
+                    message.sender.username || message.sender.email
+                  }'s avatar`}
+                  className="w-8 h-8 rounded-full object-cover flex-shrink-0 hover:opacity-80 transition-opacity"
+                  onError={(e) => {
+                    e.target.src = "/default-avatar.png";
+                  }}
+                />
+              </picture>
               {isProfileOpen && (
                 <div className="absolute top-0">
                   <UserProfileWidget

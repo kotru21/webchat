@@ -1,20 +1,26 @@
 // src/pages/Chat.jsx
-import React, { useState, Suspense, useTransition, useCallback } from "react";
-import { useAuth } from "../context/AuthContext";
+import React, {
+  useState,
+  Suspense,
+  useTransition,
+  useCallback,
+  lazy,
+} from "react";
+import { useAuth } from "@context/useAuth";
 import ChatHeader from "@widgets/chat/ChatHeader.jsx";
 import { MessagesList } from "@entities/message/ui/MessagesList.jsx";
 import { SendMessageForm } from "@features/sendMessage/ui/SendMessageForm.jsx";
-import ChatsList from "../components/ChatsList";
-import useChatFeature from "../features/messaging/facade/useChatFeature";
-import { updateProfile } from "../services/api.js";
+const ChatsList = lazy(() => import("@widgets/chats/ChatsList"));
+import useChatFeature from "@features/messaging/facade/useChatFeature";
+import { updateProfile } from "@features/auth/api/authApi";
 import { ANIMATION_DELAYS } from "../constants/appConstants";
-// import UserProfile from "../components/UserProfile"; // временно отключено до выноса профиля в отдельный виджет
-// удалены локальные иконки уведомлений — используем toasts
-import { notify } from "../features/notifications/notify";
-import ToastContainer from "../features/notifications/ui/ToastContainer";
+import { notify } from "@shared/lib/eventBus/notify";
+import ToastContainer from "@widgets/notifications/ToastContainer.jsx";
 
-const MediaViewer = React.lazy(() => import("../components/media/MediaViewer"));
-const ProfileEditor = React.lazy(() => import("../components/ProfileEditor"));
+const MediaViewer = React.lazy(() => import("@widgets/media/MediaViewer.jsx"));
+const ProfileEditor = React.lazy(() =>
+  import("@widgets/profile/ProfileEditor.jsx")
+);
 
 const Chat = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -139,13 +145,20 @@ const Chat = () => {
         />
       )}
       <div className="flex-none md:w-72">
-        <ChatsList
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          onUserSelect={handleUserSelect}
-          selectedUser={selectedUser}
-          unreadCounts={unreadCounts}
-        />
+        <Suspense
+          fallback={
+            <div className="h-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400 animate-pulse">
+              Загрузка чатов...
+            </div>
+          }>
+          <ChatsList
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+            onUserSelect={handleUserSelect}
+            selectedUser={selectedUser}
+            unreadCounts={unreadCounts}
+          />
+        </Suspense>
       </div>
       <div className="flex-1 min-w-0 flex flex-col">
         <ChatHeader
@@ -158,8 +171,6 @@ const Chat = () => {
             });
           }}
         />
-
-        {/* ToastContainer рендерится глобально ниже */}
 
         <MessagesList
           messages={messages}

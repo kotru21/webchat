@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
-import { login } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { login } from "@features/auth/api/authApi";
+import { useAuth } from "@context/useAuth";
 import { FiAlertCircle } from "react-icons/fi";
 
 const Login = () => {

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import api from "../../../services/api";
+import { useEffect, useRef } from "react";
 import ProfileCard from "../ui/ProfileCard";
+import { useUserProfile } from "@features/profile/api/useUserProfile";
 
 export function UserProfileWidget({
   userId,
@@ -12,27 +12,17 @@ export function UserProfileWidget({
   onStartChat,
   onClose,
 }) {
-  const [profile, setProfile] = useState(profileData || null);
-  const [loading, setLoading] = useState(!profileData);
-  const [error, setError] = useState(null);
+  const {
+    data: fetchedProfile,
+    isLoading: loading,
+    error,
+  } = useUserProfile(profileData ? null : userId, {
+    enabled: !profileData && !!userId,
+  });
+  const profile = profileData || fetchedProfile;
   const popoverRef = useRef(null);
 
-  useEffect(() => {
-    if (!profile && userId) {
-      (async () => {
-        try {
-          const res = await api.get(`/api/auth/users/${userId}`);
-          setProfile(res.data);
-        } catch {
-          setError("Не удалось загрузить профиль");
-        } finally {
-          setLoading(false);
-        }
-      })();
-    } else {
-      setLoading(false);
-    }
-  }, [userId, profile]);
+  // Локальный эффект удаления не нужен — загрузка через React Query
 
   useEffect(() => {
     const handleClickOutside = (e) => {

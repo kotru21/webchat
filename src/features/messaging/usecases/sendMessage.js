@@ -1,4 +1,4 @@
-import { sendMessage } from "../../../services/api";
+import { sendMessage } from "@features/messaging/api/messagesApi";
 import { validateNewMessage } from "../domain/validators/messageValidator";
 import { mapMessageDto } from "../mappers/messageMapper";
 

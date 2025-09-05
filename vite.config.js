@@ -16,10 +16,9 @@ export default defineConfig({
       "@entities": fileURLToPath(new URL("./src/entities", import.meta.url)),
       "@shared": fileURLToPath(new URL("./src/shared", import.meta.url)),
       "@constants": fileURLToPath(new URL("./src/constants", import.meta.url)),
-      "@components": fileURLToPath(
-        new URL("./src/components", import.meta.url)
-      ),
       "@context": fileURLToPath(new URL("./src/context", import.meta.url)),
+      "@utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
+      "@services": fileURLToPath(new URL("./src/services", import.meta.url)),
     },
   },
   optimizeDeps: {

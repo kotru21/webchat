@@ -1,4 +1,4 @@
-import { markMessageAsRead } from "../../../services/api";
+import { markMessageAsRead } from "@features/messaging/api/messagesApi";
 
 export async function markReadUsecase(message) {
   try {

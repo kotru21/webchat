@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import { FaPlay, FaPause } from "react-icons/fa";
 
-export default function AudioMessage({ audioUrl, duration }) {
+function AudioMessage({ audioUrl, duration }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -10,6 +10,8 @@ export default function AudioMessage({ audioUrl, duration }) {
   const intervalRef = useRef(null);
   const analyzerRef = useRef(null);
   const audioContextRef = useRef(null);
+  // Флаг чтобы гарантировать создание AudioContext только после первого явного взаимодействия пользователя (user gesture)
+  const hasActivatedRef = useRef(false);
   const animationRef = useRef(null);
 
   const BAR_COUNT = 40;
@@ -59,10 +61,23 @@ export default function AudioMessage({ audioUrl, duration }) {
   }, [isPlaying]);
 
   const setupCtx = () => {
+    // Создаём или возобновляем AudioContext строго после первой кнопки Play
+    if (!hasActivatedRef.current) hasActivatedRef.current = true;
     if (!audioContextRef.current) {
       try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         audioContextRef.current = new Ctx();
+      } catch (e) {
+        console.error("Audio ctx create error", e);
+        return;
+      }
+    }
+    if (audioContextRef.current.state === "suspended") {
+      // Возобновляем если браузер поставил на паузу до жеста
+      audioContextRef.current.resume().catch(() => {});
+    }
+    if (!analyzerRef.current) {
+      try {
         analyzerRef.current = audioContextRef.current.createAnalyser();
         analyzerRef.current.fftSize = 128;
         const src = audioContextRef.current.createMediaElementSource(
@@ -71,7 +86,7 @@ export default function AudioMessage({ audioUrl, duration }) {
         src.connect(analyzerRef.current);
         analyzerRef.current.connect(audioContextRef.current.destination);
       } catch (e) {
-        console.error("Audio ctx error", e);
+        console.error("Audio ctx wiring error", e);
       }
     }
   };
@@ -100,14 +115,18 @@ export default function AudioMessage({ audioUrl, duration }) {
     if (isPlaying) {
       audioRef.current.pause();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    } else {
-      setupCtx();
-      audioRef.current
-        .play()
-        .then(() => animate())
-        .catch((e) => console.error("play error", e));
+      setIsPlaying(false);
+      return;
     }
-    setIsPlaying(!isPlaying);
+    // Инициализация / резюмирование контекста строго по клику
+    setupCtx();
+    audioRef.current
+      .play()
+      .then(() => {
+        animate();
+        setIsPlaying(true);
+      })
+      .catch((e) => console.error("play error", e));
   };
 
   const handleSeek = (e) => {
@@ -194,3 +213,5 @@ export default function AudioMessage({ audioUrl, duration }) {
     </div>
   );
 }
+
+export default memo(AudioMessage);

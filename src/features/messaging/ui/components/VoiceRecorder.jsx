@@ -1,4 +1,4 @@
-// перенесено из src/components/Chat/VoiceRecorder.jsx
+// VoiceRecorder feature component
 import { useState, useRef, useEffect } from "react";
 import { BsMicFill, BsStopFill } from "react-icons/bs";
 import { FaTrash } from "react-icons/fa";

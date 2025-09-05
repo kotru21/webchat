@@ -1,7 +1,7 @@
 import { useRef, useCallback, useMemo } from "react";
-import useChatMessages from "../../../hooks/useChatMessages";
-import useChatSocket from "../../../hooks/useChatSocket";
-import { useAuth } from "../../../context/AuthContext";
+import { useChatMessages } from "./useChatMessages";
+import useChatSocket from "./useChatSocket";
+import { useAuth } from "@context/useAuth";
 
 // Фасад объединяющий сообщения, сокет и счётчики непрочитанного
 export function useChatFeature(selectedUser, { onError }) {

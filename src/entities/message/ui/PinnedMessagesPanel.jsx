@@ -1,3 +1,5 @@
+import { usePinnedMessagesPanel } from "@entities/message/model/usePinnedMessagesPanel";
+
 export const PinnedMessagesPanel = ({
   pinnedMessages,
   showAllPinned,
@@ -6,11 +8,23 @@ export const PinnedMessagesPanel = ({
   scrollToMessage,
   onPinMessage,
 }) => {
-  if (!pinnedMessages || pinnedMessages.length === 0) return null;
-  const getSenderName = (message) =>
-    message.sender._id === currentUser.id
-      ? "Вы"
-      : message.sender.username || message.sender.email;
+  const {
+    hasPinned,
+    count,
+    visibleMessages,
+    toggleShowAll,
+    getSenderName,
+    unpin,
+  } = usePinnedMessagesPanel({
+    pinnedMessages,
+    showAllPinned,
+    setShowAllPinned,
+    currentUserId: currentUser.id,
+    scrollToMessage,
+    onPinMessage,
+  });
+
+  if (!hasPinned) return null;
   return (
     <div className="pinned-panel sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 shadow-md">
       <div className="p-4">
@@ -19,31 +33,29 @@ export const PinnedMessagesPanel = ({
             <span className="text-yellow-500 mr-2 transform hover:scale-110 transition-transform">
               📌
             </span>
-            Закрепленные сообщения ({pinnedMessages.length})
+            Закрепленные сообщения ({count})
           </h3>
-          {pinnedMessages.length > 1 && (
+          {count > 1 && (
             <button
-              onClick={() => setShowAllPinned(!showAllPinned)}
+              onClick={toggleShowAll}
               className="text-blue-500 hover:text-blue-700 dark:text-blue-400 text-sm transition-all duration-200 hover:scale-105">
               {showAllPinned ? "Скрыть" : "Показать все"}
             </button>
           )}
         </div>
         <div className="space-y-2">
-          {(showAllPinned ? pinnedMessages : pinnedMessages.slice(0, 1)).map(
-            (message) => (
-              <div
-                key={message._id}
-                className="transform transition-all duration-300 ease-out">
-                <PinnedMessagePreview
-                  message={message}
-                  getSenderName={getSenderName}
-                  scrollToMessage={scrollToMessage}
-                  onPinMessage={onPinMessage}
-                />
-              </div>
-            )
-          )}
+          {visibleMessages.map((message) => (
+            <div
+              key={message._id}
+              className="transform transition-all duration-300 ease-out">
+              <PinnedMessagePreview
+                message={message}
+                getSenderName={getSenderName}
+                scrollToMessage={scrollToMessage}
+                onUnpin={unpin}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -56,7 +68,7 @@ const PinnedMessagePreview = ({
   message,
   getSenderName,
   scrollToMessage,
-  onPinMessage,
+  onUnpin,
 }) => (
   <div className="w-full bg-gray-200 dark:bg-gray-700 p-3 rounded-lg pinned-message">
     <div className="flex items-center justify-between">
@@ -93,13 +105,7 @@ const PinnedMessagePreview = ({
           Перейти
         </button>
         <button
-          onClick={async () => {
-            try {
-              await onPinMessage(message._id, false);
-            } catch (e) {
-              console.error(e);
-            }
-          }}
+          onClick={() => onUnpin(message._id)}
           className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 text-sm px-2 py-1 rounded hover:bg-gray-400/20 transition-all duration-200 hover:scale-105">
           Открепить
         </button>

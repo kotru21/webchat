@@ -5,10 +5,13 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Chat from "./pages/Chat";
+import { AuthProvider } from "@context/AuthContext";
+import { useAuth } from "@context/useAuth";
+import QueryClientProvider from "@app/providers/QueryClientProvider.jsx";
+import { Suspense, lazy } from "react";
+const Login = lazy(() => import("@pages/Login"));
+const Register = lazy(() => import("@pages/Register"));
+const Chat = lazy(() => import("@pages/Chat"));
 
 const AppContent = () => {
   const { user } = useAuth();
@@ -41,25 +44,34 @@ const AppContent = () => {
   }, [user]);
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={user ? <Chat /> : <Navigate to="/login" replace />}
-      />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-    </Routes>
+    <Suspense
+      fallback={
+        <div className="w-full h-screen flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+          Загрузка...
+        </div>
+      }>
+      <Routes>
+        <Route
+          path="/"
+          element={user ? <Chat /> : <Navigate to="/login" replace />}
+        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </Suspense>
   );
 };
 
 // Основной компонент, предоставляющий контекст
 const App = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <QueryClientProvider>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 

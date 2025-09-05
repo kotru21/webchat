@@ -1,107 +1,35 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo } from "react";
 import { IoMdAttach, IoMdSend } from "react-icons/io";
 import { BiLoaderAlt } from "react-icons/bi";
 import { FiAlertCircle } from "react-icons/fi";
 import { BsMicFill } from "react-icons/bs";
-import { useSendMessage } from "../index";
-import VoiceRecorder from "../../messaging/ui/components/VoiceRecorder"; // bridge, позже перенести в feature recordVoice
-import { FILE_LIMITS, INPUT_LIMITS } from "../../../constants/appConstants";
+import VoiceRecorder from "../../messaging/ui/components/VoiceRecorder"; // TODO: перенести в feature recordVoice
+import { INPUT_LIMITS } from "@constants/appConstants";
+import { useSendMessageForm } from "../model/useSendMessageForm";
 
 export const SendMessageForm = memo(function SendMessageForm({
   receiverId,
   onSent,
 }) {
-  const { send, loading } = useSendMessage({ receiverId });
-  const [text, setText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [error, setError] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (error) {
-      const t = setTimeout(() => setError(null), 5000);
-      return () => clearTimeout(t);
-    }
-  }, [error]);
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE) {
-      setError(
-        `Файл слишком большой. Максимальный размер: ${
-          FILE_LIMITS.MESSAGE_MEDIA_MAX_SIZE / (1024 * 1024)
-        }MB`
-      );
-      fileInputRef.current.value = "";
-      return;
-    }
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "video/mp4",
-      "video/webm",
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      setError(
-        "Неподдерживаемый формат файла. Разрешены: JPEG, PNG, GIF, MP4, WebM"
-      );
-      fileInputRef.current.value = "";
-      return;
-    }
-    setSelectedFile(file);
-    setError(null);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!text.trim() && !selectedFile) return;
-    if (text.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
-      setError(
-        `Сообщение слишком длинное. Максимум: ${INPUT_LIMITS.MESSAGE_MAX_LENGTH}`
-      );
-      return;
-    }
-    const result = await send({ text: text.trim(), file: selectedFile });
-    if (result?.ok) {
-      setText("");
-      setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      onSent?.(result.value);
-    } else if (result?.error?.response?.status === 429) {
-      setError("Слишком часто. Подождите.");
-    } else if (result && !result.ok) {
-      setError(result.error?.message || "Не удалось отправить сообщение");
-    }
-  };
-
-  const handleVoiceRecorded = async (audioFile, duration) => {
-    const result = await send({
-      file: audioFile,
-      mediaType: "audio",
-      audioDuration: duration,
-    });
-    if (result?.ok) {
-      setIsRecording(false);
-      onSent?.(result.value);
-    } else if (result?.error?.response?.status === 429) {
-      setError("Слишком часто. Подождите.");
-    } else if (result && !result.ok) {
-      setError(
-        result.error?.message || "Не удалось отправить голосовое сообщение"
-      );
-    }
-  };
+  const {
+    text,
+    setText,
+    selectedFile,
+    error,
+    isRecording,
+    loading,
+    fileInputRef,
+    handleFileSelect,
+    submit,
+    sendVoice,
+    startRecording,
+    cancelRecording,
+  } = useSendMessageForm({ receiverId, onSent });
 
   const renderInputArea = () => {
     if (isRecording) {
       return (
-        <VoiceRecorder
-          onVoiceRecorded={handleVoiceRecorded}
-          onCancel={() => setIsRecording(false)}
-        />
+        <VoiceRecorder onVoiceRecorded={sendVoice} onCancel={cancelRecording} />
       );
     }
     return (
@@ -131,7 +59,7 @@ export const SendMessageForm = memo(function SendMessageForm({
         </button>
         <button
           type="button"
-          onClick={() => setIsRecording(true)}
+          onClick={startRecording}
           className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105"
           aria-label="Записать голосовое сообщение">
           <BsMicFill size={20} />
@@ -154,7 +82,7 @@ export const SendMessageForm = memo(function SendMessageForm({
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={submit}
       className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300 animate-slide-up">
       {error && (
         <div className="mb-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm p-2 rounded-lg flex items-center animate-fade-in">

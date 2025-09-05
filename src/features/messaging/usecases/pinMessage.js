@@ -1,6 +1,6 @@
-import api from "../../../services/api";
+import { pinMessage } from "@features/messaging/api/messagesApi";
 
 export async function pinMessageUsecase(messageId, isPinned) {
-  await api.put(`/api/messages/${messageId}/pin`, { isPinned });
+  await pinMessage(messageId, isPinned);
   return { ok: true };
 }

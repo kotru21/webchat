@@ -403,6 +403,7 @@
 .messages-container {
   will-change: opacity;
   backface-visibility: hidden;
+  transition: opacity 0.25s ease;
 }
 
 .messages-container.transitioning {
@@ -414,6 +415,38 @@
   opacity: 1;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* Единый вертикальный интервал вокруг сообщений для уменьшения скачков */
+.uniform-message-spacing > div > .flex {
+  /* внутренний контейнер сообщения */
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+/* Placeholder для медиа: пока картинка не загрузилась */
+.message-media-loading {
+  position: relative;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.06) 0,
+    rgba(0, 0, 0, 0.06) 10px,
+    rgba(0, 0, 0, 0.1) 10px,
+    rgba(0, 0, 0, 0.1) 20px
+  );
+  animation: mediaPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mediaPulse {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(0.85);
+  }
+  100% {
+    filter: brightness(1);
+  }
 }
 
 /* Обновляем анимацию для более плавного перехода */
