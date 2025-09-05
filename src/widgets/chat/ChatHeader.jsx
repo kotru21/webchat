@@ -49,8 +49,10 @@ export default function ChatHeader({
             <FiMenu size={22} />
           </button>
           <h1
-            className={`text-lg sm:text-xl font-medium truncate max-w-[60vw] xs:max-w-[70vw] sm:max-w-[220px] chat-title-transition ${
-              isTransitioning ? "chat-title-enter" : "chat-title-enter-active"
+            className={`text-lg sm:text-xl font-medium truncate max-w-[60vw] xs:max-w-[70vw] sm:max-w-[220px] transition-all duration-300 ease-in-out ${
+              isTransitioning
+                ? "opacity-0 -translate-y-2"
+                : "opacity-100 translate-y-0"
             }`}>
             {title}
           </h1>

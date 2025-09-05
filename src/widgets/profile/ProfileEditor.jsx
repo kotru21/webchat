@@ -47,7 +47,7 @@ const ProfileEditor = ({ user, onSave, onClose }) => {
             <span>{error}</span>
           </div>
         )}
-        <div className="overflow-y-auto flex-1 p-6">
+        <div className="overflow-y-auto scrollbar-thin flex-1 p-6">
           {activeTab === "edit" ? (
             <EditProfileTab
               formData={formData}

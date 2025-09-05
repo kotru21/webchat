@@ -16,6 +16,7 @@ import { updateProfile } from "@features/auth/api/authApi";
 import { ANIMATION_DELAYS } from "../constants/appConstants";
 import { notify } from "@shared/lib/eventBus/notify";
 import ToastContainer from "@widgets/notifications/ToastContainer.jsx";
+import apiClient from "@shared/api/client";
 
 const MediaViewer = React.lazy(() => import("@widgets/media/MediaViewer.jsx"));
 const ProfileEditor = React.lazy(() =>
@@ -56,8 +57,8 @@ const Chat = () => {
   };
 
   const handleUserSelect = (user) => {
-    const container = document.querySelector(".messages-container");
-    container?.classList.add("transitioning");
+    const container = document.querySelector(".messages-list-container");
+    container?.classList.add("opacity-0", "pointer-events-none");
 
     setTimeout(() => {
       setSelectedUser(user);
@@ -68,7 +69,7 @@ const Chat = () => {
       });
 
       setTimeout(() => {
-        container?.classList.remove("transitioning");
+        container?.classList.remove("opacity-0", "pointer-events-none");
       }, 50);
     }, ANIMATION_DELAYS.CHAT_TRANSITION);
   };
@@ -80,7 +81,7 @@ const Chat = () => {
       if (updatedUser && updatedUser.id) {
         updateUser(updatedUser);
       } else {
-        const userResponse = await api.get("/api/auth/me");
+        const userResponse = await apiClient.get("/api/auth/me");
         updateUser(userResponse.data);
       }
 

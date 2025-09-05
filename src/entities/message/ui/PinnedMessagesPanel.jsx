@@ -26,7 +26,7 @@ export const PinnedMessagesPanel = ({
 
   if (!hasPinned) return null;
   return (
-    <div className="pinned-panel sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 shadow-md">
+    <div className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 border-b dark:border-gray-700 shadow-md overflow-hidden transition-all duration-300 ease-in-out will-change-[max-height,opacity]">
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium flex items-center">
@@ -70,7 +70,7 @@ const PinnedMessagePreview = ({
   scrollToMessage,
   onUnpin,
 }) => (
-  <div className="w-full bg-gray-200 dark:bg-gray-700 p-3 rounded-lg pinned-message">
+  <div className="w-full bg-gray-200 dark:bg-gray-700 p-3 rounded-lg transition-all duration-300 ease-in-out hover:translate-x-1 hover:bg-gray-300 dark:hover:bg-gray-600">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-2 flex-1 min-w-0">
         <img

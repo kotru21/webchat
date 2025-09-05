@@ -44,12 +44,14 @@ const ChatsList = memo(
               <FiX size={18} />
             </button>
           </div>
-          <div className="overflow-y-auto h-[calc(100%-4rem)] overflow-x-hidden">
+          <div className="overflow-y-auto scrollbar-thin h-[calc(100%-4rem)] overflow-x-hidden">
             <div
               onClick={() => onUserSelect(null)}
-              className={`chat-item p-3 cursor-pointer rounded-lg flex items-center justify-between ${
-                !selectedUser ? "chat-item-selected" : ""
-              } hover:bg-gray-100 dark:hover:bg-gray-700`}>
+              className={`p-3 cursor-pointer rounded-lg flex items-center justify-between transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-l-4 ${
+                !selectedUser
+                  ? "bg-blue-500/10 border-blue-500/80"
+                  : "border-transparent"
+              }`}>
               <div className="flex items-center space-x-3 flex-1 min-w-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white">
                   <FiUsers size={20} />
@@ -102,11 +104,11 @@ const ChatsList = memo(
                       email: chat.user.email,
                     })
                   }
-                  className={`chat-item p-3 cursor-pointer rounded-lg ${
+                  className={`p-3 cursor-pointer rounded-lg transition-all duration-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-l-4 ${
                     selectedUser?.id === chat.user._id
-                      ? "chat-item-selected"
-                      : ""
-                  } hover:bg-gray-100 dark:hover:bg-gray-700`}>
+                      ? "bg-blue-500/10 border-blue-500/80"
+                      : "border-transparent"
+                  }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className="relative flex-shrink-0">

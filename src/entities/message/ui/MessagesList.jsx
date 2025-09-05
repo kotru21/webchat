@@ -264,7 +264,7 @@ export const MessagesList = memo(function MessagesList({
           }
         }}
         data-message-id={mid}
-        className="message-item px-4 md:px-12 lg:px-20 xl:px-24 xl:pr-40">
+        className="message-item message-item-base px-4 md:px-12 lg:px-20 xl:px-24 xl:pr-40">
         <div style={{ paddingBottom: GAP_MESSAGE }}>
           <MessageItem
             message={message}
@@ -327,7 +327,7 @@ export const MessagesList = memo(function MessagesList({
                   </button>
                 )}
               </div>
-              <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 pb-1">
+              <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
                 {pinnedMessages
                   .slice(0, showAllPinned ? pinnedMessages.length : 1)
                   .map((pm) => {
@@ -351,7 +351,7 @@ export const MessagesList = memo(function MessagesList({
       )}
       <div
         ref={listContainerRef}
-        className="flex-1 messages-container relative">
+        className="flex-1 relative opacity-100 transition-opacity duration-250 ease-in-out will-change-[opacity] backface-visibility-hidden messages-list-container">
         {dataItems.length === 0 ? (
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-10 select-none">
             Сообщений пока нет

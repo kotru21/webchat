@@ -92,8 +92,8 @@ export const MessageItem = memo(function MessageItem({
         isOwnMessage ? "justify-end" : "justify-start"
       } w-full relative`}>
       <div
-        className={`max-w-[80%] message-wrapper uniform-message-spacing ${
-          message.isPinned ? "pinned-message" : ""
+        className={`max-w-[80%] message-wrapper ${
+          message.isPinned ? "transition-all duration-300 ease-in-out" : ""
         }`}>
         <div
           className={`absolute flex flex-col gap-2 transition-all duration-300 ease-in-out ${
@@ -185,7 +185,7 @@ export const MessageItem = memo(function MessageItem({
             </div>
           </div>
           <div
-            className={`rounded-lg px-4 py-2 hover-lift relative ${
+            className={`rounded-lg px-4 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md relative ${
               isOwnMessage
                 ? "bg-blue-500 text-white"
                 : "bg-gray-200 dark:bg-gray-700"
