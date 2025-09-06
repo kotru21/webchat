@@ -8,6 +8,7 @@ import {
 import { AuthProvider } from "@context/AuthContext";
 import { useAuth } from "@context/useAuth";
 import QueryClientProvider from "@app/providers/QueryClientProvider.jsx";
+import ErrorBoundary from "@shared/ui/ErrorBoundary.jsx";
 import { Suspense, lazy } from "react";
 const Login = lazy(() => import("@pages/Login"));
 const Register = lazy(() => import("@pages/Register"));
@@ -21,19 +22,28 @@ const AppContent = () => {
     if (!user) return;
 
     const handleBeforeUnload = () => {
-      // Синхронный запрос для гарантированной отправки при закрытии
-      const xhr = new XMLHttpRequest();
-      xhr.open(
-        "PUT",
-        `${import.meta.env.VITE_API_URL}/api/status/update`,
-        false
-      );
-      xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.setRequestHeader(
-        "Authorization",
-        `Bearer ${localStorage.getItem("token")}`
-      );
-      xhr.send(JSON.stringify({ status: "offline" }));
+      try {
+        const url = `${import.meta.env.VITE_API_URL}/api/status/update`;
+        const body = JSON.stringify({ status: "offline" });
+        const token = localStorage.getItem("token");
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: "application/json" });
+          navigator.sendBeacon(url, blob);
+        } else {
+          // fallback (не блокирует поток)
+          fetch(url, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -67,8 +77,11 @@ const App = () => {
   return (
     <QueryClientProvider>
       <AuthProvider>
-        <Router>
-          <AppContent />
+        <Router
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
         </Router>
       </AuthProvider>
     </QueryClientProvider>

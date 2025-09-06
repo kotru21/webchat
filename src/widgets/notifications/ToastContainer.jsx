@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNotificationsStore } from "@features/notifications/store/notificationsStore";
-import eventBus from "@shared/lib/eventBus/eventBus";
 
 const typeStyles = {
   success:
@@ -14,17 +13,8 @@ const typeStyles = {
 export function ToastContainer() {
   const toasts = useNotificationsStore((s) => s.toasts);
   const dismiss = useNotificationsStore((s) => s.dismiss);
-  const push = useNotificationsStore((s) => s.push);
 
-  // Подписка на глобальные уведомления через eventBus
-  useEffect(() => {
-    const off = eventBus.on("notify", (payload) => {
-      if (!payload) return;
-      const { type = "info", message = "", ...rest } = payload;
-      push({ type, message, ...rest });
-    });
-    return () => off();
-  }, [push]);
+  // Источник данных — notificationsStore (notify -> push). Никаких внешних подписок.
 
   useEffect(() => {
     const timers = toasts.map((t) => {

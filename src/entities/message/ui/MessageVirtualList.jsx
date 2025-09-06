@@ -23,10 +23,30 @@ export const MessageVirtualList = memo(function MessageVirtualList({
 }) {
   const sizeMapRef = useRef(new Map());
   const [containerHeight, setContainerHeight] = useState(0);
+  const [editingMessageId, setEditingMessageId] = useState(null);
   const listContainerRef = useRef(null);
   const pendingResetIndexRef = useRef(null);
   const rafIdRef = useRef(null);
   const messageRefs = useRef({});
+
+  // Закрытие контекстного меню по клику вне и по Escape
+  useEffect(() => {
+    if (!activeMessageMenu) return;
+    const handleOutside = (e) => {
+      const container = messageRefs.current[activeMessageMenu];
+      if (container && container.contains(e.target)) return; // клик внутри текущего сообщения
+      setActiveMessageMenu(null);
+    };
+    const handleKey = (e) => {
+      if (e.key === "Escape") setActiveMessageMenu(null);
+    };
+    document.addEventListener("mousedown", handleOutside, true);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside, true);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [activeMessageMenu, setActiveMessageMenu]);
 
   // Индексация сообщений для scrollToMessage
   useEffect(() => {
@@ -175,7 +195,18 @@ export const MessageVirtualList = memo(function MessageVirtualList({
                   : message._id || message.id
               );
             }}
-            onSaveEdit={onEditMessage}
+            isEditing={editingMessageId === (message._id || message.id)}
+            onRequestEdit={() => {
+              setEditingMessageId(message._id || message.id);
+              // закрыть меню если открыто
+              if (activeMessageMenu) setActiveMessageMenu(null);
+            }}
+            onCancelEdit={() => setEditingMessageId(null)}
+            onSaveEdit={async (id, formData) => {
+              const ok = await onEditMessage(id, formData);
+              if (ok) setEditingMessageId(null);
+              return ok;
+            }}
             onStartChat={onStartChat}
           />
         </div>

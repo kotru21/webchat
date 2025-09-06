@@ -1,11 +1,5 @@
 // src/pages/Chat.jsx
-import React, {
-  useState,
-  Suspense,
-  useTransition,
-  useCallback,
-  lazy,
-} from "react";
+import React, { Suspense, useTransition, useCallback, lazy } from "react";
 import { useAuth } from "@context/useAuth";
 import ChatHeader from "@widgets/chat/ChatHeader.jsx";
 import { MessagesList } from "@entities/message/ui/MessagesList.jsx";
@@ -13,10 +7,11 @@ import { SendMessageForm } from "@features/sendMessage/ui/SendMessageForm.jsx";
 const ChatsList = lazy(() => import("@widgets/chats/ChatsList"));
 import useChatFeature from "@features/messaging/facade/useChatFeature";
 import { updateProfile } from "@features/auth/api/authApi";
-import { ANIMATION_DELAYS } from "../constants/appConstants";
-import { notify } from "@shared/lib/eventBus/notify";
+import { notify } from "@features/notifications/notify";
 import ToastContainer from "@widgets/notifications/ToastContainer.jsx";
 import apiClient from "@shared/api/client";
+import { useUIStore } from "@shared/store/uiStore";
+import { useChatStore } from "@shared/store/chatStore";
 
 const MediaViewer = React.lazy(() => import("@widgets/media/MediaViewer.jsx"));
 const ProfileEditor = React.lazy(() =>
@@ -24,54 +19,39 @@ const ProfileEditor = React.lazy(() =>
 );
 
 const Chat = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [fullscreenMedia, setFullscreenMedia] = useState(null);
-  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
+  // selectedUser теперь используется внутри useChatFeature напрямую из store
+  // Раздельные селекторы, чтобы избежать создания нового объекта на каждый рендер
+  const isSidebarOpen = useUIStore((s) => s.isSidebarOpen);
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const fullscreenMedia = useUIStore((s) => s.fullscreenMedia);
+  const openMedia = useUIStore((s) => s.openMedia);
+  const closeMedia = useUIStore((s) => s.closeMedia);
+  const isProfileEditorOpen = useUIStore((s) => s.isProfileEditorOpen);
+  const openProfileEditor = useUIStore((s) => s.openProfileEditor);
+  const closeProfileEditor = useUIStore((s) => s.closeProfileEditor);
   const [, startTransition] = useTransition();
-  const [unreadCounts, setUnreadCounts] = useState({ general: 0 });
+  // unreadCounts теперь в zustand (chatStore)
   const { user, updateUser } = useAuth();
+  const setSelectedUser = useChatStore((s) => s.setSelectedUser);
 
   // Профиль пользователя будет вынесен в отдельный контейнер позже
-
-  const { messages, loading, api } = useChatFeature(selectedUser, {
-    onError: (msg) => showErrorMessage(msg),
-  });
 
   const showErrorMessage = useCallback((message, type = "error") => {
     notify(type, message);
   }, []);
 
-  // Очистка таймаута при размонтировании компонента
-  // таймеры теперь управляются ToastContainer
-
-  // ошибки теперь приходят через фасад onError
+  const { messages, api } = useChatFeature({
+    onError: (msg) => showErrorMessage(msg),
+  });
+  const selectedUser = useChatStore((s) => s.selectedUser);
 
   const handleMediaClick = (mediaUrl, mediaType) => {
     startTransition(() => {
-      setFullscreenMedia({
+      openMedia({
         url: `${import.meta.env.VITE_API_URL}${mediaUrl}`,
         type: mediaType,
       });
     });
-  };
-
-  const handleUserSelect = (user) => {
-    const container = document.querySelector(".messages-list-container");
-    container?.classList.add("opacity-0", "pointer-events-none");
-
-    setTimeout(() => {
-      setSelectedUser(user);
-      setUnreadCounts((prev) => {
-        const newCounts = { ...prev };
-        user ? delete newCounts[user.id] : (newCounts.general = 0);
-        return newCounts;
-      });
-
-      setTimeout(() => {
-        container?.classList.remove("opacity-0", "pointer-events-none");
-      }, 50);
-    }, ANIMATION_DELAYS.CHAT_TRANSITION);
   };
 
   const handleProfileUpdate = async (formData) => {
@@ -86,7 +66,7 @@ const Chat = () => {
       }
 
       startTransition(() => {
-        setIsProfileEditorOpen(false);
+        closeProfileEditor();
       });
 
       showErrorMessage("Профиль успешно обновлен", "success");
@@ -122,27 +102,28 @@ const Chat = () => {
     }
   };
 
-  const handleStartChat = (user) => {
-    if (user) {
-      setIsSidebarOpen(false); // Закрываем сайдбар на мобильных
-      handleUserSelect(user); // Используем существующий обработчик
-    }
-  };
-
-  // TODO: профиль вынести в отдельный слой (виджет + usecase)
-
-  // ручное закрытие не требуется — есть dismiss в ToastContainer
-
-  // удалён временный лог user_connected
-
-  // socket pin updates теперь идут через store
+  const handleStartChat = useCallback(
+    (target) => {
+      if (!target || !target.id || target.id === user.id) return;
+      setSelectedUser({
+        id: target.id,
+        username: target.username,
+        avatar: target.avatar,
+        email: target.email,
+        status: target.status,
+      });
+      // На мобильных можно закрыть сайдбар, если открыт профиль
+      setSidebarOpen(false);
+    },
+    [setSelectedUser, setSidebarOpen, user.id]
+  );
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
       <div className="flex-none md:w-72">
@@ -154,10 +135,7 @@ const Chat = () => {
           }>
           <ChatsList
             isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            onUserSelect={handleUserSelect}
-            selectedUser={selectedUser}
-            unreadCounts={unreadCounts}
+            onClose={() => setSidebarOpen(false)}
           />
         </Suspense>
       </div>
@@ -165,11 +143,10 @@ const Chat = () => {
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
         <ChatHeader
           user={user}
-          selectedUser={selectedUser}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
+          onOpenSidebar={() => setSidebarOpen(true)}
           onOpenProfileEditor={() => {
             startTransition(() => {
-              setIsProfileEditorOpen(true);
+              openProfileEditor();
             });
           }}
         />
@@ -184,7 +161,7 @@ const Chat = () => {
           onPinMessage={api.pin}
           onStartChat={handleStartChat}
         />
-        <SendMessageForm onSendMessage={api.send} loading={loading} />
+        <SendMessageForm receiverId={selectedUser?.id || null} />
       </div>
       {fullscreenMedia && (
         <Suspense
@@ -193,10 +170,7 @@ const Chat = () => {
               <div className="text-white text-lg">Загрузка медиа...</div>
             </div>
           }>
-          <MediaViewer
-            media={fullscreenMedia}
-            onClose={() => setFullscreenMedia(null)}
-          />
+          <MediaViewer media={fullscreenMedia} onClose={() => closeMedia()} />
         </Suspense>
       )}
       {isProfileEditorOpen && (
@@ -211,7 +185,7 @@ const Chat = () => {
             onSave={handleProfileUpdate}
             onClose={() => {
               startTransition(() => {
-                setIsProfileEditorOpen(false);
+                closeProfileEditor();
               });
             }}
           />
@@ -219,7 +193,6 @@ const Chat = () => {
       )}
       {/* Toasts */}
       <ToastContainer />
-      {/* Профиль пользователя временно отключен */}
     </div>
   );
 };

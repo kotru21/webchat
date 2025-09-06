@@ -3,3 +3,25 @@
 
 @layer base {
 }
+
+@layer utilities {
+  @keyframes anchorFlash {
+    0% {
+      background-color: rgba(250, 204, 21, 0.35);
+    }
+    35% {
+      background-color: rgba(250, 204, 21, 0.55);
+    }
+    70% {
+      background-color: rgba(250, 204, 21, 0.35);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+  .anchor-highlight {
+    animation: anchorFlash 1.5s ease-in-out 1;
+    position: relative;
+    transition: background-color 0.4s ease;
+  }
+}

@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import io from "socket.io-client";
 import { SOCKET_EVENTS } from "@constants/socketEvents";
 import { useMessagesStore } from "@features/messaging/store/messagesStore";
+import { usePresenceStore } from "@shared/store/presenceStore";
 
 const useChatSocket = ({
   user,
   selectedUser,
-  setUnreadCounts,
+  incrementUnread,
   onSocketSendRef,
 }) => {
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const setAllPresence = usePresenceStore((s) => s.setAll);
+  const updatePresenceStatus = usePresenceStore((s) => s.updateStatus);
   const addMessage = useMessagesStore((s) => s.addMessage);
   const updateMessage = useMessagesStore((s) => s.updateMessage);
   const removeMessage = useMessagesStore((s) => s.removeMessage);
@@ -20,13 +22,31 @@ const useChatSocket = ({
 
   useEffect(() => {
     if (!user) return;
-    const socket = io(import.meta.env.VITE_API_URL, { withCredentials: true });
+    const socket = io(import.meta.env.VITE_API_URL, {
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 5000,
+    });
     socketRef.current = socket;
 
-    socket.on("connect", () => {
+    const joinRooms = () => {
       socket.emit(SOCKET_EVENTS.JOIN_ROOM, "general");
       if (selectedUser?.id)
         socket.emit(SOCKET_EVENTS.JOIN_ROOM, selectedUser.id);
+    };
+
+    socket.on("connect", joinRooms);
+    socket.on("reconnect", joinRooms);
+    socket.on("reconnect_error", () => {
+      // можно добавить notify при желании
+    });
+    socket.on("disconnect", (reason) => {
+      if (reason === "io server disconnect") {
+        // требуется ручное подключение
+        socket.connect();
+      }
     });
 
     socket.emit(SOCKET_EVENTS.USER_CONNECTED, {
@@ -51,26 +71,17 @@ const useChatSocket = ({
           addMessage(selectedUser?.id, msg);
         } else if (!isOwn) {
           const otherId = senderId !== user.id ? senderId : receiverId;
-          if (otherId) {
-            setUnreadCounts((prev) => ({
-              ...prev,
-              [otherId]: (prev[otherId] || 0) + 1,
-            }));
-          }
-          window.dispatchEvent(new CustomEvent("chat:refresh"));
+          if (otherId) incrementUnread(otherId);
         }
       } else {
         if (!selectedUser) addMessage(null, msg);
         else if (!isOwn) {
-          setUnreadCounts((prev) => ({
-            ...prev,
-            general: (prev.general || 0) + 1,
-          }));
+          incrementUnread("general");
         }
       }
     });
 
-    socket.on(SOCKET_EVENTS.USERS_ONLINE, (users) => setOnlineUsers(users));
+    socket.on(SOCKET_EVENTS.USERS_ONLINE, (users) => setAllPresence(users));
     socket.on(SOCKET_EVENTS.MESSAGE_READ, ({ messageId, readBy }) =>
       markRead(messageId, readBy)
     );
@@ -84,11 +95,7 @@ const useChatSocket = ({
       pinMessage(messageId, isPinned)
     );
     socket.on(SOCKET_EVENTS.USER_STATUS_CHANGED, ({ userId, status }) => {
-      if (userId !== user.id) {
-        setOnlineUsers((prev) =>
-          prev.map((u) => (u._id === userId ? { ...u, status } : u))
-        );
-      }
+      if (userId !== user.id) updatePresenceStatus(userId, status);
     });
 
     if (onSocketSendRef) {
@@ -104,13 +111,15 @@ const useChatSocket = ({
   }, [
     user,
     selectedUser,
-    setUnreadCounts,
+    incrementUnread,
     addMessage,
     markRead,
     removeMessage,
     updateMessage,
     pinMessage,
     onSocketSendRef,
+    setAllPresence,
+    updatePresenceStatus,
   ]);
 
   const prevSelectedRef = useRef(null);
@@ -122,7 +131,7 @@ const useChatSocket = ({
     }
   }, [selectedUser?.id]);
 
-  return { onlineUsers };
+  return {};
 };
 
 export default useChatSocket;

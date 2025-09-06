@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import useMessageMenu from "@entities/message/lib/useMessageMenu.js";
 
 export function useMessageItem({
@@ -7,35 +7,41 @@ export function useMessageItem({
   onToggleMenu,
   onPin,
   onSaveEdit,
+  isMenuOpen,
+  isEditing, // контролируемое состояние
+  onRequestEdit,
+  onCancelEdit,
 }) {
   const isOwnMessage = message.sender._id === currentUserId;
-  const [isEditing, setIsEditing] = useState(false);
   const messageContentRef = useRef(null);
 
   const {
     messageRef,
     profileTriggerRef,
+    menuRef,
     isProfileOpen,
     setIsProfileOpen,
     menuPosition,
     handleProfileClick,
     handleContextMenu,
-    handleClick,
-  } = useMessageMenu(isOwnMessage, onToggleMenu);
+    closeMenu,
+  } = useMessageMenu({ isOwnMessage, onToggleMenu, isMenuOpen });
 
   const startEdit = useCallback(() => {
-    setIsEditing(true);
+    onRequestEdit?.();
     onToggleMenu?.();
-  }, [onToggleMenu]);
+  }, [onRequestEdit, onToggleMenu]);
 
-  const cancelEdit = useCallback(() => setIsEditing(false), []);
+  const cancelEdit = useCallback(() => {
+    onCancelEdit?.();
+  }, [onCancelEdit]);
 
   const saveEdit = useCallback(
     async (formData) => {
-      await onSaveEdit(message._id, formData);
-      setIsEditing(false);
+      const ok = await onSaveEdit(message._id, formData);
+      if (ok) onCancelEdit?.();
     },
-    [message._id, onSaveEdit]
+    [message._id, onSaveEdit, onCancelEdit]
   );
 
   const togglePin = useCallback(async () => {
@@ -49,6 +55,9 @@ export function useMessageItem({
   const isOptimistic =
     message.optimistic || String(message._id).startsWith("temp-");
   const isFailed = message.failed;
+
+  // TODO: В будущем можно вынести вычисления optimistic/failed в memoized selector
+  // из messageStore, если потребуется дополнительная логика.
 
   return {
     // ownership
@@ -68,7 +77,8 @@ export function useMessageItem({
     menuPosition,
     handleProfileClick,
     handleContextMenu,
-    handleClick,
+    menuRef,
+    closeMenu,
     // refs
     messageContentRef,
     // optimistic status

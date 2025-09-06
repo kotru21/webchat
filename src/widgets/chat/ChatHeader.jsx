@@ -1,20 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import StatusSelector from "@features/status/selectStatus/ui/StatusSelector";
 import { useAuth } from "@context/useAuth";
 import { FiMenu } from "react-icons/fi";
 import { ANIMATION_DELAYS } from "@constants/appConstants";
 import { setupHoverPrefetch } from "@shared/lib/prefetch";
+import { useSelectedUser } from "@shared/store/chatSelectors";
 
-export default function ChatHeader({
-  user,
-  selectedUser,
-  onOpenSidebar,
-  onOpenProfileEditor,
-}) {
+const ChatHeaderComponent = ({ user, onOpenSidebar, onOpenProfileEditor }) => {
+  const selectedUser = useSelectedUser();
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [title, setTitle] = useState(
-    selectedUser ? selectedUser.username || selectedUser.email : "Общий чат"
-  );
+  const titleSource = selectedUser
+    ? selectedUser.username || selectedUser.email
+    : "Общий чат";
+  const [title, setTitle] = useState(titleSource);
   const { userStatus, handleStatusChange } = useAuth();
 
   useEffect(() => {
@@ -111,4 +109,7 @@ export default function ChatHeader({
       </div>
     </header>
   );
-}
+};
+
+const ChatHeader = memo(ChatHeaderComponent);
+export default ChatHeader;

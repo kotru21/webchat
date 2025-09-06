@@ -1,13 +1,13 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 
 export const PinnedMessagesPanel = memo(function PinnedMessagesPanel({
   pinnedMessages,
+  showAll,
+  onToggleShowAll,
   onSelect,
   enable = true,
 }) {
-  const [showAll, setShowAll] = useState(false);
   if (!enable || !pinnedMessages?.length) return null;
-
   return (
     <div className="z-20 bg-transparent">
       <div className="px-2">
@@ -18,7 +18,7 @@ export const PinnedMessagesPanel = memo(function PinnedMessagesPanel({
             </span>
             {pinnedMessages.length > 1 && (
               <button
-                onClick={() => setShowAll((v) => !v)}
+                onClick={onToggleShowAll}
                 className="text-[11px] text-blue-500 hover:underline">
                 {showAll ? "Свернуть" : "Все"}
               </button>

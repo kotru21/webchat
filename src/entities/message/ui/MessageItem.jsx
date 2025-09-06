@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useChatStore } from "@shared/store/chatStore";
 import ReadStatus from "./ReadStatus";
 import UserProfileWidget from "@features/profile/widgets/UserProfileWidget";
 import MessageEditor from "@features/editMessage/ui/MessageEditor.jsx";
@@ -16,22 +17,25 @@ export const MessageItem = memo(function MessageItem({
   onToggleMenu,
   onSaveEdit,
   onStartChat,
+  isEditing,
+  onRequestEdit,
+  onCancelEdit,
 }) {
+  const setSelectedUser = useChatStore((s) => s.setSelectedUser);
   const {
     isOwnMessage,
-    isEditing,
     startEdit,
     cancelEdit,
     saveEdit,
     togglePin,
     messageRef,
     profileTriggerRef,
+    menuRef,
     isProfileOpen,
     setIsProfileOpen,
     menuPosition,
     handleProfileClick,
     handleContextMenu,
-    handleClick,
     messageContentRef,
     isOptimistic,
     isFailed,
@@ -41,30 +45,32 @@ export const MessageItem = memo(function MessageItem({
     onToggleMenu,
     onPin,
     onSaveEdit,
+    isMenuOpen,
+    isEditing,
+    onRequestEdit,
+    onCancelEdit,
   });
 
   const renderMessageContent = () => (
     <div ref={messageContentRef}>
-      {message.content && (
-        <div className="flex flex-col">
-          <p
-            className={`text-sm break-words ${
-              isOwnMessage ? "text-right" : "text-left"
-            } ${message.isDeleted ? "italic text-opacity-70" : ""}`}>
-            {message.content}
-          </p>
-          {(message.isEdited || message.isDeleted) && (
-            <span
-              className={`text-xs ${
-                isOwnMessage
-                  ? "text-right text-gray-300"
-                  : "text-left text-gray-500"
-              }`}>
-              {message.isDeleted ? "удалено" : "изменено"}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="flex flex-col">
+        <p
+          className={`text-sm break-words ${
+            isOwnMessage ? "text-right" : "text-left"
+          } ${message.isDeleted ? "italic opacity-70" : ""}`}>
+          {message.isDeleted ? "Сообщение удалено" : message.content || ""}
+        </p>
+        {message.isEdited && !message.isDeleted && (
+          <span
+            className={`text-xs ${
+              isOwnMessage
+                ? "text-right text-gray-300"
+                : "text-left text-gray-500"
+            }`}>
+            изменено
+          </span>
+        )}
+      </div>
       <MessageMedia message={message} onMediaClick={onMediaClick} />
     </div>
   );
@@ -86,7 +92,6 @@ export const MessageItem = memo(function MessageItem({
   return (
     <div
       ref={messageRef}
-      onClick={handleClick}
       onContextMenu={handleContextMenu}
       className={`flex ${
         isOwnMessage ? "justify-end" : "justify-start"
@@ -96,6 +101,7 @@ export const MessageItem = memo(function MessageItem({
           message.isPinned ? "transition-all duration-300 ease-in-out" : ""
         }`}>
         <div
+          ref={menuRef}
           className={`absolute flex flex-col gap-2 transition-all duration-300 ease-in-out ${
             isMenuOpen ? "opacity-100 z-20" : "opacity-0 pointer-events-none"
           } bg-white dark:bg-gray-800 py-3 px-4 rounded-md shadow-lg transition-all duration-200 z-10`}
@@ -108,20 +114,29 @@ export const MessageItem = memo(function MessageItem({
             <>
               {!message.isDeleted && (
                 <button
-                  onClick={startEdit}
-                  className="text-sm text-blue-500 hover:text-blue-700 dark:hover текст-blue-400">
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEdit();
+                  }}
+                  className="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-400">
                   Редактировать
                 </button>
               )}
               <button
-                onClick={onDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(message._id);
+                }}
                 className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400">
                 Удалить
               </button>
             </>
           )}
           <button
-            onClick={togglePin}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePin();
+            }}
             className="text-sm text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400">
             {message.isPinned ? "Открепить" : "Закрепить"}
           </button>
@@ -178,7 +193,19 @@ export const MessageItem = memo(function MessageItem({
                         : "left-full translate-x-[8px]"
                     }`}
                     currentUserId={currentUser.id}
-                    onStartChat={onStartChat}
+                    onStartChat={
+                      onStartChat ||
+                      ((user) => {
+                        if (!user || user.id === currentUser.id) return;
+                        setSelectedUser({
+                          id: user.id,
+                          username: user.username,
+                          avatar: user.avatar,
+                          email: user.email,
+                          status: user.status,
+                        });
+                      })
+                    }
                   />
                 </div>
               )}

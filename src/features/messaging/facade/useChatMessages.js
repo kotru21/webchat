@@ -2,22 +2,18 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@context/useAuth";
 import { getMessages } from "@features/messaging/api/messagesApi";
 import { useMessagesStore } from "@features/messaging/store/messagesStore";
-import { sendMessageUsecase } from "@features/messaging/usecases/sendMessage";
-import { notify } from "@shared/lib/eventBus/notify";
 import { useEditMessage } from "@features/editMessage";
 import { useDeleteMessage } from "@features/deleteMessage";
 import { useMarkRead } from "@features/markRead";
 import { usePinMessage } from "@features/pinMessage";
 
 export const useChatMessages = (selectedUser) => {
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false); // legacy: отправка теперь в useSendMessage
+  const [messagesLoading, setMessagesLoading] = useState(false); // загрузка списка
   const [error, setError] = useState("");
   const { user } = useAuth();
 
   const storeSetChatMessages = useMessagesStore((s) => s.setChatMessages);
-  const addPending = useMessagesStore((s) => s.addPendingMessage);
-  const finalizePending = useMessagesStore((s) => s.finalizePendingMessage);
-  const failPending = useMessagesStore((s) => s.failPendingMessage);
 
   const chatKey = selectedUser?.id ? `private:${selectedUser.id}` : "general";
   const EMPTY = useMemo(() => [], []);
@@ -26,12 +22,19 @@ export const useChatMessages = (selectedUser) => {
   );
 
   useEffect(() => {
-    const fetchMessages = async () => {
+    let active = true;
+    const controller = new AbortController();
+    (async () => {
+      setMessagesLoading(true);
       try {
-        const data = await getMessages(selectedUser?.id);
+        const data = await getMessages(selectedUser?.id, {
+          signal: controller.signal,
+        });
+        if (!active) return;
         storeSetChatMessages(selectedUser?.id, data);
         setError("");
       } catch (error) {
+        if (!active || error.name === "AbortError") return;
         console.error("Ошибка при загрузке сообщений:", error);
         if (error.response) {
           switch (error.response.status) {
@@ -58,116 +61,15 @@ export const useChatMessages = (selectedUser) => {
         } else {
           setError("Ошибка при загрузке сообщений");
         }
+      } finally {
+        if (active) setMessagesLoading(false);
       }
+    })();
+    return () => {
+      active = false;
+      controller.abort();
     };
-    fetchMessages();
-  }, [selectedUser, user.id, storeSetChatMessages]);
-
-  const sendMessageHandler = async (formData) => {
-    setLoading(true);
-    const text = formData.get("text");
-    const file = formData.get("media");
-    const receiverId = selectedUser?.id;
-    const tempId = `temp-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-    addPending(selectedUser?.id, {
-      _id: tempId,
-      content: text || (file ? "Медиа" : ""),
-      sender: {
-        _id: user.id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-      },
-      receiver: receiverId,
-      createdAt: new Date().toISOString(),
-      isPinned: false,
-      isDeleted: false,
-      isEdited: false,
-      mediaUrl: null,
-      mediaType: null,
-      optimistic: true,
-    });
-    try {
-      const res = await sendMessageUsecase({ text, file, receiverId });
-      if (!res.ok) {
-        failPending(tempId);
-        setError(res.error);
-        notify("error", res.error, {
-          actions: [
-            {
-              label: "Повторить",
-              onClick: () => {
-                const retryForm = new FormData();
-                if (text) retryForm.append("text", text);
-                if (file) retryForm.append("media", file);
-                sendMessageHandler(retryForm);
-              },
-            },
-          ],
-        });
-        return false;
-      }
-      finalizePending(tempId, res.value);
-      return true;
-    } catch (error) {
-      failPending(tempId);
-      notify("error", "Не удалось отправить сообщение", {
-        actions: [
-          {
-            label: "Повторить",
-            onClick: () => {
-              const retryForm = new FormData();
-              if (text) retryForm.append("text", text);
-              if (file) retryForm.append("media", file);
-              sendMessageHandler(retryForm);
-            },
-          },
-        ],
-      });
-      console.error("Ошибка при отправке сообщения:", error);
-      if (error.response) {
-        switch (error.response.status) {
-          case 400:
-            if (error.response.data?.message?.includes("file")) {
-              setError(
-                "Неверный формат файла. Поддерживаются только изображения и видео"
-              );
-            } else {
-              setError("Некорректные данные сообщения");
-            }
-            break;
-          case 401:
-            setError("Требуется авторизация. Пожалуйста, войдите заново");
-            break;
-          case 403:
-            setError("У вас нет прав для отправки сообщений в этот чат");
-            break;
-          case 404:
-            setError("Получатель сообщения не найден");
-            break;
-          case 413:
-            setError(
-              "Файл слишком большой. Пожалуйста, выберите файл меньшего размера"
-            );
-            break;
-          case 429:
-            setError("Слишком много сообщений. Пожалуйста, подождите немного");
-            break;
-          default:
-            setError("Не удалось отправить сообщение");
-        }
-      } else if (error.request) {
-        setError("Сервер недоступен. Проверьте подключение к интернету");
-      } else {
-        setError("Ошибка при отправке сообщения");
-      }
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [selectedUser?.id, user.id, storeSetChatMessages]);
 
   const { editMessage: editMessageBridge } = useEditMessage();
   const { deleteMessage: deleteMessageBridge } = useDeleteMessage();
@@ -205,10 +107,11 @@ export const useChatMessages = (selectedUser) => {
   return {
     messages: reactiveMessages,
     loading,
+    messagesLoading,
     error,
     setError,
     setMessages: () => {},
-    sendMessageHandler,
+    // отправка теперь через useSendMessage (feature sendMessage)
     markAsReadHandler,
     editMessageHandler,
     deleteMessageHandler,

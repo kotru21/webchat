@@ -5,7 +5,7 @@ import { useMessagesStore } from "../../messaging/store/messagesStore";
 export function useDeleteMessage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const remove = useMessagesStore((s) => s.removeMessage);
+  const markDeleted = useMessagesStore((s) => s.markMessageDeleted);
 
   const deleteMessage = useCallback(
     async (messageId) => {
@@ -13,7 +13,10 @@ export function useDeleteMessage() {
       setError(null);
       try {
         const res = await deleteMessageUsecase(messageId);
-        if (res.ok) remove(messageId);
+        if (res.ok) {
+          // soft delete
+          markDeleted(messageId);
+        }
         return res;
       } catch (e) {
         setError(e.message || "Ошибка удаления");
@@ -22,7 +25,7 @@ export function useDeleteMessage() {
         setLoading(false);
       }
     },
-    [remove]
+    [markDeleted]
   );
 
   return { deleteMessage, loading, error, resetError: () => setError(null) };

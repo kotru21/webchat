@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect, memo } from "react";
-import { FaPlay, FaPause } from "react-icons/fa";
+import { useState, useRef, useEffect, useCallback } from "react";
 
-function AudioMessage({ audioUrl, duration }) {
+// Хук управления воспроизведением аудио и визуализацией.
+export function useAudioMessage({ duration, barCount = 40 }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [progress, setProgress] = useState(0);
   const [bars, setBars] = useState([]);
+
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
   const analyzerRef = useRef(null);
@@ -13,17 +14,16 @@ function AudioMessage({ audioUrl, duration }) {
   const hasActivatedRef = useRef(false);
   const animationRef = useRef(null);
 
-  const BAR_COUNT = 40;
   const MIN_HEIGHT = 2;
   const MAX_HEIGHT = 25;
 
   useEffect(() => {
     setBars(
-      Array.from({ length: BAR_COUNT }, () =>
+      Array.from({ length: barCount }, () =>
         Math.floor(Math.random() * (MAX_HEIGHT - MIN_HEIGHT) + MIN_HEIGHT)
       )
     );
-  }, []);
+  }, [barCount]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -38,15 +38,19 @@ function AudioMessage({ audioUrl, duration }) {
       el.removeEventListener("ended", ended);
       el.pause();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (audioContextRef.current && audioContextRef.current.state !== "closed")
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
         audioContextRef.current.close();
+      }
     };
   }, []);
 
   useEffect(() => {
     if (isPlaying) {
       intervalRef.current = setInterval(() => {
-        if (audioRef.current) {
+        if (audioRef.current && isFinite(audioRef.current.duration)) {
           setCurrentTime(audioRef.current.currentTime);
           setProgress(
             (audioRef.current.currentTime / audioRef.current.duration) * 100
@@ -59,8 +63,7 @@ function AudioMessage({ audioUrl, duration }) {
     return () => clearInterval(intervalRef.current);
   }, [isPlaying]);
 
-  const setupCtx = () => {
-    // Создаём или возобновляем AudioContext строго после первой кнопки Play
+  const setupCtx = useCallback(() => {
     if (!hasActivatedRef.current) hasActivatedRef.current = true;
     if (!audioContextRef.current) {
       try {
@@ -72,7 +75,6 @@ function AudioMessage({ audioUrl, duration }) {
       }
     }
     if (audioContextRef.current.state === "suspended") {
-      // Возобновляем если браузер поставил на паузу до жеста
       audioContextRef.current.resume().catch(() => {});
     }
     if (!analyzerRef.current) {
@@ -88,16 +90,16 @@ function AudioMessage({ audioUrl, duration }) {
         console.error("Audio ctx wiring error", e);
       }
     }
-  };
+  }, []);
 
-  const animate = () => {
+  const animate = useCallback(() => {
     if (!analyzerRef.current) return;
     const len = analyzerRef.current.frequencyBinCount;
     const data = new Uint8Array(len);
     analyzerRef.current.getByteFrequencyData(data);
     const arr = [];
-    const step = Math.floor(data.length / BAR_COUNT) || 1;
-    for (let i = 0; i < BAR_COUNT; i++) {
+    const step = Math.floor(data.length / barCount) || 1;
+    for (let i = 0; i < barCount; i++) {
       const start = i * step;
       let sum = 0;
       for (let j = 0; j < step && start + j < data.length; j++)
@@ -108,16 +110,15 @@ function AudioMessage({ audioUrl, duration }) {
     }
     setBars(arr);
     animationRef.current = requestAnimationFrame(animate);
-  };
+  }, [barCount]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (isPlaying) {
-      audioRef.current.pause();
+      audioRef.current?.pause();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       setIsPlaying(false);
       return;
     }
-    // Инициализация / резюмирование контекста строго по клику
     setupCtx();
     audioRef.current
       .play()
@@ -126,9 +127,9 @@ function AudioMessage({ audioUrl, duration }) {
         setIsPlaying(true);
       })
       .catch((e) => console.error("play error", e));
-  };
+  }, [isPlaying, setupCtx, animate]);
 
-  const handleSeek = (e) => {
+  const handleSeek = useCallback((e) => {
     const pos = parseFloat(e.target.value);
     if (
       audioRef.current &&
@@ -142,75 +143,33 @@ function AudioMessage({ audioUrl, duration }) {
         setProgress(pos);
       }
     }
-  };
+  }, []);
 
-  const format = (t) => {
+  const formatTime = useCallback((t) => {
     const m = Math.floor(t / 60);
     const s = Math.floor(t % 60);
     return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-  const getDuration = () =>
-    duration
-      ? format(duration)
-      : audioRef.current?.duration
-      ? format(audioRef.current.duration)
-      : "0:00";
+  }, []);
 
-  return (
-    <div className="flex flex-col p-2 w-full max-w-md">
-      <audio
-        ref={audioRef}
-        src={audioUrl}
-        preload="metadata"
-        crossOrigin="anonymous"
-      />
-      <div className="flex items-center">
-        <button
-          onClick={handlePlayPause}
-          className={`p-3 rounded-full ${
-            isPlaying ? "bg-red-500" : "bg-blue-500"
-          } text-white mr-3 flex-shrink-0 transition-colors duration-300`}
-          aria-label={isPlaying ? "Пауза" : "Воспроизвести"}>
-          {isPlaying ? <FaPause size={12} /> : <FaPlay size={12} />}
-        </button>
-        <div className="w-full h-14 bg-gray-100 dark:bg-gray-800 rounded-lg p-2 flex items-end gap-[2px] overflow-hidden relative">
-          <div className="text-xs text-gray-500 dark:text-gray-400 flex-grow flex justify-between w-full h-full">
-            <span className="mr-2">{format(currentTime)}</span>
-            <div
-              className="absolute left-0 bottom-0 bg-blue-500/20 h-full transition-all duration-100 pointer-events-none"
-              style={{ width: `${progress}%` }}
-            />
-            <div className="flex items-end gap-[2px] w-full h-full relative">
-              {bars.map((h, i) => (
-                <div
-                  key={i}
-                  className={`rounded-sm flex-1 ${
-                    isPlaying
-                      ? "bg-blue-500 dark:bg-blue-400"
-                      : "bg-gray-400 dark:bg-gray-600"
-                  }`}
-                  style={{
-                    height: `${h}px`,
-                    minWidth: "2px",
-                    transition: "height 0.1s ease",
-                  }}
-                />
-              ))}
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={progress}
-              onChange={handleSeek}
-              className="absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <span className="ml-2">{getDuration()}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const getDuration = useCallback(() => {
+    return duration
+      ? formatTime(duration)
+      : audioRef.current?.duration
+      ? formatTime(audioRef.current.duration)
+      : "0:00";
+  }, [duration, formatTime]);
+
+  return {
+    audioRef,
+    isPlaying,
+    currentTime,
+    progress,
+    bars,
+    handlePlayPause,
+    handleSeek,
+    getDuration,
+    formatTime,
+  };
 }
 
-export default memo(AudioMessage);
+export default useAudioMessage;

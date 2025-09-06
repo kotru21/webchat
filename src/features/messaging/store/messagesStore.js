@@ -12,6 +12,7 @@ function chatKey(selectedUserId) {
 export const useMessagesStore = create((set, get) => ({
   chats: {}, // { [chatKey]: { messages: [], loaded: boolean } }
   pending: {}, // { tempId: { key } }
+  chatViews: {}, // { [chatKey]: { scrollTop, anchorId, atBottom, ts } }
 
   setChatMessages: (selectedUserId, list) =>
     set((state) => {
@@ -140,6 +141,23 @@ export const useMessagesStore = create((set, get) => ({
       return { chats };
     }),
 
+  // Soft delete: помечаем сообщение как удалённое, не выкидывая из списка (для текущего UX)
+  markMessageDeleted: (messageId) =>
+    set((state) => {
+      const chats = { ...state.chats };
+      Object.keys(chats).forEach((k) => {
+        chats[k] = {
+          ...chats[k],
+          messages: chats[k].messages.map((m) =>
+            m._id === messageId
+              ? { ...m, isDeleted: true, content: m.content }
+              : m
+          ),
+        };
+      });
+      return { chats };
+    }),
+
   markRead: (messageId, readBy) =>
     set((state) => {
       const chats = { ...state.chats };
@@ -171,6 +189,22 @@ export const useMessagesStore = create((set, get) => ({
   getMessages: (selectedUserId) => {
     const key = chatKey(selectedUserId);
     return get().chats[key]?.messages || [];
+  },
+
+  saveChatView: (selectedUserId, view) =>
+    set((state) => {
+      const key = chatKey(selectedUserId);
+      return {
+        chatViews: {
+          ...state.chatViews,
+          [key]: { ...view, ts: Date.now() },
+        },
+      };
+    }),
+
+  getChatView: (selectedUserId) => {
+    const key = chatKey(selectedUserId);
+    return get().chatViews[key];
   },
 }));
 
