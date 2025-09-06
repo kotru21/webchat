@@ -5,71 +5,76 @@ _Active development / Активная разработка_
 
 ![Status](https://img.shields.io/badge/Status-In_Development-yellow) ![License](https://img.shields.io/badge/License-MIT-blue)
 
-[English](#english) • [Русский](#russian)
+English · Русский
 
 ---
 
 ## English
 
-### Overview
+### 1. Overview
 
-LocalWebChat is a full‑stack real‑time chat: public & private messaging, media, edit / soft delete / pin, read receipts, presence, profile customization and a virtualized list (react-window). Feature‑Sliced Design structure (app / processes / pages / widgets / features / entities / shared). State via small isolated Zustand stores. Scroll position with anchor is restored per chat.
+LocalWebChat is a full‑stack real‑time chat featuring public & private conversations, media (image / video / audio) with detection & audio duration, edit, soft delete placeholder, pinning, read receipts, presence (online + last activity), profile customization (avatar, banner, bio), dark/light theme, scroll + anchor restoration and a virtualized dynamic list (react-window). Frontend follows Feature‑Sliced Design (app / processes / pages / widgets / features / entities / shared). State is split into small isolated Zustand stores; React Query handles server cache.
 
-### Features
+### 2. Features
 
 - Real‑time messaging (Socket.IO)
-- General & private chats
-- Optimistic send (pending → finalize / fail)
-- Media (image / video / audio) with type detection & audio duration
-- Edit / soft delete placeholder / pin
+- Public (general) & private chats
+- Optimistic send (pending → finalized / failed)
+- Media: image / video / audio (duration extraction for audio)
+- Edit, soft delete (placeholder retained), pin message
 - Read receipts & unread counters
-- Online / offline + last activity
-- Virtualized dynamic list
-- Scroll & anchor restoration
-- Profile (avatar, banner, description)
-- Dark / light mode
-- Validation + rate limiting
-- Security hardening
+- Presence: online / offline + last activity timestamp
+- Virtualized list (react-window) with dynamic height cache
+- Scroll & anchor restoration per chat key
+- Profile: avatar crop, banner, description
+- Dark / light mode (prefers-color-scheme)
+- Validation & rate limiting
+- Security hardening (CSP, sanitization, JWT, upload processing)
 
-### Stack
+### 3. Tech Stack
 
-Frontend: React, Vite, Tailwind, Zustand, React Query, react-window, framer-motion, date-fns.  
+Frontend: React, Vite, Tailwind, Zustand, TanStack Query, react-window, framer-motion, date-fns.  
 Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.  
 Security: helmet, express-rate-limit, xss-clean, express-mongo-sanitize, compression.
 
-### Architecture (FSD)
+### 4. Architecture (FSD)
 
-app · processes · pages · widgets · features · entities · shared
+`app` · `processes` · `pages` · `widgets` · `features` · `entities` · `shared`
 
-### State Stores
+### 5. State Stores
 
-- chatStore (selected user, unread)
-- messagesStore (messages, pending, chatViews)
+- `chatStore`: selected user/chat meta, unread counters
+- `messagesStore`: message lists, pending map, per-chat view (scroll anchor)
 
-### Message Lifecycle
+### 6. Message Lifecycle
 
-1. Append optimistic temp message
-2. Finalize on server response (replace)
-3. Mark failed on error
+1. Optimistic temp message appended (client id)
+2. Server response replaces with persisted message (real id)
+3. On error mark failed (UI hint / retry path)
 
-### Scroll Restoration
+### 7. Scroll Restoration
 
-Key: `general` or `private:<userId>`; stored `{ scrollTop, anchorId, atBottom, ts }`.
+Key: `general` or `private:<userId>` → persist `{ scrollTop, anchorId, atBottom, ts }` to restore context & keep anchor stable while new messages stream.
 
-### Message Model
+### 8. Domain Models
+
+Message fields:
 
 ```text
-_id, sender, receiver, isPrivate, content, mediaUrl?, mediaType?, audioDuration?, isPinned?, readBy?, isDeleted?, createdAt, updatedAt
+_id, sender, receiver, isPrivate, content,
+mediaUrl?, mediaType?, audioDuration?,
+isPinned?, readBy[], isDeleted?,
+createdAt, updatedAt
 ```
 
-### REST API (base: <http://localhost:5000/api>)
+### 9. REST API (base: <http://localhost:5000/api>)
 
-Auth: register, login, logout, profile, users/:id, me  
-Messages: list, create, update, delete (soft), read, pin  
-Status: :userId, update, activity  
-Chats: list
+Auth: `POST /auth/register`, `/auth/login`, `POST /auth/logout`, `GET/PUT /auth/profile`, `GET /auth/users/:id`, `GET /auth/me`  
+Messages: `GET /messages`, `POST /messages`, `PUT /messages/:id`, `DELETE /messages/:id` (soft), `POST /messages/:id/read`, `POST /messages/:id/pin`  
+Status: `GET /status/:userId`, `PUT /status`, `POST /status/activity`  
+Chats: `GET /chats`
 
-### Socket Events
+### 10. Socket Events
 
 ```text
 user_connected, users_online, user_status_changed,
@@ -77,7 +82,7 @@ join_room, message_send, message_new,
 message_read, message_updated, message_delete (reserved), message_pinned
 ```
 
-### Environment
+### 11. Environment
 
 Frontend `.env`:
 
@@ -94,7 +99,7 @@ MONGODB_URI=mongodb://localhost:27017/webchat
 JWT_SECRET=your_jwt_secret_key
 ```
 
-### Install
+### 12. Installation
 
 ```bash
 git clone https://github.com/yourusername/local-webchat.git
@@ -103,88 +108,124 @@ npm install
 cd server && npm install && cd ..
 ```
 
-### Run (dev)
+### 13. Development Run
+
+Two terminals (or background start):
 
 ```bash
 cd server && npm start &
 npm run dev
 ```
 
-### Build
+Open: <http://localhost:5173>
+
+### 14. Production Build
 
 ```bash
 npm run build
 ```
 
-### Security
+Serve `dist/` with any static server (Nginx, serve, etc.) while backend keeps running on `PORT`.
 
-helmet, xss-clean, mongo-sanitize, rate limit, JWT, sanitized uploads
+### 15. NPM Scripts
 
-### Contributing
+```text
+frontend: dev | build | preview | lint
+backend:  start | dev (nodemon)
+```
 
-Fork → branch → commit → PR
+### 16. Security Notes
 
-### License
+- helmet (CSP, headers)
+- express-rate-limit (auth / message endpoints)
+- xss-clean & express-mongo-sanitize
+- JWT (Bearer + Socket handshake)
+- Multer + Sharp (sanitized uploads & image processing)
+- Compression for payload size
 
-MIT
+### 17. Performance Notes
+
+- react-window virtualization keeps DOM small
+- Dynamic row height cache + targeted `resetAfterIndex`
+- Scroll anchor restoration prevents jump on new messages
+- Fine-grained Zustand slices minimize re-renders
+
+### 18. Contributing
+
+1. Fork & create feature branch (`feature/xyz`)
+2. Conventional commits
+3. PR with context (screens / before-after)
+
+### 19. License
+
+MIT (see LICENSE)
 
 ---
 
 ## Русский
 
-### Обзор
+### 1. Обзор
 
-Полнофункциональный чат: общий / приватные, медиа, редактирование, мягкое удаление, закрепление, прочтения, статусы, профиль, виртуализация, восстановление скролла и anchor. Архитектура FSD.
+LocalWebChat — полнофункциональный чат в реальном времени: общий и приватные диалоги, медиа (изображения / видео / аудио) с определением типа и длительностью аудио, редактирование, мягкое удаление (placeholder), закрепление, отметки прочтения, статусы (онлайн + последняя активность), профиль (аватар, баннер, описание), тёмная/светлая тема, восстановление скролла и якоря, виртуализированный динамический список. Фронтенд организован по Feature‑Sliced (app / processes / pages / widgets / features / entities / shared). Состояние раздроблено на небольшие Zustand‑сторы + React Query для серверного кэша.
 
-### Возможности
+### 2. Возможности
 
-- Реальное время (Socket.IO)
+- Мгновенные сообщения (Socket.IO)
 - Общий и приватные чаты
-- Оптимистическая отправка
-- Медиа (image / video / audio)
-- Редактирование / мягкое удаление / закрепление
-- Отметки прочтения и непрочитанные
-- Онлайн / офлайн + активность
-- Виртуализированный список
-- Восстановление скролла и anchor
-- Профиль: аватар, баннер, описание
-- Тёмная тема
+- Оптимистическая отправка (pending → finalized / failed)
+- Медиа: изображение / видео / аудио (извлечение длительности аудио)
+- Редактирование, мягкое удаление (плейсхолдер), закрепление
+- Отметки прочтения и счётчики непрочитанного
+- Онлайн / офлайн + последняя активность
+- Виртуализация списка (react-window) с динамическими высотами
+- Восстановление скролла и якоря на чат
+- Профиль: обрезка аватара, баннер, описание
+- Тёмная / светлая тема (prefers-color-scheme)
 - Валидация и rate limit
-- Безопасность (helmet, sanitize)
+- Усиленная безопасность (CSP, санация, JWT, обработка загрузок)
 
-### Стек
+### 3. Технологии
 
-Frontend: React, Vite, Tailwind, Zustand, React Query, react-window.  
-Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT.  
-Security: helmet, rate-limit, xss-clean, mongo-sanitize, compression.
+Frontend: React, Vite, Tailwind, Zustand, TanStack Query, react-window, framer-motion, date-fns.  
+Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.  
+Security: helmet, express-rate-limit, xss-clean, express-mongo-sanitize, compression.
 
-### Архитектура
+### 4. Архитектура (FSD)
 
-app · processes · pages · widgets · features · entities · shared
+`app` · `processes` · `pages` · `widgets` · `features` · `entities` · `shared`
 
-### Хранилища
+### 5. Состояние
 
-chatStore, messagesStore
+- `chatStore`: выбранный пользователь / мета, непрочитанные
+- `messagesStore`: списки сообщений, pending, представление чата (якорь скролла)
 
-### Жизненный цикл
+### 6. Жизненный цикл сообщения
 
-Отправка → temp → подтверждение → замена или fail
+1. Оптимистическое временное (client id)
+2. Ответ сервера замещает (persisted id)
+3. При ошибке пометка failed (UI / retry)
 
-### Восстановление скролла
+### 7. Восстановление скролла
 
-`general` / `private:<userId>` → `{ scrollTop, anchorId, atBottom }`
+Ключ: `general` или `private:<userId>` → сохраняем `{ scrollTop, anchorId, atBottom, ts }` для восстановления позиции и стабильного якоря при поступлении новых сообщений.
 
-### Модель сообщения
+### 8. Модель Сообщения
 
 ```text
-_id, sender, receiver, isPrivate, content, mediaUrl?, mediaType?, audioDuration?, isPinned?, readBy?, isDeleted?, createdAt, updatedAt
+_id, sender, receiver, isPrivate, content,
+mediaUrl?, mediaType?, audioDuration?,
+isPinned?, readBy[], isDeleted?,
+createdAt, updatedAt
 ```
 
-### REST API
+### 9. REST API (база: <http://localhost:5000/api>)
 
-Auth, Messages, Status, Chats (см. английскую секцию для деталей)
+Auth: `POST /auth/register`, `/auth/login`, `POST /auth/logout`, `GET/PUT /auth/profile`, `GET /auth/users/:id`, `GET /auth/me`  
+Messages: `GET /messages`, `POST /messages`, `PUT /messages/:id`, `DELETE /messages/:id` (soft), `POST /messages/:id/read`, `POST /messages/:id/pin`  
+Status: `GET /status/:userId`, `PUT /status`, `POST /status/activity`  
+Chats: `GET /chats`
 
-### События Socket
+### 10. События Socket
 
 ```text
 user_connected, users_online, user_status_changed,
@@ -192,17 +233,24 @@ join_room, message_send, message_new,
 message_read, message_updated, message_delete (reserved), message_pinned
 ```
 
-### Переменные окружения
+### 11. Переменные окружения
+
+Frontend `.env`:
 
 ```bash
 VITE_API_URL=http://localhost:5000
+```
+
+Backend `server/.env`:
+
+```bash
 PORT=5000
 CLIENT_URL=http://localhost:5173
 MONGODB_URI=mongodb://localhost:27017/webchat
 JWT_SECRET=your_jwt_secret_key
 ```
 
-### Установка
+### 12. Установка
 
 ```bash
 git clone https://github.com/yourusername/local-webchat.git
@@ -211,234 +259,57 @@ npm install
 cd server && npm install && cd ..
 ```
 
-### Запуск
+### 13. Запуск (dev)
+
+Два терминала (или запуск бэкенда в фоне):
 
 ```bash
 cd server && npm start &
 npm run dev
 ```
 
-### Безопасность
+Открыть: <http://localhost:5173>
 
-helmet, xss-clean, mongo-sanitize, rate limit, JWT
-
-### Вклад
-
-Fork → ветка → PR
-
-### Лицензия
-
-MIT
-
----
-
-## Screenshots / Скриншоты
-
-Auth:  
-![Auth](https://github.com/user-attachments/assets/8ae98cb1-25e3-4b9a-90eb-92f4ec3c00e6)
-
-Messages:  
-![Messages](https://github.com/user-attachments/assets/629e5b93-9f8d-40a3-bbd6-bbc1d1beb7e2)
-
-Edit:  
-![Edit](https://github.com/user-attachments/assets/b84104ba-fac6-4d0a-9b69-76e211a69960)
-
----
-
-## Contribution / Contacts
-
-Author: @kotru21
-
-```
-HOST=http://localhost
-CLIENT_URL=http://localhost:5173
-MONGODB_URI=mongodb://localhost:27017/webchat
-JWT_SECRET=your_jwt_secret_key
-```
-
-### 9. Installation & Run
-
-```bash
-git clone https://github.com/yourusername/local-webchat.git
-npm install
-cd server && npm install && cd ..
-
-# dev
-
-- Мгновенные сообщения (Socket.IO)
-- Общий и приватные чаты
-- Оптимистическая отправка (pending → finalize / fail)
-- Медиа (изображения / видео / аудио) + длительность аудио
-- Редактирование / мягкое удаление / закрепление
-- Отметки прочтения и непрочитанные
-- Онлайн / офлайн + последняя активность
-- Виртуализация списка (react-window)
-- Восстановление скролла и якоря на чат
-- Профиль: аватар, баннер, описание
-- Тёмная тема (media)
-- Валидация и rate limit
-- Усиленная безопасность (helmet, xss-clean, mongo-sanitize)
-cd server && npm start &
-npm run dev
-
-Frontend: React, Vite, Tailwind, Zustand, React Query, react-window, framer-motion, date-fns.
-Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.
-Security: helmet, express-rate-limit, xss-clean, express-mongo-sanitize, compression.
-```
-
-Open: http://localhost:5173
-
-Build production:
+### 14. Продакшен сборка
 
 ```bash
 npm run build
 ```
 
-(Serve dist via any static server; keep backend running.)
+Раздавать `dist/` любым статичным сервером; backend продолжает работать на `PORT`.
 
-### 10. Scripts
+### 15. Скрипты
 
-```
-npm run dev       - start Vite dev + HMR
-npm run build     - production build
-npm run preview   - preview built bundle
-npm run lint      - ESLint
-server: npm start / npm run dev (nodemon)
+```text
+frontend: dev | build | preview | lint
+backend:  start | dev (nodemon)
 ```
 
-### 11. Performance Notes
+### 16. Безопасность
 
-- react-window virtualization cuts DOM size.
-- Dynamic row height cache with resetAfterIndex on change.
-- Scroll restoration avoids jank with deferred anchor resolution.
-- Minimal global context: localized Zustand slices.
+- helmet (заголовки, CSP)
+- express-rate-limit (auth / messages)
+- xss-clean & express-mongo-sanitize
+- JWT (Bearer + Socket handshake)
+- Multer + Sharp (обработка изображений, санация)
+- Compression (уменьшение трафика)
 
-### 12. Security
+### 17. Производительность
 
-- helmet CSP (images/media whitelisted)
-- xss-clean + express-mongo-sanitize
-- rate limiting (auth & message create/update)
-- JWT auth (bearer / handshake token)
-- Sanitized file uploads (multer + sharp transform path ready)
+- Виртуализация (react-window)
+- Кэш динамических высот + точечный reset
+- Восстановление якоря без дёргания
+- Мелкие Zustand‑сторы → меньше перерисовок
 
-### 13. Contributing
+### 18. Вклад
 
-1. Fork & branch (feature/xyz)
-2. Commit conventional style
-3. PR with context (screens / before-after)
+1. Fork & ветка (`feature/xyz`)
+2. Conventional commits
+3. PR с описанием и скриншотами
 
-### 14. License
+### 19. Лицензия
 
-MIT. See LICENSE.
-
----
-
-## Русский
-
-<a id="russian"></a>
-
-### 1. Обзор
-
-LocalWebChat — полнофункциональный чат в реальном времени: общий и приватные диалоги, медиа, правка, удаление (мягкое), закрепление, статусы, счётчики непрочитанного, виртуализированный список с восстановлением позиции и якоря. Фронтенд организован по Feature‑Sliced: app / processes / pages / widgets / features / entities / shared.
-
-### 2. Возможности
-
-- Мгновенные сообщения (Socket.IO)
-- Общий и приватные чаты
-- Оптимистическая отправка (pending → finalize / fail)
-- Медиа (изображения / видео / аудио) + длительность аудио
-- Редактирование / мягкое удаление / закрепление
-- Отметки прочтения и непрочитанные
-- Онлайн / офлайн + последняя активность
-- Виртуализация списка (react-window)
-- Восстановление скролла и якоря на чат
-- Профиль: аватар, баннер, описание
-- Тёмная тема (media)
-- Валидация и rate limit
-- Усиленная безопасность (helmet, xss-clean, mongo-sanitize)
-
-### 3. Технологии
-
-Frontend: React, Vite, Tailwind, Zustand, React Query, react-window, framer-motion, date-fns.
-Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.
-Security: helmet, express-rate-limit, xss-clean, express-mongo-sanitize, compression.
-
-Слои:
-app — провайдеры, инициализация.
-processes — сквозные процессы (например, синхронизация статусов).
-pages — страницы маршрутов.
-widgets — крупные блоки интерфейса.
-features — функциональные единицы (отправка, редактирование, закрепление и т.п.).
-entities — доменные сущности (message, user, status) и их логика.
-shared — утилиты, хранилища, базовые компоненты.
-
-### 5. Модель Сообщения
-
-Поля:
-
-```
-
-```
-
-### 6. REST API (кратко)
-
-/api/auth: register, login, logout, profile (PUT), users/:id, me.
-/api/messages: list, create, update, delete (soft), read, pin.
-/api/status: :userId, update, activity.
-/api/chats: список чатов.
-
-### 7. События Socket
-
-```
-user_connected, users_online, user_status_changed,
-join_room, message_send, message_new,
-message_read, message_updated, message_delete (зарезервировано), message_pinned (вариант updated)
-```
-
-### 8. Переменные окружения
-
-Frontend .env:
-VITE_API_URL=http://localhost:5000
-Backend .env:
-PORT=5000
-CLIENT_URL=http://localhost:5173
-MONGODB_URI=mongodb://localhost:27017/webchat
-JWT_SECRET=your_jwt_secret_key
-
-### 9. Установка и запуск
-
-```bash
-git clone https://github.com/yourusername/local-webchat.git
-cd local-webchat
-npm install
-cd server && npm install && cd ..
-cd server && npm start &
-npm run dev
-```
-
-Открыть: http://localhost:5173
-
-Продакшен сборка: `npm run build` (раздавать содержимое dist + поднятый backend).
-
-### 10. Скрипты
-
-dev, build, preview, lint; сервер: start / dev (nodemon).
-
-### 11. Производительность
-
-Виртуализация, измерение динамических высот, отложенное восстановление якоря, минимизация глобального состояния.
-
-### 12. Безопасность
-
-helmet (CSP), xss-clean, mongo-sanitize, rate limit, JWT, проверка и санация загрузок.
-
-### 13. Вклад
-
-Fork → ветка → коммиты → PR с описанием изменений.
-
-### 14. Лицензия
-
-MIT.
+MIT (см. LICENSE)
 
 ---
 
@@ -455,6 +326,10 @@ Edit / Редактирование:
 
 ---
 
-## Contribution / Контакты
+## Contribution / Contacts
 
-PRs welcome. Author: [@kotru21](https://github.com/kotru21)
+Author: [@kotru21](https://github.com/kotru21)
+
+---
+
+MIT © 2025
