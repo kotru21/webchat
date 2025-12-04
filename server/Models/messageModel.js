@@ -69,5 +69,9 @@ messageSchema.index({ isPrivate: 1 });
 messageSchema.index({ receiver: 1, createdAt: -1 });
 messageSchema.index({ sender: 1, createdAt: -1 });
 messageSchema.index({ receiver: 1, sender: 1, createdAt: -1 });
+// Index for pinned messages query
+messageSchema.index({ isPinned: 1, createdAt: -1 });
+// Index for soft-deleted messages filter
+messageSchema.index({ isDeleted: 1 });
 
 export default mongoose.model("Message", messageSchema);

@@ -1,6 +1,6 @@
 // Чистая презентация профиля
 import StatusIndicator from "@entities/status/ui/StatusIndicator";
-import { STATUS_INFO } from "../../../constants/statusConstants";
+import { STATUS_INFO } from "@constants/statusConstants";
 
 export function ProfileCard({ profile, onStartChat, isCurrentUser, onClose }) {
   if (!profile) return null;

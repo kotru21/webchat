@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import UserProfileWidget from "@features/profile/widgets/UserProfileWidget";
+import { UserProfileWidget } from "@widgets/profile";
 
 const PreviewProfileTab = ({ profile }) => {
   const containerRef = useRef(null);

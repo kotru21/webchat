@@ -61,7 +61,7 @@ const Login = () => {
     try {
       const data = await login(email, password);
       if (data && data.token) {
-        authLogin(data, data.token);
+        authLogin(data, data.token, data.refreshToken);
         navigate("/");
       } else {
         setError("Некорректный ответ от сервера");

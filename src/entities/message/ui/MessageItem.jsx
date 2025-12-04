@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { useChatStore } from "@shared/store/chatStore";
 import ReadStatus from "./ReadStatus";
-import UserProfileWidget from "@features/profile/widgets/UserProfileWidget";
+import { UserProfileWidget } from "@widgets/profile";
 import MessageEditor from "@features/editMessage/ui/MessageEditor.jsx";
 import MessageMedia from "./MessageMedia.jsx";
 import { formatTime } from "@shared/lib/date";

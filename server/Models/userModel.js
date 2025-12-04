@@ -58,4 +58,11 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for optimized queries
+// Note: unique: true in schema already creates unique indexes on username and email
+// Adding explicit indexes for queries
+userSchema.index({ status: 1 }); // For filtering online users
+userSchema.index({ lastActivity: -1 }); // For sorting by activity
+userSchema.index({ createdAt: -1 }); // For sorting by registration date
+
 export default mongoose.model("User", userSchema);

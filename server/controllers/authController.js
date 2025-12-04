@@ -3,6 +3,75 @@ import Status from "../Models/Status.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import passwordValidator from "password-validator";
+import crypto from "crypto";
+
+// In-memory refresh token storage (use Redis in production)
+const refreshTokens = new Map();
+
+const generateAccessToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: "15m", // Short-lived access token
+  });
+};
+
+const generateRefreshToken = (userId) => {
+  const refreshToken = crypto.randomBytes(64).toString("hex");
+  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+  refreshTokens.set(refreshToken, { userId: userId.toString(), expiresAt });
+  return refreshToken;
+};
+
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Refresh token обязателен" });
+    }
+
+    const tokenData = refreshTokens.get(refreshToken);
+
+    if (!tokenData) {
+      return res
+        .status(401)
+        .json({ message: "Недействительный refresh token" });
+    }
+
+    if (tokenData.expiresAt < Date.now()) {
+      refreshTokens.delete(refreshToken);
+      return res.status(401).json({ message: "Refresh token истёк" });
+    }
+
+    const user = await User.findById(tokenData.userId).select("-password");
+
+    if (!user) {
+      refreshTokens.delete(refreshToken);
+      return res.status(401).json({ message: "Пользователь не найден" });
+    }
+
+    // Generate new tokens (token rotation)
+    refreshTokens.delete(refreshToken);
+    const newAccessToken = generateAccessToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    res.json({
+      token: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    res.status(500).json({ message: "Ошибка обновления токена" });
+  }
+};
+
+export const revokeRefreshToken = (userId) => {
+  // Remove all refresh tokens for a user (on logout)
+  for (const [token, data] of refreshTokens.entries()) {
+    if (data.userId === userId.toString()) {
+      refreshTokens.delete(token);
+    }
+  }
+};
 
 export const updateProfile = async (req, res) => {
   try {
@@ -145,9 +214,8 @@ export const login = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    const token = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
     // Обновляем статус пользователя при входе
     user.status = "online";
@@ -162,6 +230,7 @@ export const login = async (req, res) => {
       status: user.status,
       lastActivity: user.lastActivity,
       token,
+      refreshToken,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -173,6 +242,9 @@ export const logout = async (req, res) => {
   try {
     // Получаем пользователя из токена
     const userId = req.user._id;
+
+    // Отзываем все refresh токены пользователя
+    revokeRefreshToken(userId);
 
     // Обновляем статус пользователя на "offline"
     await User.findByIdAndUpdate(userId, {

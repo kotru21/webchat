@@ -8,7 +8,7 @@ let io;
 export const initializeSocket = (httpServer, corsOptions) => {
   io = new Server(httpServer, { cors: corsOptions });
 
-  // Auth middleware (handshake)
+  // Auth middleware (handshake) - JWT required
   io.use(async (socket, next) => {
     try {
       const token =
@@ -19,27 +19,33 @@ export const initializeSocket = (httpServer, corsOptions) => {
           : undefined);
 
       if (!token) {
-        // Разрешаем анонимное подключение (для обратной совместимости старого клиента)
-        return next();
+        return next(new Error("AUTH_REQUIRED"));
       }
+
       try {
         const payload = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(payload.id).select(
           "_id username email avatar status"
         );
-        if (user) {
-          socket.data.user = {
-            id: user._id.toString(),
-            username: user.username,
-            email: user.email,
-            avatar: user.avatar,
-            status: user.status,
-          };
+
+        if (!user) {
+          return next(new Error("USER_NOT_FOUND"));
         }
-      } catch {
-        // При ошибке валидации токена не рвём соединение, просто без user
+
+        socket.data.user = {
+          id: user._id.toString(),
+          username: user.username,
+          email: user.email,
+          avatar: user.avatar,
+          status: user.status,
+        };
+        next();
+      } catch (jwtError) {
+        if (jwtError.name === "TokenExpiredError") {
+          return next(new Error("TOKEN_EXPIRED"));
+        }
+        return next(new Error("INVALID_TOKEN"));
       }
-      next();
     } catch {
       next(new Error("AUTH_FAILED"));
     }

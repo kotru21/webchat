@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import ProfileCard from "../ui/ProfileCard";
+import ProfileCard from "./ProfileCard";
 import { useUserProfile } from "@features/profile/api/useUserProfile";
 
 export function UserProfileWidget({
@@ -21,8 +21,6 @@ export function UserProfileWidget({
   });
   const profile = profileData || fetchedProfile;
   const popoverRef = useRef(null);
-
-  // Локальный эффект удаления не нужен — загрузка через React Query
 
   useEffect(() => {
     const handleClickOutside = (e) => {

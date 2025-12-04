@@ -35,10 +35,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Принцип SRP: разделение ответственности для аутентификации
-  const login = async (userData, token) => {
+  const login = async (userData, token, refreshToken) => {
     const normalizedUser = normalizeUser(userData);
     dispatch({ type: "LOGIN", payload: normalizedUser });
     localStorage.setItem("token", token);
+    if (refreshToken) {
+      localStorage.setItem("refreshToken", refreshToken);
+    }
     localStorage.setItem("user", JSON.stringify(normalizedUser));
 
     // Устанавливаем статус при входе
@@ -71,6 +74,7 @@ export const AuthProvider = ({ children }) => {
       // Всегда выполняем локальный выход
       dispatch({ type: "LOGOUT" });
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
     }
   };

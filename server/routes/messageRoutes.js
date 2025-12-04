@@ -9,9 +9,10 @@ import {
 } from "../controllers/messageController.js";
 import { SOCKET_EVENTS } from "../src/shared/socketEvents.js";
 import protect from "../middleware/authMiddleware.js";
-import { mediaUpload } from "../config/multer.js"; // импорт multer
+import { mediaUpload } from "../config/multer.js";
 import { messageLimiter } from "../middleware/rateLimiter.js";
 import { validateMessage } from "../middleware/validator.js";
+import { validateFileMagicBytes } from "../middleware/fileValidator.js";
 
 const router = express.Router();
 
@@ -25,6 +26,7 @@ router.post(
   messageLimiter,
   validateMessage,
   mediaUpload,
+  validateFileMagicBytes,
   async (req, res) => {
     try {
       if (!req.user) {

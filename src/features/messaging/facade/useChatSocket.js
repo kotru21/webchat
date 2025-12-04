@@ -3,6 +3,9 @@ import io from "socket.io-client";
 import { SOCKET_EVENTS } from "@constants/socketEvents";
 import { useMessagesStore } from "@features/messaging/store/messagesStore";
 import { usePresenceStore } from "@shared/store/presenceStore";
+import { notify } from "@shared/lib/notify";
+
+const MAX_RECONNECTION_ATTEMPTS = 15;
 
 const useChatSocket = ({
   user,
@@ -22,12 +25,20 @@ const useChatSocket = ({
 
   useEffect(() => {
     if (!user) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("[Socket] No auth token found, skipping connection");
+      return;
+    }
+
     const socket = io(import.meta.env.VITE_API_URL, {
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS,
       reconnectionDelay: 500,
       reconnectionDelayMax: 5000,
+      auth: { token },
     });
     socketRef.current = socket;
 
@@ -40,7 +51,24 @@ const useChatSocket = ({
     socket.on("connect", joinRooms);
     socket.on("reconnect", joinRooms);
     socket.on("reconnect_error", () => {
-      // можно добавить notify при желании
+      // Можно добавить notify при желании
+    });
+    socket.on("reconnect_failed", () => {
+      notify("error", "Не удалось восстановить соединение. Обновите страницу.");
+    });
+    socket.on("connect_error", (error) => {
+      if (
+        error.message === "AUTH_REQUIRED" ||
+        error.message === "INVALID_TOKEN"
+      ) {
+        notify("error", "Ошибка авторизации. Пожалуйста, войдите снова.");
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      } else if (error.message === "TOKEN_EXPIRED") {
+        notify("error", "Сессия истекла. Пожалуйста, войдите снова.");
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     });
     socket.on("disconnect", (reason) => {
       if (reason === "io server disconnect") {
