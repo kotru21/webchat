@@ -18,14 +18,14 @@ export class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         this.props.fallback || (
-          <div className="w-full h-screen flex flex-col items-center justify-center gap-4 text-center p-6">
+          <div className="m3-surface h-screen w-full flex flex-col items-center justify-center gap-4 p-6 text-center">
             <h1 className="text-xl font-semibold">Произошла ошибка</h1>
-            <pre className="text-xs whitespace-pre-wrap max-w-xl opacity-70">
+            <pre className="m3-surface-high max-w-xl whitespace-pre-wrap rounded-2xl border border-border/70 p-4 text-xs opacity-80">
               {String(this.state.error?.message || this.state.error)}
             </pre>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-500">
+              className="m3-pill bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-[0_1px_3px_hsl(var(--shadow-color)/0.22)] transition hover:brightness-105">
               Перезагрузить
             </button>
           </div>

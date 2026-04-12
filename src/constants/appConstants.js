@@ -31,7 +31,6 @@ export const API = {
       MESSAGES: "/api/messages",
       PIN_MESSAGE: "/api/messages/pin",
     },
-    STATUS: "/api/status",
   },
 };
 

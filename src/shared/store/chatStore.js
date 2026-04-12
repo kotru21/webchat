@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 export const useChatStore = create(
   persist(
     (set, get) => ({
-      selectedUser: null, // { id, username, avatar, email, status }
+      selectedUser: null, // { id, username, avatar, email }
       unreadCounts: {}, // { [key:string]: number }
       setSelectedUser: (user) => set({ selectedUser: user }),
       clearSelectedUser: () => set({ selectedUser: null }),

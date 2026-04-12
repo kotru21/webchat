@@ -3,7 +3,6 @@ import { API } from "@constants/appConstants";
 
 export const apiClient = axios.create({
   baseURL: API.BASE_URL,
-  headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
 
@@ -23,6 +22,9 @@ const processQueue = (error, token = null) => {
 
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+  if (!config.headers) {
+    config.headers = {};
+  }
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -31,13 +33,20 @@ apiClient.interceptors.response.use(
   (r) => r,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status;
+    const responseMessage =
+      error.response?.data?.message ||
+      error.response?.data?.errors?.[0]?.msg ||
+      error.message;
 
-    console.error("API Error:", {
-      endpoint: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-    });
+    if (!status || status >= 500) {
+      console.error("API Error:", {
+        endpoint: error.config?.url,
+        method: error.config?.method,
+        status,
+        message: responseMessage,
+      });
+    }
 
     // Don't retry refresh endpoint or already retried requests
     if (

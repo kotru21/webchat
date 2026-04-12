@@ -1,6 +1,4 @@
-import { useReducer, useEffect, useState } from "react";
-import { USER_STATUSES } from "../constants/statusConstants";
-import { updateStatus as setStatus } from "@features/status/api/statusApi";
+import { useReducer, useEffect } from "react";
 import { authReducer, normalizeUser } from "@features/auth/model/authState";
 import apiClient from "@shared/api/client";
 import { AuthContext } from "./AuthContextBase";
@@ -9,8 +7,6 @@ export const AuthProvider = ({ children }) => {
     user: null,
     loading: true,
   });
-
-  const [userStatus, setUserStatus] = useState(state.user?.status || "offline");
 
   // Загрузка данных из localStorage при старте
   useEffect(() => {
@@ -21,9 +17,6 @@ export const AuthProvider = ({ children }) => {
         const parsedUser = JSON.parse(userData);
         const normalizedUser = normalizeUser(parsedUser);
         dispatch({ type: "LOGIN", payload: normalizedUser });
-        if (parsedUser.status) {
-          setUserStatus(parsedUser.status);
-        }
       } catch (error) {
         console.error("Ошибка парсинга данных из localStorage:", error);
         localStorage.removeItem("user");
@@ -43,14 +36,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("refreshToken", refreshToken);
     }
     localStorage.setItem("user", JSON.stringify(normalizedUser));
-
-    // Устанавливаем статус при входе
-    try {
-      await setStatus(USER_STATUSES.ONLINE);
-      setUserStatus(USER_STATUSES.ONLINE);
-    } catch (error) {
-      console.error("Ошибка при установке статуса online:", error);
-    }
   };
 
   // Обновление профиля
@@ -63,10 +48,6 @@ export const AuthProvider = ({ children }) => {
   // Выход из системы
   const logout = async () => {
     try {
-      // Устанавливаем статус offline перед выходом
-      await setStatus(USER_STATUSES.OFFLINE);
-
-      // Выполняем выход на сервере
       await apiClient.post("/api/auth/logout");
     } catch (error) {
       console.error("Ошибка при выходе:", error);
@@ -79,22 +60,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Обработчик изменения статуса
-  const handleStatusChange = async (newStatus) => {
-    try {
-      await setStatus(newStatus);
-      setUserStatus(newStatus);
-
-      // Обновляем пользователя
-      dispatch({
-        type: "UPDATE_PROFILE",
-        payload: { status: newStatus },
-      });
-    } catch (error) {
-      console.error("Ошибка при обновлении статуса:", error);
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -103,8 +68,6 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateUser,
         loading: state.loading,
-        userStatus,
-        handleStatusChange,
       }}>
       {!state.loading && children}
     </AuthContext.Provider>

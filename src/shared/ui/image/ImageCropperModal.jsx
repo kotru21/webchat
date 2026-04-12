@@ -13,16 +13,16 @@ const ImageCropperModal = ({
   onApply,
   title,
 }) => (
-  <div className="fixed inset-0 bg-black/80 flex flex-col z-50 animate-fade-in">
-    <div className="p-4 bg-white dark:bg-gray-800 shadow-lg w-full">
-      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+  <div className="fixed inset-0 z-50 flex flex-col bg-black/80 animate-fade-in">
+    <div className="m3-surface-high w-full border-b border-border/70 p-4 shadow-lg">
+      <h3 className="mb-2 text-lg font-medium text-foreground">
         {title}
       </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <p className="mb-4 text-sm text-muted-foreground">
         Измените размер и положение изображения
       </p>
     </div>
-    <div className="flex-grow relative">
+    <div className="relative grow">
       <Cropper
         image={image}
         crop={crop}
@@ -34,11 +34,11 @@ const ImageCropperModal = ({
         style={{ containerStyle: { height: "100%", width: "100%" } }}
       />
     </div>
-    <div className="p-4 bg-white dark:bg-gray-800 shadow-lg flex justify-between">
+    <div className="m3-surface-high flex justify-between border-t border-border/70 p-4 shadow-lg">
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50">
+        className="m3-pill border border-border/80 bg-card/80 px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">
         Отмена
       </button>
       <div className="flex items-center space-x-4">
@@ -54,7 +54,7 @@ const ImageCropperModal = ({
         <button
           type="button"
           onClick={onApply}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md">
+          className="m3-pill bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:brightness-105">
           Применить
         </button>
       </div>
