@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                       String          @id @default(cuid())
+  username                 String          @unique
+  email                    String          @unique
+  passwordHash             String
+  avatar                   String          @default("")
+  isVerified               Boolean         @default(false)
+  verificationToken        String?
+  verificationTokenExpires DateTime?
+  description              String          @default("")
+  banner                   String          @default("")
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  sentMessages             Message[]       @relation("UserSentMessages")
+  receivedMessages         Message[]       @relation("UserReceivedMessages")
+  messageReads             MessageRead[]
+  refreshSessions          RefreshSession[]
+
+  @@index([createdAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  senderId       String
+  receiverId     String?
+  senderUsername String
+  content        String       @default("")
+  mediaUrl       String?
+  mediaType      String?
+  audioDuration  Int?
+  roomId         String       @default("general")
+  isPrivate      Boolean      @default(false)
+  isEdited       Boolean      @default(false)
+  isDeleted      Boolean      @default(false)
+  isPinned       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  sender         User         @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver       User?        @relation("UserReceivedMessages", fields: [receiverId], references: [id], onDelete: SetNull)
+  readBy         MessageRead[]
+
+  @@index([senderId, receiverId])
+  @@index([createdAt])
+  @@index([isPrivate])
+  @@index([receiverId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([receiverId, senderId, createdAt])
+  @@index([isPinned, createdAt])
+  @@index([isDeleted])
+}
+
+model MessageRead {
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([userId])
+  @@index([readAt])
+}
+
+model RefreshSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
