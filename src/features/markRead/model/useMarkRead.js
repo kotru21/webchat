@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { markReadUsecase } from "../../messaging/usecases/markRead";
-import { useMessagesStore } from "../../messaging/store/messagesStore";
+import { useMessagesStore } from "@shared/store/messagesStore";
 
 export function useMarkRead() {
   const [loading, setLoading] = useState(false);

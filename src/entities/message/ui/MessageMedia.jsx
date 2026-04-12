@@ -1,20 +1,12 @@
 import { memo, useState } from "react";
 import AudioMessage from "@entities/message/ui/AudioMessage";
-
-function buildAbsolute(url) {
-  if (!url) return "";
-  const base = import.meta.env.VITE_API_URL || "";
-  // если уже абсолютный (http/https/blob/data)
-  if (/^(?:https?:|blob:|data:)/i.test(url)) return url;
-  // избегаем двойных слэшей
-  return `${base.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
-}
+import { toAbsoluteMediaUrl } from "@shared/lib/mediaUrl";
 
 function MessageMediaComponent({ message, onMediaClick }) {
   const [errored, setErrored] = useState(false);
 
   if (message.isDeleted || !message.mediaUrl) return null;
-  const abs = buildAbsolute(message.mediaUrl);
+  const abs = toAbsoluteMediaUrl(message.mediaUrl);
 
   if (message.mediaType === "image") {
     return (

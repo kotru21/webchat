@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { editMessageUsecase } from "../../messaging/usecases/editMessage";
-import { useMessagesStore } from "../../messaging/store/messagesStore"; // bridge
+import { useMessagesStore } from "@shared/store/messagesStore";
 
 export function useEditMessage() {
   const [loading, setLoading] = useState(false);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useChatStore } from "@shared/store/chatStore";
-import { useMessagesStore } from "@features/messaging/store/messagesStore";
+import { useMessagesStore } from "@shared/store/messagesStore";
 import useMessageScroll from "../../../hooks/useMessageScroll";
 import useMessageRangeRead from "../../../hooks/useMessageRangeRead";
 import { useMessageGrouping } from "@entities/message/lib/useMessageGrouping";

@@ -9,9 +9,7 @@ export async function getMessages(receiverId = null) {
 }
 
 export async function sendMessage(formData) {
-  const res = await apiClient.post("/api/messages", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const res = await apiClient.post("/api/messages", formData);
   return res.data;
 }
 
@@ -21,9 +19,7 @@ export async function markMessageAsRead(messageId) {
 }
 
 export async function updateMessage(messageId, formData) {
-  const res = await apiClient.put(`/api/messages/${messageId}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const res = await apiClient.put(`/api/messages/${messageId}`, formData);
   return res.data;
 }
 

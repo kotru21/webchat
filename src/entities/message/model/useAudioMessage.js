@@ -1,163 +1,166 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAudioVisualizer } from "./useAudioVisualizer";
 
-// Хук управления воспроизведением аудио и визуализацией.
+function toSafeDuration(value) {
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 export function useAudioMessage({ duration, barCount = 40 }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [bars, setBars] = useState([]);
+  const [knownDuration, setKnownDuration] = useState(() =>
+    toSafeDuration(duration)
+  );
 
-  const audioRef = useRef(null);
-  const intervalRef = useRef(null);
-  const analyzerRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const hasActivatedRef = useRef(false);
-  const animationRef = useRef(null);
+  const audioRef = useRef();
+  const intervalRef = useRef();
 
-  const MIN_HEIGHT = 2;
-  const MAX_HEIGHT = 25;
+  const { bars, startVisualization, stopVisualization } = useAudioVisualizer({
+    barCount,
+  });
 
-  useEffect(() => {
-    setBars(
-      Array.from({ length: barCount }, () =>
-        Math.floor(Math.random() * (MAX_HEIGHT - MIN_HEIGHT) + MIN_HEIGHT)
-      )
-    );
-  }, [barCount]);
+  const effectiveDuration =
+    toSafeDuration(duration) || toSafeDuration(knownDuration);
 
   useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const ended = () => {
+    const audioElement = audioRef.current;
+    if (!audioElement) {
+      return undefined;
+    }
+
+    const handleEnded = () => {
       setIsPlaying(false);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      stopVisualization();
     };
-    el.addEventListener("ended", ended);
-    return () => {
-      clearInterval(intervalRef.current);
-      el.removeEventListener("ended", ended);
-      el.pause();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state !== "closed"
-      ) {
-        audioContextRef.current.close();
+
+    const handleLoadedMetadata = () => {
+      const metadataDuration = toSafeDuration(audioElement.duration);
+      if (metadataDuration > 0 && !toSafeDuration(duration)) {
+        setKnownDuration(metadataDuration);
       }
     };
-  }, []);
+
+    audioElement.addEventListener("ended", handleEnded);
+    audioElement.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
+
+      audioElement.removeEventListener("ended", handleEnded);
+      audioElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audioElement.pause();
+      stopVisualization();
+    };
+  }, [duration, stopVisualization]);
 
   useEffect(() => {
-    if (isPlaying) {
-      intervalRef.current = setInterval(() => {
-        if (audioRef.current && isFinite(audioRef.current.duration)) {
-          setCurrentTime(audioRef.current.currentTime);
-          setProgress(
-            (audioRef.current.currentTime / audioRef.current.duration) * 100
-          );
-        }
-      }, 100);
-    } else {
-      clearInterval(intervalRef.current);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [isPlaying]);
+    if (!isPlaying) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
 
-  const setupCtx = useCallback(() => {
-    if (!hasActivatedRef.current) hasActivatedRef.current = true;
-    if (!audioContextRef.current) {
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        audioContextRef.current = new Ctx();
-      } catch (e) {
-        console.error("Audio ctx create error", e);
+      return undefined;
+    }
+
+    intervalRef.current = setInterval(() => {
+      const audioElement = audioRef.current;
+      if (!audioElement) {
         return;
       }
-    }
-    if (audioContextRef.current.state === "suspended") {
-      audioContextRef.current.resume().catch(() => {});
-    }
-    if (!analyzerRef.current) {
-      try {
-        analyzerRef.current = audioContextRef.current.createAnalyser();
-        analyzerRef.current.fftSize = 128;
-        const src = audioContextRef.current.createMediaElementSource(
-          audioRef.current
-        );
-        src.connect(analyzerRef.current);
-        analyzerRef.current.connect(audioContextRef.current.destination);
-      } catch (e) {
-        console.error("Audio ctx wiring error", e);
-      }
-    }
-  }, []);
 
-  const animate = useCallback(() => {
-    if (!analyzerRef.current) return;
-    const len = analyzerRef.current.frequencyBinCount;
-    const data = new Uint8Array(len);
-    analyzerRef.current.getByteFrequencyData(data);
-    const arr = [];
-    const step = Math.floor(data.length / barCount) || 1;
-    for (let i = 0; i < barCount; i++) {
-      const start = i * step;
-      let sum = 0;
-      for (let j = 0; j < step && start + j < data.length; j++)
-        sum += data[start + j];
-      const avg = sum / step;
-      const h = MIN_HEIGHT + (avg / 255) * (MAX_HEIGHT - MIN_HEIGHT);
-      arr.push(Math.floor(h));
-    }
-    setBars(arr);
-    animationRef.current = requestAnimationFrame(animate);
-  }, [barCount]);
+      const playbackDuration =
+        toSafeDuration(duration) ||
+        toSafeDuration(audioElement.duration) ||
+        toSafeDuration(knownDuration);
+      const nextCurrentTime = audioElement.currentTime;
+
+      setCurrentTime(nextCurrentTime);
+
+      if (playbackDuration > 0) {
+        setProgress(Math.min(100, (nextCurrentTime / playbackDuration) * 100));
+
+        if (!toSafeDuration(duration)) {
+          setKnownDuration((prev) => toSafeDuration(prev) || playbackDuration);
+        }
+      } else {
+        setProgress(0);
+      }
+    }, 100);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
+    };
+  }, [duration, isPlaying, knownDuration]);
 
   const handlePlayPause = useCallback(() => {
+    const audioElement = audioRef.current;
+    if (!audioElement) {
+      return;
+    }
+
     if (isPlaying) {
-      audioRef.current?.pause();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      audioElement.pause();
+      stopVisualization();
       setIsPlaying(false);
       return;
     }
-    setupCtx();
-    audioRef.current
+
+    audioElement
       .play()
       .then(() => {
-        animate();
+        startVisualization(audioElement);
         setIsPlaying(true);
       })
-      .catch((e) => console.error("play error", e));
-  }, [isPlaying, setupCtx, animate]);
+      .catch((error) => {
+        console.error("play error", error);
+      });
+  }, [isPlaying, startVisualization, stopVisualization]);
 
-  const handleSeek = useCallback((e) => {
-    const pos = parseFloat(e.target.value);
-    if (
-      audioRef.current &&
-      isFinite(audioRef.current.duration) &&
-      audioRef.current.duration > 0
-    ) {
-      const nt = (pos * audioRef.current.duration) / 100;
-      if (isFinite(nt) && !isNaN(nt) && nt >= 0) {
-        audioRef.current.currentTime = nt;
-        setCurrentTime(nt);
-        setProgress(pos);
+  const handleSeek = useCallback(
+    (event) => {
+      const audioElement = audioRef.current;
+      if (!audioElement) {
+        return;
       }
-    }
+
+      const nextProgress = parseFloat(event.target.value);
+      const playbackDuration =
+        toSafeDuration(duration) ||
+        toSafeDuration(audioElement.duration) ||
+        toSafeDuration(knownDuration);
+
+      if (!playbackDuration) {
+        return;
+      }
+
+      const nextCurrentTime = (nextProgress * playbackDuration) / 100;
+      if (Number.isFinite(nextCurrentTime) && nextCurrentTime >= 0) {
+        audioElement.currentTime = nextCurrentTime;
+        setCurrentTime(nextCurrentTime);
+        setProgress(nextProgress);
+      }
+    },
+    [duration, knownDuration]
+  );
+
+  const formatTime = useCallback((time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }, []);
 
-  const formatTime = useCallback((t) => {
-    const m = Math.floor(t / 60);
-    const s = Math.floor(t % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }, []);
-
-  const getDuration = useCallback(() => {
-    return duration
-      ? formatTime(duration)
-      : audioRef.current?.duration
-      ? formatTime(audioRef.current.duration)
-      : "0:00";
-  }, [duration, formatTime]);
+  const durationLabel = useMemo(
+    () => formatTime(toSafeDuration(effectiveDuration)),
+    [effectiveDuration, formatTime]
+  );
 
   return {
     audioRef,
@@ -165,9 +168,9 @@ export function useAudioMessage({ duration, barCount = 40 }) {
     currentTime,
     progress,
     bars,
+    durationLabel,
     handlePlayPause,
     handleSeek,
-    getDuration,
     formatTime,
   };
 }

@@ -3,9 +3,12 @@ import { IoMdAttach, IoMdSend } from "react-icons/io";
 import { BiLoaderAlt } from "react-icons/bi";
 import { FiAlertCircle } from "react-icons/fi";
 import { BsMicFill } from "react-icons/bs";
-import VoiceRecorder from "../../messaging/ui/components/VoiceRecorder"; // TODO: перенести в feature recordVoice
+import VoiceRecorder from "@features/recordVoice/ui/VoiceRecorder";
 import { INPUT_LIMITS } from "@constants/appConstants";
 import { useSendMessageForm } from "../model/useSendMessageForm";
+import { Button } from "@shared/ui/button";
+import { Input } from "@shared/ui/input";
+import { Alert, AlertDescription } from "@shared/ui/alert";
 
 export const SendMessageForm = memo(function SendMessageForm({
   receiverId,
@@ -34,48 +37,51 @@ export const SendMessageForm = memo(function SendMessageForm({
     }
     return (
       <div className="flex items-center gap-2">
-        <input
+        <Input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Сообщение..."
-          className="flex-1 px-3 py-2 text-sm rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white min-w-0 transition-all duration-200 focus:shadow-md"
+          className="h-10 min-w-0 flex-1 rounded-full bg-background/85"
           disabled={loading}
           maxLength={INPUT_LIMITS.MESSAGE_MAX_LENGTH}
         />
-        <input
+        <Input
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelect}
           accept="image/*, video/mp4, video/webm"
           className="hidden"
         />
-        <button
+        <Button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10"
           aria-label="Прикрепить файл">
           <IoMdAttach size={20} />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={startRecording}
-          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 flex-shrink-0 transition-colors duration-200 transform hover:scale-105"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10"
           aria-label="Записать голосовое сообщение">
           <BsMicFill size={20} />
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={loading}
-          className={`p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex-shrink-0 pl-6 pr-6 md:pr-2 md:pl-2 transition-all duration-200 transform hover:scale-105 active:scale-95 ${
-            loading ? "opacity-50 cursor-not-allowed" : ""
-          }`}>
+          size="icon"
+          className="h-10 w-10">
           {loading ? (
             <BiLoaderAlt size={20} className="animate-spin" />
           ) : (
             <IoMdSend size={20} />
           )}
-        </button>
+        </Button>
       </div>
     );
   };
@@ -83,16 +89,16 @@ export const SendMessageForm = memo(function SendMessageForm({
   return (
     <form
       onSubmit={submit}
-      className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 sm:p-4 pb-10 lg:pb-4 transition-all duration-300 animate-slide-up">
+      className="m3-surface-high animate-slide-up border-t border-border/70 px-2 pb-10 pt-3 transition-all duration-300 sm:px-4 lg:pb-4 md:rounded-b-4xl">
       {error && (
-        <div className="mb-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm p-2 rounded-lg flex items-center animate-fade-in">
-          <FiAlertCircle className="mr-2 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
+        <Alert variant="destructive" className="mb-2 animate-fade-in">
+          <FiAlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       {renderInputArea()}
       {selectedFile && !isRecording && (
-        <div className="mt-2 text-xs text-gray-500 truncate px-2 animate-fadeIn">
+        <div className="mt-2 truncate px-2 text-xs text-muted-foreground animate-fadeIn">
           Файл: {selectedFile.name}
         </div>
       )}

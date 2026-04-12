@@ -1,8 +1,10 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { VariableSizeList as List } from "react-window";
+import { List, useDynamicRowHeight } from "react-window";
 import { DaySeparator } from "./DaySeparator";
 import { HourSeparator } from "./HourSeparator";
 import { MessageItem } from "./MessageItem";
+
+const EMPTY_ROW_PROPS = {};
 
 // Ответственность: только виртуализация и измерение высот элементов.
 export const MessageVirtualList = memo(function MessageVirtualList({
@@ -17,17 +19,23 @@ export const MessageVirtualList = memo(function MessageVirtualList({
   onMediaClick,
   onPinMessage,
   onStartChat,
+  MessageEditorComponent,
+  ProfileWidgetComponent,
   activeMessageMenu,
   setActiveMessageMenu,
   gaps = { message: 32, day: 24, hour: 16 },
 }) {
-  const sizeMapRef = useRef(new Map());
-  const [containerHeight, setContainerHeight] = useState(0);
   const [editingMessageId, setEditingMessageId] = useState(null);
-  const listContainerRef = useRef(null);
-  const pendingResetIndexRef = useRef(null);
-  const rafIdRef = useRef(null);
   const messageRefs = useRef({});
+  const rowHeight = useDynamicRowHeight({ defaultRowHeight: 80 });
+
+  const setListApiRef = useCallback(
+    (api) => {
+      listRef.current = api;
+      scrollContainerRef.current = api?.element ?? null;
+    },
+    [listRef, scrollContainerRef]
+  );
 
   // Закрытие контекстного меню по клику вне и по Escape
   useEffect(() => {
@@ -60,101 +68,19 @@ export const MessageVirtualList = memo(function MessageVirtualList({
     });
   }, [flatItems, indexByMessageIdRef]);
 
-  // Измерение контейнера
-  useEffect(() => {
-    const el = listContainerRef.current;
-    if (!el) return;
-    const measure = () => {
-      const h = el.clientHeight;
-      setContainerHeight(h || 0);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("resize", measure);
-      ro.disconnect();
-    };
-  }, []);
-
-  const scheduleReset = useCallback(() => {
-    if (rafIdRef.current != null) return;
-    rafIdRef.current = requestAnimationFrame(() => {
-      if (
-        pendingResetIndexRef.current != null &&
-        listRef.current?.resetAfterIndex
-      ) {
-        listRef.current.resetAfterIndex(pendingResetIndexRef.current);
-      }
-      pendingResetIndexRef.current = null;
-      rafIdRef.current = null;
-    });
-  }, [listRef]);
-
-  const setSize = useCallback(
-    (index, size) => {
-      const prev = sizeMapRef.current.get(index);
-      if (prev !== size) {
-        sizeMapRef.current.set(index, size);
-        if (pendingResetIndexRef.current == null) {
-          pendingResetIndexRef.current = index;
-        } else {
-          pendingResetIndexRef.current = Math.min(
-            pendingResetIndexRef.current,
-            index
-          );
-        }
-        scheduleReset();
-      }
-    },
-    [scheduleReset]
-  );
-
-  const getSize = useCallback(
-    (index) => sizeMapRef.current.get(index) || 80,
-    []
-  );
-
-  const ItemRow = ({ index, style }) => {
+  const ItemRow = useCallback(({ index, style, ariaAttributes }) => {
     const item = flatItems[index];
     if (!item) return null;
     if (item.type === "day") {
       return (
-        <div
-          style={{ ...style }}
-          ref={(el) => {
-            if (el) {
-              const base =
-                el.firstChild?.getBoundingClientRect().height ||
-                el.getBoundingClientRect().height;
-              const stored = Number(el.dataset.measuredHeight || 0);
-              if (stored !== base) {
-                el.dataset.measuredHeight = String(base);
-                setSize(index, base + gaps.day);
-              }
-            }
-          }}>
+        <div {...ariaAttributes} style={{ ...style }}>
           <DaySeparator day={item.day} gap={gaps.day} />
         </div>
       );
     }
     if (item.type === "hour") {
       return (
-        <div
-          style={{ ...style }}
-          ref={(el) => {
-            if (el) {
-              const base =
-                el.firstChild?.getBoundingClientRect().height ||
-                el.getBoundingClientRect().height;
-              const stored = Number(el.dataset.measuredHeight || 0);
-              if (stored !== base) {
-                el.dataset.measuredHeight = String(base);
-                setSize(index, base + gaps.hour);
-              }
-            }
-          }}>
+        <div {...ariaAttributes} style={{ ...style }}>
           <HourSeparator hour={item.hour} gap={gaps.hour} />
         </div>
       );
@@ -163,19 +89,13 @@ export const MessageVirtualList = memo(function MessageVirtualList({
     const mid = message._id || message.id || message.tempId;
     return (
       <div
+        {...ariaAttributes}
         style={{ ...style }}
         ref={(el) => {
           if (el) {
             messageRefs.current[mid] = el;
-            const inner = el.firstChild;
-            const base =
-              inner?.getBoundingClientRect().height ||
-              el.getBoundingClientRect().height;
-            const stored = Number(el.dataset.measuredHeight || 0);
-            if (stored !== base) {
-              el.dataset.measuredHeight = String(base);
-              setSize(index, base + gaps.message);
-            }
+          } else {
+            delete messageRefs.current[mid];
           }
         }}
         data-message-id={mid}
@@ -208,50 +128,57 @@ export const MessageVirtualList = memo(function MessageVirtualList({
               return ok;
             }}
             onStartChat={onStartChat}
+            MessageEditorComponent={MessageEditorComponent}
+            ProfileWidgetComponent={ProfileWidgetComponent}
           />
         </div>
       </div>
     );
-  };
+  }, [
+    activeMessageMenu,
+    currentUser,
+    flatItems,
+    gaps.day,
+    gaps.hour,
+    gaps.message,
+    onDeleteMessage,
+    onEditMessage,
+    onMediaClick,
+    onPinMessage,
+    onStartChat,
+    MessageEditorComponent,
+    ProfileWidgetComponent,
+    setActiveMessageMenu,
+    editingMessageId,
+  ]);
 
-  const itemKey = (index) => {
-    const item = flatItems[index];
-    if (!item) return index;
-    if (item.type === "day") return `day-${item.day}`;
-    if (item.type === "hour") return `hour-${item.day}-${item.hour}`;
-    return item.message._id || item.message.id || item.message.tempId;
-  };
-
-  const onItemsRendered = ({ visibleStartIndex, visibleStopIndex }) => {
+  const onRowsRendered = useCallback((visibleRows) => {
     onItemsRange?.({
-      startIndex: visibleStartIndex,
-      endIndex: visibleStopIndex,
+      startIndex: visibleRows.startIndex,
+      endIndex: visibleRows.stopIndex,
     });
-  };
+  }, [onItemsRange]);
 
   return (
     <div
-      ref={listContainerRef}
       className="flex-1 min-h-0 relative opacity-100 transition-opacity duration-250 ease-in-out will-change-[opacity] backface-visibility-hidden messages-list-container">
       {flatItems.length === 0 ? (
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-10 select-none">
+        <div className="mt-10 select-none text-center text-sm text-muted-foreground">
           Сообщений пока нет
         </div>
       ) : (
         <List
-          ref={listRef}
-          height={containerHeight || 400}
-          itemCount={flatItems.length}
-          itemKey={itemKey}
-          itemSize={getSize}
-          width="100%"
-          outerRef={scrollContainerRef}
+          listRef={setListApiRef}
+          defaultHeight={400}
+          rowCount={flatItems.length}
+          rowHeight={rowHeight}
+          rowComponent={ItemRow}
+          rowProps={EMPTY_ROW_PROPS}
           overscanCount={8}
-          onItemsRendered={onItemsRendered}
+          onRowsRendered={onRowsRendered}
           className="outline-none"
-          style={{ overflowX: "hidden" }}>
-          {ItemRow}
-        </List>
+          style={{ height: "100%", overflowX: "hidden" }}
+        />
       )}
     </div>
   );

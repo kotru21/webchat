@@ -15,6 +15,8 @@ export const MessagesList = memo(function MessagesList({
   onMediaClick,
   onPinMessage,
   onStartChat,
+  MessageEditorComponent,
+  ProfileWidgetComponent,
   enablePinnedPanel = true,
 }) {
   const setSelectedUser = useChatStore((s) => s.setSelectedUser);
@@ -57,7 +59,6 @@ export const MessagesList = memo(function MessagesList({
         username: user.username,
         avatar: user.avatar,
         email: user.email,
-        status: user.status,
       });
       onStartChat?.(user);
     },
@@ -85,6 +86,8 @@ export const MessagesList = memo(function MessagesList({
         onMediaClick={onMediaClick}
         onPinMessage={onPinMessage}
         onStartChat={handleStartChat}
+        MessageEditorComponent={MessageEditorComponent}
+        ProfileWidgetComponent={ProfileWidgetComponent}
         activeMessageMenu={activeMessageMenu}
         setActiveMessageMenu={setActiveMessageMenu}
       />

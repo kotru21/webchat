@@ -6,16 +6,12 @@ export async function login(email, password) {
 }
 
 export async function register(formData) {
-  const res = await apiClient.post("/api/auth/register", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const res = await apiClient.post("/api/auth/register", formData);
   return res.data;
 }
 
 export async function updateProfile(formData) {
-  const res = await apiClient.put("/api/auth/profile", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const res = await apiClient.put("/api/auth/profile", formData);
   return res.data;
 }
 

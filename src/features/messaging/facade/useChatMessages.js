@@ -1,21 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@context/useAuth";
 import { getMessages } from "@features/messaging/api/messagesApi";
-import { useMessagesStore } from "@features/messaging/store/messagesStore";
+import { getChatKey, useMessagesStore } from "@shared/store/messagesStore";
 import { useEditMessage } from "@features/editMessage";
 import { useDeleteMessage } from "@features/deleteMessage";
 import { useMarkRead } from "@features/markRead";
 import { usePinMessage } from "@features/pinMessage";
 
 export const useChatMessages = (selectedUser) => {
-  const [loading] = useState(false); // legacy: отправка теперь в useSendMessage
   const [messagesLoading, setMessagesLoading] = useState(false); // загрузка списка
   const [error, setError] = useState("");
   const { user } = useAuth();
 
   const storeSetChatMessages = useMessagesStore((s) => s.setChatMessages);
 
-  const chatKey = selectedUser?.id ? `private:${selectedUser.id}` : "general";
+  const chatKey = getChatKey(selectedUser?.id);
   const EMPTY = useMemo(() => [], []);
   const reactiveMessages = useMessagesStore(
     (state) => state.chats[chatKey]?.messages ?? EMPTY
@@ -106,11 +105,9 @@ export const useChatMessages = (selectedUser) => {
 
   return {
     messages: reactiveMessages,
-    loading,
-    messagesLoading,
+    loading: messagesLoading,
     error,
     setError,
-    setMessages: () => {},
     // отправка теперь через useSendMessage (feature sendMessage)
     markAsReadHandler,
     editMessageHandler,

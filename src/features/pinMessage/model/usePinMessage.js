@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { pinMessageUsecase } from "../../messaging/usecases/pinMessage";
-import { useMessagesStore } from "../../messaging/store/messagesStore";
+import { useMessagesStore } from "@shared/store/messagesStore";
 
 export function usePinMessage() {
   const [loading, setLoading] = useState(false);

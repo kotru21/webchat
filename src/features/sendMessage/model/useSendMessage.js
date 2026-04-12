@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { sendMessage } from "@features/messaging/api/messagesApi";
 import { useAuth } from "@context/useAuth";
-import { useMessagesStore } from "@features/messaging/store/messagesStore";
+import { useMessagesStore } from "@shared/store/messagesStore";
 import { notify } from "@features/notifications/notify";
 
 // Bridge хук. Позже sendMessageUsecase будет перенесён внутрь этой feature.

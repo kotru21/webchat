@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import io from "socket.io-client";
 import { SOCKET_EVENTS } from "@constants/socketEvents";
-import { useMessagesStore } from "@features/messaging/store/messagesStore";
-import { usePresenceStore } from "@shared/store/presenceStore";
-import { notify } from "@shared/lib/notify";
+import { useMessagesStore } from "@shared/store/messagesStore";
+import { notify } from "@shared/event/notify";
+import { getApiBaseUrl } from "@shared/lib/apiUrl";
 
 const MAX_RECONNECTION_ATTEMPTS = 15;
 
@@ -13,8 +13,6 @@ const useChatSocket = ({
   incrementUnread,
   onSocketSendRef,
 }) => {
-  const setAllPresence = usePresenceStore((s) => s.setAll);
-  const updatePresenceStatus = usePresenceStore((s) => s.updateStatus);
   const addMessage = useMessagesStore((s) => s.addMessage);
   const updateMessage = useMessagesStore((s) => s.updateMessage);
   const removeMessage = useMessagesStore((s) => s.removeMessage);
@@ -32,14 +30,19 @@ const useChatSocket = ({
       return;
     }
 
-    const socket = io(import.meta.env.VITE_API_URL, {
+    const socketBaseUrl = getApiBaseUrl();
+    const socketOptions = {
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS,
       reconnectionDelay: 500,
       reconnectionDelayMax: 5000,
       auth: { token },
-    });
+    };
+
+    const socket = socketBaseUrl
+      ? io(socketBaseUrl, socketOptions)
+      : io(socketOptions);
     socketRef.current = socket;
 
     const joinRooms = () => {
@@ -81,7 +84,6 @@ const useChatSocket = ({
       id: user.id,
       username: user.username,
       avatar: user.avatar,
-      status: user.status,
     });
 
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, (msg) => {
@@ -109,7 +111,6 @@ const useChatSocket = ({
       }
     });
 
-    socket.on(SOCKET_EVENTS.USERS_ONLINE, (users) => setAllPresence(users));
     socket.on(SOCKET_EVENTS.MESSAGE_READ, ({ messageId, readBy }) =>
       markRead(messageId, readBy)
     );
@@ -122,9 +123,6 @@ const useChatSocket = ({
     socket.on(SOCKET_EVENTS.MESSAGE_PINNED, ({ messageId, isPinned }) =>
       pinMessage(messageId, isPinned)
     );
-    socket.on(SOCKET_EVENTS.USER_STATUS_CHANGED, ({ userId, status }) => {
-      if (userId !== user.id) updatePresenceStatus(userId, status);
-    });
 
     if (onSocketSendRef) {
       onSocketSendRef.current = (payload, cb) => {
@@ -146,8 +144,6 @@ const useChatSocket = ({
     updateMessage,
     pinMessage,
     onSocketSendRef,
-    setAllPresence,
-    updatePresenceStatus,
   ]);
 
   const prevSelectedRef = useRef(null);

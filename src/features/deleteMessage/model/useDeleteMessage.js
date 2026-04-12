@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { deleteMessageUsecase } from "../../messaging/usecases/deleteMessage";
-import { useMessagesStore } from "../../messaging/store/messagesStore";
+import { useMessagesStore } from "@shared/store/messagesStore";
 
 export function useDeleteMessage() {
   const [loading, setLoading] = useState(false);
