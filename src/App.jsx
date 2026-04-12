@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -10,6 +9,7 @@ import { useAuth } from "@context/useAuth";
 import QueryClientProvider from "@app/providers/QueryClientProvider.jsx";
 import ErrorBoundary from "@shared/ui/ErrorBoundary.jsx";
 import { Suspense, lazy } from "react";
+import ToastContainer from "@widgets/notifications/ToastContainer.jsx";
 const Login = lazy(() => import("@pages/Login"));
 const Register = lazy(() => import("@pages/Register"));
 const Chat = lazy(() => import("@pages/Chat"));
@@ -17,46 +17,10 @@ const Chat = lazy(() => import("@pages/Chat"));
 const AppContent = () => {
   const { user } = useAuth();
 
-  // Обработка закрытия окна или выхода со страницы
-  useEffect(() => {
-    if (!user) return;
-
-    const handleBeforeUnload = () => {
-      try {
-        const url = `${import.meta.env.VITE_API_URL}/api/status/update`;
-        const body = JSON.stringify({ status: "offline" });
-        const token = localStorage.getItem("token");
-        if (navigator.sendBeacon) {
-          const blob = new Blob([body], { type: "application/json" });
-          navigator.sendBeacon(url, blob);
-        } else {
-          // fallback (не блокирует поток)
-          fetch(url, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body,
-            keepalive: true,
-          }).catch(() => {});
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [user]);
-
   return (
     <Suspense
       fallback={
-        <div className="w-full h-screen flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="m3-surface h-screen w-full flex items-center justify-center text-sm text-muted-foreground">
           Загрузка...
         </div>
       }>
@@ -68,6 +32,7 @@ const AppContent = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Routes>
+      <ToastContainer />
     </Suspense>
   );
 };

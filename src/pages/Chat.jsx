@@ -4,14 +4,14 @@ import { useAuth } from "@context/useAuth";
 import ChatHeader from "@widgets/chat/ChatHeader.jsx";
 import { MessagesList } from "@entities/message/ui/MessagesList.jsx";
 import { SendMessageForm } from "@features/sendMessage/ui/SendMessageForm.jsx";
+import MessageEditor from "@features/editMessage/ui/MessageEditor.jsx";
+import { UserProfileWidget } from "@widgets/profile";
 const ChatsList = lazy(() => import("@widgets/chats/ChatsList"));
 import useChatFeature from "@features/messaging/facade/useChatFeature";
-import { updateProfile } from "@features/auth/api/authApi";
 import { notify } from "@features/notifications/notify";
-import ToastContainer from "@widgets/notifications/ToastContainer.jsx";
-import apiClient from "@shared/api/client";
 import { useUIStore } from "@shared/store/uiStore";
 import { useChatStore } from "@shared/store/chatStore";
+import { useChatPageActions } from "./model/useChatPageActions";
 
 const MediaViewer = React.lazy(() => import("@widgets/media/MediaViewer.jsx"));
 const ProfileEditor = React.lazy(() =>
@@ -19,8 +19,6 @@ const ProfileEditor = React.lazy(() =>
 );
 
 const Chat = () => {
-  // selectedUser теперь используется внутри useChatFeature напрямую из store
-  // Раздельные селекторы, чтобы избежать создания нового объекта на каждый рендер
   const isSidebarOpen = useUIStore((s) => s.isSidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const fullscreenMedia = useUIStore((s) => s.fullscreenMedia);
@@ -30,11 +28,8 @@ const Chat = () => {
   const openProfileEditor = useUIStore((s) => s.openProfileEditor);
   const closeProfileEditor = useUIStore((s) => s.closeProfileEditor);
   const [, startTransition] = useTransition();
-  // unreadCounts теперь в zustand (chatStore)
   const { user, updateUser } = useAuth();
   const setSelectedUser = useChatStore((s) => s.setSelectedUser);
-
-  // Профиль пользователя будет вынесен в отдельный контейнер позже
 
   const showErrorMessage = useCallback((message, type = "error") => {
     notify(type, message);
@@ -44,92 +39,36 @@ const Chat = () => {
     onError: (msg) => showErrorMessage(msg),
   });
   const selectedUser = useChatStore((s) => s.selectedUser);
-
-  const handleMediaClick = (mediaUrl, mediaType) => {
-    startTransition(() => {
-      openMedia({
-        url: `${import.meta.env.VITE_API_URL}${mediaUrl}`,
-        type: mediaType,
-      });
+  const { handleMediaClick, handleProfileUpdate, handleStartChat } =
+    useChatPageActions({
+      currentUserId: user?.id,
+      setSelectedUser,
+      setSidebarOpen,
+      openMedia,
+      updateUser,
+      closeProfileEditor,
+      startTransition,
+      showMessage: showErrorMessage,
     });
-  };
-
-  const handleProfileUpdate = async (formData) => {
-    try {
-      const response = await updateProfile(formData);
-      const updatedUser = response?.user || response;
-      if (updatedUser && updatedUser.id) {
-        updateUser(updatedUser);
-      } else {
-        const userResponse = await apiClient.get("/api/auth/me");
-        updateUser(userResponse.data);
-      }
-
-      startTransition(() => {
-        closeProfileEditor();
-      });
-
-      showErrorMessage("Профиль успешно обновлен", "success");
-    } catch (error) {
-      console.error("Profile update error:", error);
-
-      if (error.response) {
-        switch (error.response.status) {
-          case 400:
-            showErrorMessage("Некорректные данные для обновления профиля");
-            break;
-          case 413:
-            showErrorMessage("Загружаемый файл слишком большой");
-            break;
-          case 415:
-            showErrorMessage("Неподдерживаемый формат файла");
-            break;
-          case 429:
-            showErrorMessage(
-              "Слишком много запросов. Пожалуйста, повторите позже"
-            );
-            break;
-          default:
-            showErrorMessage("Ошибка при обновлении профиля. Попробуйте позже");
-        }
-      } else if (error.request) {
-        showErrorMessage(
-          "Сервер не отвечает. Проверьте подключение к интернету"
-        );
-      } else {
-        showErrorMessage("Ошибка при обновлении профиля");
-      }
-    }
-  };
-
-  const handleStartChat = useCallback(
-    (target) => {
-      if (!target || !target.id || target.id === user.id) return;
-      setSelectedUser({
-        id: target.id,
-        username: target.username,
-        avatar: target.avatar,
-        email: target.email,
-        status: target.status,
-      });
-      // На мобильных можно закрыть сайдбар, если открыт профиль
-      setSidebarOpen(false);
-    },
-    [setSelectedUser, setSidebarOpen, user.id]
-  );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="relative flex h-screen overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-primary/12 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-96 w-96 rounded-full bg-accent/25 blur-3xl" />
+      </div>
+
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
+          className="fixed inset-0 z-20 bg-foreground/25 backdrop-blur-[1px] md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <div className="flex-none md:w-72">
+
+      <div className="relative z-30 flex-none md:w-76 lg:w-84">
         <Suspense
           fallback={
-            <div className="h-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400 animate-pulse">
+            <div className="m3-surface-high h-full flex items-center justify-center text-sm text-muted-foreground animate-pulse md:rounded-r-3xl md:border-r md:border-border/70">
               Загрузка чатов...
             </div>
           }>
@@ -140,7 +79,7 @@ const Chat = () => {
         </Suspense>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col min-h-0">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col min-h-0 md:m-3 md:rounded-4xl md:border md:border-border/70 md:bg-card/75 md:backdrop-blur-md md:m3-elev-1">
         <ChatHeader
           user={user}
           onOpenSidebar={() => setSidebarOpen(true)}
@@ -160,13 +99,15 @@ const Chat = () => {
           onMediaClick={handleMediaClick}
           onPinMessage={api.pin}
           onStartChat={handleStartChat}
+          MessageEditorComponent={MessageEditor}
+          ProfileWidgetComponent={UserProfileWidget}
         />
         <SendMessageForm receiverId={selectedUser?.id || null} />
       </div>
       {fullscreenMedia && (
         <Suspense
           fallback={
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75">
               <div className="text-white text-lg">Загрузка медиа...</div>
             </div>
           }>
@@ -176,8 +117,8 @@ const Chat = () => {
       {isProfileEditorOpen && (
         <Suspense
           fallback={
-            <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 z-50">
-              <div className="text-lg">Загрузка редактора профиля...</div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+              <div className="text-lg text-foreground">Загрузка редактора профиля...</div>
             </div>
           }>
           <ProfileEditor
@@ -192,7 +133,6 @@ const Chat = () => {
         </Suspense>
       )}
       {/* Toasts */}
-      <ToastContainer />
     </div>
   );
 };

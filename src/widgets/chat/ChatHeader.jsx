@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, memo } from "react";
-import StatusSelector from "@features/status/selectStatus/ui/StatusSelector";
-import { useAuth } from "@context/useAuth";
 import { FiMenu } from "react-icons/fi";
 import { ANIMATION_DELAYS } from "@constants/appConstants";
 import { setupHoverPrefetch } from "@shared/lib/prefetch";
 import { useSelectedUser } from "@shared/store/chatSelectors";
+import { toAbsoluteMediaUrl } from "@shared/lib/mediaUrl";
+import { Button } from "@shared/ui/button";
 
 const ChatHeaderComponent = ({ user, onOpenSidebar, onOpenProfileEditor }) => {
   const selectedUser = useSelectedUser();
@@ -13,7 +13,6 @@ const ChatHeaderComponent = ({ user, onOpenSidebar, onOpenProfileEditor }) => {
     ? selectedUser.username || selectedUser.email
     : "Общий чат";
   const [title, setTitle] = useState(titleSource);
-  const { userStatus, handleStatusChange } = useAuth();
 
   useEffect(() => {
     setIsTransitioning(true);
@@ -28,6 +27,7 @@ const ChatHeaderComponent = ({ user, onOpenSidebar, onOpenProfileEditor }) => {
   }, [selectedUser]);
 
   const avatarRef = useRef(null);
+  const avatarSrc = toAbsoluteMediaUrl(user?.avatar) || "/default-avatar.png";
 
   useEffect(() => {
     // Префетч виджета редактора профиля по наведению на аватар
@@ -38,16 +38,20 @@ const ChatHeaderComponent = ({ user, onOpenSidebar, onOpenProfileEditor }) => {
   }, []);
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm py-3 px-3 sm:py-4 sm:px-4 sticky top-0 z-20">
-      <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row justify-between sm:items-center">
-        <div className="flex items-center min-w-0 space-x-3 sm:space-x-4">
-          <button
+    <header className="m3-surface-high sticky top-0 z-20 border-b border-border/70 px-3 py-3 backdrop-blur-xl sm:px-5 sm:py-4">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={onOpenSidebar}
-            className="md:hidden text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors">
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
+            aria-label="Открыть список чатов">
             <FiMenu size={22} />
-          </button>
+          </Button>
           <h1
-            className={`text-lg sm:text-xl font-medium truncate max-w-[60vw] xs:max-w-[70vw] sm:max-w-[220px] transition-all duration-300 ease-in-out ${
+            className={`max-w-[72vw] truncate text-lg font-medium text-foreground transition-all duration-300 ease-in-out sm:max-w-[52vw] sm:text-xl md:max-w-[38vw] ${
               isTransitioning
                 ? "opacity-0 -translate-y-2"
                 : "opacity-100 translate-y-0"
@@ -55,55 +59,27 @@ const ChatHeaderComponent = ({ user, onOpenSidebar, onOpenProfileEditor }) => {
             {title}
           </h1>
         </div>
-        <div className="flex items-stretch sm:items-center justify-between sm:justify-end gap-3 sm:gap-6 lg:pr-32">
-          <div className="flex items-center min-w-0 space-x-2">
-            <picture
+
+        <div className="flex items-stretch justify-between gap-3 sm:items-center sm:justify-end sm:gap-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <img
               ref={avatarRef}
               onClick={onOpenProfileEditor}
-              className="cursor-pointer">
-              <source
-                srcSet={
-                  user.avatar
-                    ? `${import.meta.env.VITE_API_URL}${user.avatar}`.replace(
-                        /(\.[a-zA-Z0-9]+)$/i,
-                        ".webp"
-                      )
-                    : "/default-avatar.png"
-                }
-                type="image/webp"
-              />
-              <img
-                src={
-                  user.avatar
-                    ? `${import.meta.env.VITE_API_URL}${user.avatar}`
-                    : "/default-avatar.png"
-                }
-                alt="Your avatar"
-                loading="lazy"
-                decoding="async"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full cursor-pointer hover:opacity-80 transition-all duration-200 transform hover:scale-105 flex-shrink-0"
-                onError={(e) => {
-                  e.target.src = "/default-avatar.png";
-                }}
-              />
-            </picture>
+              src={avatarSrc}
+              alt="Your avatar"
+              loading="lazy"
+              decoding="async"
+              className="h-10 w-10 shrink-0 cursor-pointer rounded-full object-cover ring-2 ring-primary/30 transition-all duration-200 hover:scale-105 hover:opacity-90"
+              onError={(e) => {
+                if (e.currentTarget.src.endsWith("/default-avatar.png")) return;
+                e.currentTarget.src = "/default-avatar.png";
+              }}
+            />
             <div className="flex flex-col min-w-0 leading-tight">
-              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate max-w-[40vw] sm:max-w-[180px]">
-                {user.username || user.email}
-              </span>
-              <span className="sm:hidden flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 mt-[2px]">
-                <span
-                  className={`inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse`}
-                />
-                В сети
+              <span className="max-w-[40vw] truncate text-xs text-muted-foreground sm:max-w-60 sm:text-sm">
+                {user?.username || user?.email || "Пользователь"}
               </span>
             </div>
-          </div>
-          <div className="hidden sm:block">
-            <StatusSelector
-              currentStatus={userStatus}
-              onStatusChange={handleStatusChange}
-            />
           </div>
         </div>
       </div>

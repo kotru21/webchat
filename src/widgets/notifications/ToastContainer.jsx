@@ -1,48 +1,69 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNotificationsStore } from "@features/notifications/store/notificationsStore";
 
 const typeStyles = {
-  success:
-    "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
-  error: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
-  info: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
-  warning:
-    "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
+  success: "border-emerald-500/55",
+  error: "border-destructive/55",
+  info: "border-primary/55",
+  warning: "border-amber-500/55",
 };
 
 export function ToastContainer() {
   const toasts = useNotificationsStore((s) => s.toasts);
   const dismiss = useNotificationsStore((s) => s.dismiss);
+  const [now, setNow] = useState(() => Date.now());
 
   // Источник данных — notificationsStore (notify -> push). Никаких внешних подписок.
 
   useEffect(() => {
+    const hasTimedToasts = toasts.some((t) => t.ttl > 0);
+    if (!hasTimedToasts) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [toasts]);
+
+  useEffect(() => {
     const timers = toasts.map((t) => {
       if (t.ttl === 0) return null;
-      return setTimeout(() => dismiss(t.id), t.ttl);
+
+      const elapsed = Date.now() - t.createdAt;
+      const remaining = Math.max(0, t.ttl - elapsed);
+
+      if (remaining === 0) {
+        dismiss(t.id);
+        return null;
+      }
+
+      return setTimeout(() => dismiss(t.id), remaining);
     });
     return () => timers.forEach((t) => t && clearTimeout(t));
   }, [toasts, dismiss]);
 
   return (
     <div
-      className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
+      className="fixed right-4 top-4 z-50 flex max-w-sm flex-col gap-2"
       role="region"
       aria-label="Уведомления">
       {toasts.map((t) => {
         const pct = t.ttl
-          ? Math.max(0, 100 - ((Date.now() - t.createdAt) / t.ttl) * 100)
+          ? Math.max(0, 100 - ((now - t.createdAt) / t.ttl) * 100)
           : 0;
         return (
           <div
             key={t.id}
-            className={`px-4 py-3 rounded-lg shadow animate-fade-in text-sm flex flex-col gap-2 ${
+            className={`m3-surface-high m3-elev-2 animate-fade-in flex flex-col gap-2 rounded-2xl border-l-4 px-4 py-3 text-sm ${
               typeStyles[t.type] || typeStyles.info
             }`}
             role="alert"
             aria-live={t.type === "error" ? "assertive" : "polite"}>
             <div className="flex justify-between items-start gap-3">
-              <span className="whitespace-pre-wrap break-words flex-1">
+              <span className="flex-1 whitespace-pre-wrap wrap-break-word">
                 {t.message}
               </span>
               <div className="flex gap-2 items-center">
@@ -54,22 +75,22 @@ export function ToastContainer() {
                         a.onClick?.();
                         dismiss(t.id);
                       }}
-                      className="text-xs underline hover:opacity-80">
+                      className="text-xs font-medium text-primary underline-offset-2 hover:underline">
                       {a.label}
                     </button>
                   ))}
                 <button
                   onClick={() => dismiss(t.id)}
-                  className="text-xs opacity-70 hover:opacity-100"
+                  className="text-xs opacity-70 transition-opacity hover:opacity-100"
                   aria-label="Закрыть уведомление">
                   ×
                 </button>
               </div>
             </div>
             {t.ttl > 0 && (
-              <div className="h-1 w-full bg-black/10 dark:bg-white/10 rounded overflow-hidden">
+              <div className="h-1 w-full overflow-hidden rounded bg-foreground/10">
                 <div
-                  className="h-full bg-current transition-all"
+                  className="h-full bg-primary transition-all"
                   style={{ width: pct + "%" }}
                 />
               </div>

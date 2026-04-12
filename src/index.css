@@ -1,10 +1,146 @@
-/* Tailwind entry point */
+/* Material 3 inspired global foundation */
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
+:root {
+  --background: 220 100% 98%;
+  --foreground: 232 18% 18%;
+  --card: 0 0% 100%;
+  --card-foreground: 232 18% 18%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 232 18% 18%;
+  --primary: 216 95% 42%;
+  --primary-foreground: 210 100% 99%;
+  --secondary: 214 55% 90%;
+  --secondary-foreground: 232 22% 22%;
+  --muted: 220 36% 94%;
+  --muted-foreground: 226 10% 42%;
+  --accent: 189 74% 92%;
+  --accent-foreground: 202 88% 18%;
+  --destructive: 4 79% 45%;
+  --destructive-foreground: 28 100% 98%;
+  --border: 220 18% 82%;
+  --input: 220 24% 90%;
+  --ring: 216 95% 42%;
+  --radius: 1.05rem;
+  --surface-container: 220 30% 95%;
+  --surface-container-high: 220 32% 92%;
+  --surface-container-highest: 220 28% 89%;
+  --shadow-color: 216 20% 20%;
+  --m3-gradient-1: rgba(111, 178, 255, 0.22);
+  --m3-gradient-2: rgba(90, 255, 210, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 224 27% 10%;
+    --foreground: 218 26% 92%;
+    --card: 223 24% 14%;
+    --card-foreground: 218 26% 92%;
+    --popover: 223 24% 14%;
+    --popover-foreground: 218 26% 92%;
+    --primary: 214 88% 73%;
+    --primary-foreground: 224 35% 14%;
+    --secondary: 219 20% 26%;
+    --secondary-foreground: 214 22% 92%;
+    --muted: 219 20% 20%;
+    --muted-foreground: 214 14% 70%;
+    --accent: 200 28% 22%;
+    --accent-foreground: 193 60% 80%;
+    --destructive: 5 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 16% 28%;
+    --input: 219 18% 23%;
+    --ring: 214 88% 73%;
+    --surface-container: 223 18% 16%;
+    --surface-container-high: 223 17% 20%;
+    --surface-container-highest: 223 15% 24%;
+    --shadow-color: 220 54% 2%;
+    --m3-gradient-1: rgba(102, 180, 255, 0.15);
+    --m3-gradient-2: rgba(97, 246, 206, 0.08);
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-surface-container: hsl(var(--surface-container));
+  --color-surface-container-high: hsl(var(--surface-container-high));
+  --color-surface-container-highest: hsl(var(--surface-container-highest));
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+}
+
 @layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Roboto", "Segoe UI", "Noto Sans", sans-serif;
+    text-rendering: optimizeLegibility;
+    background-image:
+      radial-gradient(circle at 8% 0%, var(--m3-gradient-1), transparent 40%),
+      radial-gradient(circle at 92% 12%, var(--m3-gradient-2), transparent 42%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, hsl(var(--primary)) 35%, transparent);
+  }
 }
 
 @layer utilities {
+  .m3-surface {
+    background: hsl(var(--surface-container));
+  }
+
+  .m3-surface-high {
+    background: hsl(var(--surface-container-high));
+  }
+
+  .m3-elev-1 {
+    box-shadow:
+      0 1px 2px 0 hsl(var(--shadow-color) / 0.18),
+      0 2px 8px 0 hsl(var(--shadow-color) / 0.08);
+  }
+
+  .m3-elev-2 {
+    box-shadow:
+      0 3px 6px 0 hsl(var(--shadow-color) / 0.2),
+      0 8px 20px 0 hsl(var(--shadow-color) / 0.12);
+  }
+
+  .m3-pill {
+    border-radius: 9999px;
+  }
+
   @keyframes anchorFlash {
     0% {
       background-color: rgba(250, 204, 21, 0.35);

@@ -18,9 +18,13 @@ const useMessageScroll = ({
   const initialLoadRef = useRef(true);
   const lastViewedMessageRef = useRef(null);
 
+  const getScrollElement = useCallback(() => {
+    return scrollContainerRef?.current || listRef.current?.element || null;
+  }, [scrollContainerRef, listRef]);
+
   // helper вычисления состояния "у дна"
   const recomputeIsAtBottom = useCallback(() => {
-    const el = scrollContainerRef?.current;
+    const el = getScrollElement();
     if (!el) return;
     const threshold = 16; // px
     const atBottom =
@@ -29,7 +33,7 @@ const useMessageScroll = ({
       isAtBottomRef.current = atBottom;
       if (atBottom) setNewMessagesCount(0);
     }
-  }, [scrollContainerRef]);
+  }, [getScrollElement]);
 
   // Сброс при переходах
   useEffect(() => {
@@ -38,35 +42,39 @@ const useMessageScroll = ({
 
   const scrollToBottom = useCallback(
     (smooth = true) => {
-      const list = listRef.current;
-      const outer = scrollContainerRef?.current;
-      if (!list || !outer) return;
+      const outer = getScrollElement();
+      if (!outer) return;
       const behavior = smooth ? "smooth" : "auto";
       // react-window не всегда даёт простой API для скролла в конец, используем scrollHeight
       outer.scrollTo({ top: outer.scrollHeight, behavior });
       setNewMessagesCount(0);
       isAtBottomRef.current = true;
     },
-    [listRef, scrollContainerRef]
+    [getScrollElement]
   );
 
   const scrollToMessage = useCallback(
     (messageId) => {
       if (!messageId) return;
       const list = listRef.current;
-      const outer = scrollContainerRef?.current;
-      if (!list || !outer) return;
+      const outer = getScrollElement();
+      if (!outer) return;
       const map = indexByMessageIdRef.current;
       const index = map.get(messageId);
       if (index == null) return;
-      // scrollToItem доступен у Variable/FixedSizeList
-      if (typeof list.scrollToItem === "function") {
+      if (typeof list?.scrollToRow === "function") {
+        try {
+          list.scrollToRow({ index, align: "center", behavior: "auto" });
+        } catch {
+          // ignore scroll errors
+        }
+      } else if (typeof list?.scrollToItem === "function") {
         try {
           list.scrollToItem(index, "center");
         } catch {
           // ignore scroll errors
         }
-      } else if (typeof list.scrollTo === "function") {
+      } else if (typeof list?.scrollTo === "function") {
         // fallback: приблизительное вычисление высоты (может быть неточно без измерения).
         // Пользователь может заменить на VariableSizeList и supply itemSizeMap.
         const approxSize = 72; // эвристика
@@ -87,7 +95,7 @@ const useMessageScroll = ({
       };
       highlight();
     },
-    [listRef, scrollContainerRef, indexByMessageIdRef]
+    [getScrollElement, indexByMessageIdRef, listRef]
   );
 
   const handleNewMessage = useCallback(
@@ -122,12 +130,12 @@ const useMessageScroll = ({
 
   // слушаем скролл контейнера
   useEffect(() => {
-    const el = scrollContainerRef?.current;
+    const el = getScrollElement();
     if (!el) return;
     const handler = () => recomputeIsAtBottom();
     el.addEventListener("scroll", handler, { passive: true });
     return () => el.removeEventListener("scroll", handler);
-  }, [scrollContainerRef, recomputeIsAtBottom]);
+  }, [getScrollElement, recomputeIsAtBottom]);
 
   return {
     scrollToMessage,

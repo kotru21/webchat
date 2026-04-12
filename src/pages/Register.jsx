@@ -1,13 +1,29 @@
 import { useState } from "react";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { register } from "@features/auth/api/authApi";
+import { notifyError, notifySuccess } from "@features/notifications/notify";
+import { Button } from "@shared/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@shared/ui/card";
+import { Input } from "@shared/ui/input";
+import { Label } from "@shared/ui/label";
+
+const EMAIL_PATTERN = /\S+@\S+\.\S+/;
+const PASSWORD_PATTERN =
+  /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const USERNAME_PATTERN = /^[\p{L}\p{N}_.-]+$/u;
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
@@ -16,7 +32,8 @@ const Register = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setError("Размер файла не должен превышать 5MB");
+        notifyError("Размер файла не должен превышать 5MB");
+        e.target.value = "";
         return;
       }
       setAvatar(file);
@@ -31,137 +48,155 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+
+    const normalizedEmail = email.trim();
+    const normalizedUsername = username.trim();
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      notifyError("Введите корректный email");
+      setLoading(false);
+      return;
+    }
+
+    if (!PASSWORD_PATTERN.test(password)) {
+      notifyError(
+        "Пароль должен быть от 8 символов и содержать заглавные и строчные буквы, цифру и спецсимвол"
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (
+      normalizedUsername &&
+      (normalizedUsername.length < 2 ||
+        normalizedUsername.length > 30 ||
+        !USERNAME_PATTERN.test(normalizedUsername))
+    ) {
+      notifyError(
+        "Никнейм должен содержать от 2 до 30 символов и включать только буквы, цифры, _, . и -"
+      );
+      setLoading(false);
+      return;
+    }
 
     const formData = new FormData();
-    formData.append("email", email);
+    formData.append("email", normalizedEmail);
     formData.append("password", password);
-    formData.append("username", username || email.split("@")[0]);
+    formData.append(
+      "username",
+      normalizedUsername || normalizedEmail.split("@")[0]
+    );
     if (avatar) {
       formData.append("avatar", avatar);
     }
 
     try {
       await register(formData);
+      notifySuccess("Регистрация прошла успешно");
       navigate("/login");
     } catch (error) {
-      setError(error.response?.data?.message || "Ошибка регистрации");
+      const validationError = error.response?.data?.errors?.[0]?.msg;
+      const backendMessage = error.response?.data?.message;
+      notifyError(validationError || backendMessage || "Ошибка регистрации");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
-        <h2 className="text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          Регистрация
-        </h2>
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 p-3 rounded">
-              {error}
-            </div>
-          )}
+    <div className="relative min-h-screen overflow-hidden px-4 py-10 sm:px-6">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-16 top-4 h-72 w-72 rounded-full bg-primary/14 blur-3xl" />
+        <div className="absolute -left-16 bottom-0 h-80 w-80 rounded-full bg-accent/30 blur-3xl" />
+      </div>
 
-          {/* Avatar Preview */}
-          {avatarPreview && (
-            <div className="flex justify-center">
-              <img
-                src={avatarPreview}
-                alt="Avatar preview"
-                className="w-24 h-24 rounded-full object-cover"
-              />
-            </div>
-          )}
+      <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl items-center justify-center">
+        <Card className="w-full max-w-lg border-border/70 bg-card/92 backdrop-blur-xl m3-elev-2">
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-3xl">Создать аккаунт</CardTitle>
+            <CardDescription>
+              Заполните данные профиля, чтобы войти в пространство WebChat.
+            </CardDescription>
+          </CardHeader>
 
-          {/* Avatar Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Аватар (опционально)
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="mt-1 block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100
-                dark:file:bg-gray-700 dark:file:text-gray-200"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Максимальный размер: 5MB. Форматы: JPEG, PNG, GIF
-            </p>
-          </div>
+          <CardContent>
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <div className="flex h-24 items-center justify-center">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar preview"
+                    className="h-24 w-24 rounded-full object-cover ring-2 ring-primary/30"
+                  />
+                ) : (
+                  <div className="m3-surface-high flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-border/80 text-xs text-muted-foreground">
+                    Аватар
+                  </div>
+                )}
+              </div>
 
-          <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Никнейм (необязательно)
-            </label>
-            <input
-              id="username"
-              type="text"
-              className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
+              <div className="space-y-2.5">
+                <Label htmlFor="avatar">Аватар (опционально)</Label>
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="cursor-pointer file:cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Максимальный размер: 5MB. Форматы: JPEG, PNG, GIF
+                </p>
+              </div>
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+              <div className="space-y-2.5">
+                <Label htmlFor="username">Никнейм (необязательно)</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Например, andrey_dev"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Пароль
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+              <div className="space-y-2.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}>
-            {loading ? "Регистрация..." : "Зарегистрироваться"}
-          </button>
+              <div className="space-y-2.5">
+                <Label htmlFor="password">Пароль</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Минимум 8 символов"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
 
-          <p className="text-center text-sm text-gray-600 dark:text-gray-300">
-            Уже есть аккаунт?{" "}
+              <Button type="submit" className="h-11 w-full text-sm" disabled={loading}>
+                {loading ? "Регистрация..." : "Зарегистрироваться"}
+              </Button>
+            </form>
+          </CardContent>
+
+          <CardFooter className="justify-center text-sm text-muted-foreground">
+            Уже есть аккаунт?
             <RouterLink
               to="/login"
-              className="text-blue-600 hover:text-blue-500 dark:text-blue-400">
+              className="ml-1.5 font-medium text-primary underline-offset-4 hover:underline">
               Войти
             </RouterLink>
-          </p>
-        </form>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
