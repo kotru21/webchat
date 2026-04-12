@@ -3,11 +3,14 @@ import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+const devApiTarget = process.env.VITE_DEV_API_TARGET || "http://localhost:5000";
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@app": fileURLToPath(new URL("./src/app", import.meta.url)),
       "@processes": fileURLToPath(new URL("./src/processes", import.meta.url)),
       "@pages": fileURLToPath(new URL("./src/pages", import.meta.url)),
@@ -17,6 +20,7 @@ export default defineConfig({
       "@shared": fileURLToPath(new URL("./src/shared", import.meta.url)),
       "@constants": fileURLToPath(new URL("./src/constants", import.meta.url)),
       "@context": fileURLToPath(new URL("./src/context", import.meta.url)),
+      "@hooks": fileURLToPath(new URL("./src/hooks", import.meta.url)),
       "@utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
       "@services": fileURLToPath(new URL("./src/services", import.meta.url)),
     },
@@ -28,6 +32,21 @@ export default defineConfig({
     host: true,
     hmr: {
       overlay: true,
+    },
+    proxy: {
+      "/api": {
+        target: devApiTarget,
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: devApiTarget,
+        changeOrigin: true,
+      },
+      "/socket.io": {
+        target: devApiTarget,
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

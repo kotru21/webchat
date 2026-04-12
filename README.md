@@ -34,8 +34,8 @@ LocalWebChat is a full‑stack real‑time chat featuring public & private conve
 ### 3. Tech Stack
 
 Frontend: React, Vite, Tailwind, Zustand, TanStack Query, react-window, framer-motion, date-fns.  
-Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.  
-Security: helmet, express-rate-limit, xss-clean, express-mongo-sanitize, compression.
+Backend: Node.js, TypeScript, Express 5, Prisma ORM, SQLite, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.  
+Security: helmet, express-rate-limit, express-validator, file magic-bytes validation, compression.
 
 ### 4. Architecture (FSD)
 
@@ -70,8 +70,8 @@ createdAt, updatedAt
 ### 9. REST API (base: <http://localhost:5000/api>)
 
 Auth: `POST /auth/register`, `/auth/login`, `POST /auth/logout`, `GET/PUT /auth/profile`, `GET /auth/users/:id`, `GET /auth/me`  
-Messages: `GET /messages`, `POST /messages`, `PUT /messages/:id`, `DELETE /messages/:id` (soft), `POST /messages/:id/read`, `POST /messages/:id/pin`  
-Status: `GET /status/:userId`, `PUT /status`, `POST /status/activity`  
+Messages: `GET /messages`, `POST /messages`, `PUT /messages/:id`, `DELETE /messages/:id` (soft), `POST /messages/:id/read`, `PUT /messages/:id/pin`  
+Status: `GET /status/:userId`, `PUT /status/update`, `PUT /status/activity`  
 Chats: `GET /chats`
 
 ### 10. Socket Events
@@ -95,8 +95,10 @@ Backend `server/.env`:
 ```bash
 PORT=5000
 CLIENT_URL=http://localhost:5173
-MONGODB_URI=mongodb://localhost:27017/webchat
+DATABASE_URL=file:./prisma/webchat.db
 JWT_SECRET=your_jwt_secret_key
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_TTL_DAYS=7
 ```
 
 ### 12. Installation
@@ -106,6 +108,7 @@ git clone https://github.com/yourusername/local-webchat.git
 cd local-webchat
 npm install
 cd server && npm install && cd ..
+cd server && npm run prisma:migrate && cd ..
 ```
 
 ### 13. Development Run
@@ -113,7 +116,7 @@ cd server && npm install && cd ..
 Two terminals (or background start):
 
 ```bash
-cd server && npm start &
+cd server && npm run dev
 npm run dev
 ```
 
@@ -131,16 +134,16 @@ Serve `dist/` with any static server (Nginx, serve, etc.) while backend keeps ru
 
 ```text
 frontend: dev | build | preview | lint
-backend:  start | dev (nodemon)
+backend:  dev | build | start | test | prisma:migrate | prisma:deploy | prisma:studio
 ```
 
 ### 16. Security Notes
 
 - helmet (CSP, headers)
 - express-rate-limit (auth / message endpoints)
-- xss-clean & express-mongo-sanitize
 - JWT (Bearer + Socket handshake)
 - Multer + Sharp (sanitized uploads & image processing)
+- File magic-bytes validation for uploads
 - Compression for payload size
 
 ### 17. Performance Notes
@@ -187,8 +190,8 @@ LocalWebChat — полнофункциональный чат в реально
 ### 3. Технологии
 
 Frontend: React, Vite, Tailwind, Zustand, TanStack Query, react-window, framer-motion, date-fns.  
-Backend: Node.js, Express, MongoDB/Mongoose, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.  
-Security: helmet, express-rate-limit, xss-clean, express-mongo-sanitize, compression.
+Backend: Node.js, TypeScript, Express 5, Prisma ORM, SQLite, Socket.IO, Multer, Sharp, JWT, bcrypt, express-validator.  
+Security: helmet, express-rate-limit, express-validator, проверка magic-bytes файлов, compression.
 
 ### 4. Архитектура (FSD)
 
@@ -221,8 +224,8 @@ createdAt, updatedAt
 ### 9. REST API (база: <http://localhost:5000/api>)
 
 Auth: `POST /auth/register`, `/auth/login`, `POST /auth/logout`, `GET/PUT /auth/profile`, `GET /auth/users/:id`, `GET /auth/me`  
-Messages: `GET /messages`, `POST /messages`, `PUT /messages/:id`, `DELETE /messages/:id` (soft), `POST /messages/:id/read`, `POST /messages/:id/pin`  
-Status: `GET /status/:userId`, `PUT /status`, `POST /status/activity`  
+Messages: `GET /messages`, `POST /messages`, `PUT /messages/:id`, `DELETE /messages/:id` (soft), `POST /messages/:id/read`, `PUT /messages/:id/pin`  
+Status: `GET /status/:userId`, `PUT /status/update`, `PUT /status/activity`  
 Chats: `GET /chats`
 
 ### 10. События Socket
@@ -246,8 +249,10 @@ Backend `server/.env`:
 ```bash
 PORT=5000
 CLIENT_URL=http://localhost:5173
-MONGODB_URI=mongodb://localhost:27017/webchat
+DATABASE_URL=file:./prisma/webchat.db
 JWT_SECRET=your_jwt_secret_key
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_TTL_DAYS=7
 ```
 
 ### 12. Установка
@@ -257,6 +262,7 @@ git clone https://github.com/yourusername/local-webchat.git
 cd local-webchat
 npm install
 cd server && npm install && cd ..
+cd server && npm run prisma:migrate && cd ..
 ```
 
 ### 13. Запуск (dev)
@@ -264,7 +270,7 @@ cd server && npm install && cd ..
 Два терминала (или запуск бэкенда в фоне):
 
 ```bash
-cd server && npm start &
+cd server && npm run dev
 npm run dev
 ```
 
@@ -282,16 +288,16 @@ npm run build
 
 ```text
 frontend: dev | build | preview | lint
-backend:  start | dev (nodemon)
+backend:  dev | build | start | test | prisma:migrate | prisma:deploy | prisma:studio
 ```
 
 ### 16. Безопасность
 
 - helmet (заголовки, CSP)
 - express-rate-limit (auth / messages)
-- xss-clean & express-mongo-sanitize
 - JWT (Bearer + Socket handshake)
 - Multer + Sharp (обработка изображений, санация)
+- Проверка magic-bytes для загружаемых файлов
 - Compression (уменьшение трафика)
 
 ### 17. Производительность
