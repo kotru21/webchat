@@ -9,7 +9,9 @@
 | Spoofing | Stolen access JWT | Short-lived access token kept in memory only |
 | Spoofing | Stolen refresh token | HttpOnly cookie, `SameSite=Lax`, path `/api/auth` |
 | Tampering | Refresh token reuse | Rotation + `familyId` revoke-on-reuse (1s grace so concurrent double-refresh does not kill the winner; losers get `REFRESH_CONCURRENT` without clearing the rotated cookie) |
+| Tampering | CSRF on cookie endpoints | Data mutations are Bearer-only (no cookie auth); the two cookie-authenticated endpoints (`/refresh`, `/logout`) are protected by `SameSite=Lax` + an Origin allowlist (`requireSameOrigin`). Token-based CSRF middleware is intentionally not used — CodeQL's `js/missing-csrf-middleware` alert is dismissed with this rationale |
 | Elevation | Weak prod secrets | Fail-closed `JWT_SECRET` entropy check |
+| Denial of service | Request floods | Per-IP rate limits on auth, refresh, logout, search, profile writes, reads (`readLimiter`), and media GETs (`mediaLimiter`) |
 
 ### Messages (REST)
 

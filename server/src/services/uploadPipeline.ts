@@ -3,6 +3,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { UPLOAD_PATHS } from "../constants/fileConstants.js";
+import { resolveUnderUploadsRoot } from "../utils/uploads.js";
+
+/** Multer only writes under uploads/ — treat anything else as a broken invariant. */
+const assertUploadsPath = (target: string): string => {
+  const resolved = resolveUnderUploadsRoot(process.cwd(), target);
+  if (!resolved) {
+    throw new Error("UPLOAD_PATH_OUTSIDE_ROOT");
+  }
+  return resolved;
+};
 
 const IMAGE_MIMES = new Set([
   "image/jpeg",
@@ -28,6 +38,7 @@ export const reencodeImageToWebp = async (
   inputPath: string,
   outputDir = path.join(process.cwd(), UPLOAD_PATHS.MEDIA)
 ): Promise<{ relativePath: string; filename: string }> => {
+  const safeInputPath = assertUploadsPath(inputPath);
   await fs.mkdir(outputDir, { recursive: true });
   const filename = randomUploadFilename(".webp");
   const outputPath = path.join(outputDir, filename);
@@ -37,11 +48,11 @@ export const reencodeImageToWebp = async (
     limitInputPixels: IMAGE_LIMIT_INPUT_PIXELS,
   } as const;
 
-  const meta = await sharp(inputPath, sharpOpts).metadata();
+  const meta = await sharp(safeInputPath, sharpOpts).metadata();
   const isAnimated = (meta.pages ?? 1) > 1;
 
   // Fresh instance after metadata() — avoids Windows file-lock on unlink.
-  let pipeline = sharp(inputPath, sharpOpts);
+  let pipeline = sharp(safeInputPath, sharpOpts);
   // EXIF rotate can break multi-frame toilet-roll layout.
   if (!isAnimated) {
     pipeline = pipeline.rotate();
@@ -61,7 +72,7 @@ export const reencodeImageToWebp = async (
   // Windows may keep the input handle briefly after sharp finishes.
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
-      await fs.unlink(inputPath);
+      await fs.unlink(safeInputPath);
       break;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -79,10 +90,11 @@ export const finalizeNonImageUpload = async (
   originalExt: string,
   outputDir = path.join(process.cwd(), UPLOAD_PATHS.MEDIA)
 ): Promise<{ relativePath: string; filename: string }> => {
+  const safeInputPath = assertUploadsPath(inputPath);
   await fs.mkdir(outputDir, { recursive: true });
   const filename = randomUploadFilename(originalExt || ".bin");
   const outputPath = path.join(outputDir, filename);
-  await fs.rename(inputPath, outputPath);
+  await fs.rename(safeInputPath, outputPath);
 
   return {
     filename,

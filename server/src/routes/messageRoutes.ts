@@ -6,13 +6,13 @@ import {
 import protect from "../middleware/auth.js";
 import { cleanupUploadsOnError } from "../middleware/cleanupUploadsOnError.js";
 import { validateFileMagicBytes } from "../middleware/fileValidator.js";
-import { messageLimiter } from "../middleware/rateLimiter.js";
+import { messageLimiter, readLimiter } from "../middleware/rateLimiter.js";
 import { mediaUpload } from "../middleware/upload.js";
 import { validateMessage } from "../middleware/validator.js";
 
 const router = Router();
 
-router.get("/", protect, getMessages);
+router.get("/", protect, readLimiter, getMessages);
 router.post(
   "/",
   protect,

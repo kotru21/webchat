@@ -1,9 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 const PASSWORD = "Sup3r-Secret!e2e";
 
 const uniqueUser = (prefix) => {
-  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const id = `${Date.now().toString(36)}${randomBytes(2).toString("hex")}`;
   return {
     username: `e2e-${prefix}-${id}`,
     email: `e2e-${prefix}-${id}@example.com`,

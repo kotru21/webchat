@@ -52,3 +52,21 @@ export const logoutLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Authenticated read endpoints (profiles, chat/message lists). */
+export const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isDevelopment ? 10_000 : 120,
+  message: { message: "Слишком много запросов. Подождите немного." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/** Media GETs burst hard (avatar per chat row) — higher ceiling than readLimiter. */
+export const mediaLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isDevelopment ? 10_000 : 300,
+  message: { message: "Слишком много запросов медиа. Подождите немного." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

@@ -42,6 +42,22 @@ export const canonicalizeMediaApiUrl = (
   return mediaUrl.replace(/^\/api\/media\/banners\//, "/api/media/covers/");
 };
 
+/**
+ * Resolve `target` and require it to stay under `<baseDir>/uploads`.
+ * Returns the resolved absolute path, or null when outside the root.
+ */
+export const resolveUnderUploadsRoot = (
+  baseDir: string,
+  target: string
+): string | null => {
+  const uploadsRoot = path.resolve(baseDir, "uploads");
+  const resolved = path.resolve(target);
+  if (resolved === uploadsRoot || resolved.startsWith(uploadsRoot + path.sep)) {
+    return resolved;
+  }
+  return null;
+};
+
 export const safeUnlinkFromServerRoot = async (
   baseDir: string,
   relativePath: string | null | undefined

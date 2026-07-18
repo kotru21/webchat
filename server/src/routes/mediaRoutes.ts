@@ -1,6 +1,7 @@
 import path from "node:path";
 import { Router } from "express";
 import protect from "../middleware/auth.js";
+import { mediaLimiter } from "../middleware/rateLimiter.js";
 import { assertCanAccessMediaAttachment } from "../services/accessControl.js";
 import { createHttpError } from "../utils/errors.js";
 
@@ -45,7 +46,7 @@ const resolveSafeUploadPath = (requestPath: string): SafeUploadPath => {
 const isMessageAttachmentPath = (relative: string): boolean =>
   relative === "media" || relative.startsWith("media/");
 
-router.get("/*path", protect, async (req, res, next) => {
+router.get("/*path", protect, mediaLimiter, async (req, res, next) => {
   try {
     const rawPath = Array.isArray(req.params.path)
       ? req.params.path.join("/")

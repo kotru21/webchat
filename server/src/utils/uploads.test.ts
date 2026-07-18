@@ -4,8 +4,27 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   mediaApiUrlToUploadRelative,
+  resolveUnderUploadsRoot,
   safeUnlinkFromServerRoot,
 } from "./uploads.js";
+
+describe("resolveUnderUploadsRoot", () => {
+  const base = path.resolve("/srv/app");
+
+  it("accepts paths inside uploads/", () => {
+    expect(
+      resolveUnderUploadsRoot(base, path.join(base, "uploads", "media", "a.bin"))
+    ).toBe(path.join(base, "uploads", "media", "a.bin"));
+  });
+
+  it("rejects traversal and outside paths", () => {
+    expect(
+      resolveUnderUploadsRoot(base, path.join(base, "uploads", "..", "secret"))
+    ).toBeNull();
+    expect(resolveUnderUploadsRoot(base, path.join(base, "other"))).toBeNull();
+    expect(resolveUnderUploadsRoot(base, "/etc/passwd")).toBeNull();
+  });
+});
 
 describe("mediaApiUrlToUploadRelative", () => {
   it("maps api media URLs under uploads/", () => {
