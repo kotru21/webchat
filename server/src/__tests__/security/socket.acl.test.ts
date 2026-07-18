@@ -188,4 +188,60 @@ describe("socket ACL", () => {
     expect(result.error).toBe("TOO_LONG");
     expect(result.ok).toBeUndefined();
   });
+
+  it("delivers MESSAGE_NEW to receiver user room without dm join", async () => {
+    const socketB = await connectSocket(server.baseUrl, userB.token);
+    socketB.emit(SOCKET_EVENTS.USER_CONNECTED);
+
+    const received = new Promise<unknown>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("no MESSAGE_NEW")), 10_000);
+      socketB.on(SOCKET_EVENTS.MESSAGE_NEW, (msg) => {
+        clearTimeout(timer);
+        resolve(msg);
+      });
+    });
+
+    // Give join time to process
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await emitAck<{ ok?: boolean; id?: string }>(
+      socketA,
+      SOCKET_EVENTS.MESSAGE_SEND,
+      {
+        receiverId: userB.userId,
+        content: "via-user-room",
+      }
+    );
+    expect(result.ok).toBe(true);
+
+    const msg = (await received) as { content?: string };
+    expect(msg.content).toBe("via-user-room");
+    socketB.disconnect();
+  });
+
+  it("disconnects user sockets on logout", async () => {
+    const sock = await connectSocket(server.baseUrl, userC.token);
+    sock.emit(SOCKET_EVENTS.USER_CONNECTED);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const disconnected = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("socket stayed up")), 10_000);
+      sock.on("disconnect", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+
+    const logoutRes = await fetch(`${server.baseUrl}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${userC.token}`,
+        Cookie: `refreshToken=${userC.refreshToken}`,
+      },
+    });
+    expect(logoutRes.status).toBe(200);
+
+    await disconnected;
+    expect(sock.connected).toBe(false);
+  });
 });

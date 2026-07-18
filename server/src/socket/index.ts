@@ -152,7 +152,10 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
           roomId: room,
         });
 
-        ioInstance?.to(room).emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
+        // DM room for open chat + user room so receiver gets it in any UI state.
+        ioInstance
+          ?.to([room, userRoomId(receiverId)])
+          .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
         cb?.({ ok: true, id: savedMessage._id });
       } catch {
         cb?.({ error: "SERVER" });

@@ -10,10 +10,15 @@ import {
   updateProfile,
 } from "../controllers/authController.js";
 import protect from "../middleware/auth.js";
+import { cleanupUploadsOnError } from "../middleware/cleanupUploadsOnError.js";
 import { validateFileMagicBytes } from "../middleware/fileValidator.js";
 import { authLimiter, profileLimiter, refreshLimiter } from "../middleware/rateLimiter.js";
 import { avatarUpload, profileUpload } from "../middleware/upload.js";
-import { validateLogin, validateRegister } from "../middleware/validator.js";
+import {
+  validateLogin,
+  validateProfile,
+  validateRegister,
+} from "../middleware/validator.js";
 
 const router = Router();
 
@@ -21,6 +26,7 @@ router.post(
   "/register",
   authLimiter,
   avatarUpload,
+  cleanupUploadsOnError,
   validateFileMagicBytes,
   validateRegister,
   register
@@ -34,7 +40,9 @@ router.put(
   protect,
   profileLimiter,
   profileUpload,
+  cleanupUploadsOnError,
   validateFileMagicBytes,
+  validateProfile,
   updateProfile
 );
 router.get("/users", protect, searchUsers);

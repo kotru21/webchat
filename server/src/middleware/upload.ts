@@ -46,6 +46,8 @@ const imageFileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
 
 /** Cap multipart text fields well above message max (1000) but far below multer's 1MB default. */
 const MESSAGE_FIELD_SIZE = 4 * 1024;
+/** username + description (+ margin); description max is 500 chars. */
+const PROFILE_FIELD_SIZE = 2 * 1024;
 
 export const mediaUpload = multer({
   storage,
@@ -63,6 +65,7 @@ export const profileUpload = multer({
   limits: {
     // Per-file multer cap; avatar tightened further in validateFileMagicBytes.
     fileSize: FILE_LIMITS.BANNER_MAX_SIZE,
+    fieldSize: PROFILE_FIELD_SIZE,
     files: 2,
   },
 }).fields([
@@ -75,6 +78,7 @@ export const avatarUpload = multer({
   fileFilter: imageFileFilter,
   limits: {
     fileSize: FILE_LIMITS.AVATAR_MAX_SIZE,
+    fieldSize: PROFILE_FIELD_SIZE,
     files: 1,
   },
 }).single("avatar");

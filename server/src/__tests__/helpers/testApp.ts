@@ -122,6 +122,7 @@ export const buildTestHttpServer = async (): Promise<TestHttpServer> => {
     methods: ["GET", "POST"],
     credentials: true,
   });
+  app.set("io", io);
 
   await new Promise<void>((resolve) => {
     httpServer.listen(0, "127.0.0.1", () => resolve());

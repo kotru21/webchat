@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import {
   getOwnUserById,
   getPublicUserById,
@@ -16,10 +16,10 @@ import {
   REFRESH_COOKIE_NAME,
   setRefreshCookie,
 } from "../middleware/cookies.js";
+import { userRoomId } from "../services/accessControl.js";
 import { verifyAccessToken } from "../utils/tokens.js";
-import { safeUnlinkMediaApiUrl } from "../utils/uploads.js";
 
-const profileFilePath = (files: Express.Request["files"], key: "avatar" | "banner") => {
+const profileFilePath = (files: Request["files"], key: "avatar" | "banner") => {
   if (!files || Array.isArray(files)) return undefined;
   const file = files[key]?.[0];
   if (!file) return undefined;
@@ -28,33 +28,28 @@ const profileFilePath = (files: Express.Request["files"], key: "avatar" | "banne
   return `/api/media/banners/${file.filename}`;
 };
 
+const disconnectUserSockets = (req: Request, userId: string) => {
+  const io = req.app.get("io");
+  if (!io || typeof io.in !== "function") return;
+  io.in(userRoomId(userId)).disconnectSockets(true);
+};
+
 export const register: RequestHandler = async (req, res) => {
   const { email, password, username } = req.body;
-  const avatarUrl = req.file
-    ? `/api/media/avatars/${req.file.filename}`
-    : undefined;
 
-  try {
-    const user = await registerUser({
-      email,
-      password,
-      username,
-      avatar: avatarUrl,
-    });
+  const user = await registerUser({
+    email,
+    password,
+    username,
+    avatar: req.file ? `/api/media/avatars/${req.file.filename}` : undefined,
+  });
 
-    res.status(201).json({
-      message: "Регистрация успешна.",
-      id: user._id,
-      username: user.username,
-      email: user.email,
-    });
-  } catch (error) {
-    // Upload ran before registerUser; drop orphan avatar on duplicate email/username.
-    if (avatarUrl) {
-      await safeUnlinkMediaApiUrl(process.cwd(), avatarUrl);
-    }
-    throw error;
-  }
+  res.status(201).json({
+    message: "Регистрация успешна.",
+    id: user._id,
+    username: user.username,
+    email: user.email,
+  });
 };
 
 export const login: RequestHandler = async (req, res) => {
@@ -100,25 +95,30 @@ export const refreshAccessToken: RequestHandler = async (req, res) => {
  */
 export const logout: RequestHandler = async (req, res) => {
   const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-  let revoked = false;
+  let userId: string | undefined;
 
   if (typeof refreshToken === "string" && refreshToken) {
-    revoked = await logoutByRefreshToken(refreshToken);
+    userId = (await logoutByRefreshToken(refreshToken)) ?? undefined;
   }
 
-  if (!revoked) {
+  if (!userId) {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
       const accessToken = authHeader.slice("Bearer ".length).trim();
       if (accessToken) {
         try {
           const payload = verifyAccessToken(accessToken);
+          userId = payload.id;
           await logoutUser(payload.id);
         } catch {
           // Best-effort: still clear cookies below.
         }
       }
     }
+  }
+
+  if (userId) {
+    disconnectUserSockets(req, userId);
   }
 
   clearRefreshCookie(res);
@@ -130,24 +130,15 @@ export const updateProfile: RequestHandler = async (req, res) => {
     throw createHttpError(401, "Не авторизован", "UNAUTHORIZED");
   }
 
-  const avatar = profileFilePath(req.files, "avatar");
-  const banner = profileFilePath(req.files, "banner");
+  // Orphan uploads on failure are removed by cleanupUploadsOnError (status ≥400).
+  const user = await updateUserProfile(req.user.id, {
+    username: req.body.username,
+    description: req.body.description,
+    avatar: profileFilePath(req.files, "avatar"),
+    banner: profileFilePath(req.files, "banner"),
+  });
 
-  try {
-    const user = await updateUserProfile(req.user.id, {
-      username: req.body.username,
-      description: req.body.description,
-      avatar,
-      banner,
-    });
-    res.json(user);
-  } catch (error) {
-    // Pipeline already wrote new files; drop them if profile update fails.
-    const root = process.cwd();
-    if (avatar) await safeUnlinkMediaApiUrl(root, avatar);
-    if (banner) await safeUnlinkMediaApiUrl(root, banner);
-    throw error;
-  }
+  res.json(user);
 };
 
 export const searchUsers: RequestHandler = async (req, res) => {

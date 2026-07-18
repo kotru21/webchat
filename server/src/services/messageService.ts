@@ -17,10 +17,16 @@ interface CreateMessageInput {
 }
 
 const MAX_LIMIT = 100;
+const MAX_PAGE = 100;
 
 const clampLimit = (value: number): number => {
   if (!Number.isFinite(value) || value < 1) return 50;
   return Math.min(Math.floor(value), MAX_LIMIT);
+};
+
+const clampPage = (value: number): number => {
+  if (!Number.isFinite(value) || value < 1) return 1;
+  return Math.min(Math.floor(value), MAX_PAGE);
 };
 
 const getMessageEntity = async (messageId: string) => {
@@ -85,7 +91,7 @@ export const listMessages = async ({
   assertCanListDm(userId, receiverId);
 
   const take = clampLimit(limit);
-  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const safePage = clampPage(page);
   const skip = (safePage - 1) * take;
 
   const messages = await prisma.message.findMany({

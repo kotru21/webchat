@@ -46,6 +46,7 @@ model Message {
   @@index([receiverId, createdAt])
   @@index([senderId, createdAt])
   @@index([receiverId, senderId, createdAt])
+  @@index([mediaUrl])
 }
 
 model RefreshSession {

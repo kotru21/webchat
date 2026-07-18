@@ -10,6 +10,10 @@ import {
   refreshTokenExpiryDate,
   signAccessToken,
 } from "../utils/tokens.js";
+import {
+  clampDescription,
+  isValidUsername,
+} from "../middleware/validator.js";
 import { safeUnlinkMediaApiUrl } from "../utils/uploads.js";
 import { userOwnSelect, userPublicSelect } from "./dbShapes.js";
 
@@ -286,16 +290,22 @@ export const logoutUser = async (userId: string) => {
   await revokeAllUserSessions(userId);
 };
 
-/** Resolve user from refresh cookie and revoke all sessions (access JWT optional). */
-export const logoutByRefreshToken = async (refreshToken: string): Promise<boolean> => {
+/**
+ * Resolve user from refresh cookie and revoke all sessions (access JWT optional).
+ * Returns the userId when a session was found; null otherwise.
+ * Note: revokes every device for this user (not only the current family).
+ */
+export const logoutByRefreshToken = async (
+  refreshToken: string
+): Promise<string | null> => {
   const tokenHash = hashToken(refreshToken);
   const session = await prisma.refreshSession.findUnique({
     where: { tokenHash },
     select: { userId: true },
   });
-  if (!session) return false;
+  if (!session) return null;
   await revokeAllUserSessions(session.userId);
-  return true;
+  return session.userId;
 };
 
 export const updateUserProfile = async (userId: string, data: UpdateProfileInput) => {
@@ -311,13 +321,14 @@ export const updateUserProfile = async (userId: string, data: UpdateProfileInput
   const updateData: UpdateProfileInput = {};
 
   if (data.username !== undefined) {
-    const trimmed = data.username.trim();
-    if (trimmed.length < 2 || trimmed.length > 30) {
+    if (!isValidUsername(data.username)) {
       throw createHttpError(400, "Некорректный никнейм", "INVALID_USERNAME");
     }
-    updateData.username = trimmed;
+    updateData.username = data.username.trim();
   }
-  if (data.description !== undefined) updateData.description = data.description;
+  if (data.description !== undefined) {
+    updateData.description = clampDescription(data.description);
+  }
   if (data.avatar !== undefined) updateData.avatar = data.avatar;
   if (data.banner !== undefined) updateData.banner = data.banner;
 

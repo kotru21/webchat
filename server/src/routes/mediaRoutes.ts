@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import protect from "../middleware/auth.js";
@@ -10,7 +9,6 @@ const router = Router();
 interface SafeUploadPath {
   root: string;
   relative: string;
-  fullPath: string;
 }
 
 const rejectUnsafeRelative = (normalized: string): void => {
@@ -41,7 +39,7 @@ const resolveSafeUploadPath = (requestPath: string): SafeUploadPath => {
   const uploadsRoot = path.resolve(process.cwd(), "uploads");
   const fullPath = path.resolve(uploadsRoot, normalized);
   const relative = assertUnderRoot(fullPath, uploadsRoot);
-  return { root: uploadsRoot, relative, fullPath };
+  return { root: uploadsRoot, relative };
 };
 
 const isMessageAttachmentPath = (relative: string): boolean =>
@@ -52,7 +50,7 @@ router.get("/*path", protect, async (req, res, next) => {
     const rawPath = Array.isArray(req.params.path)
       ? req.params.path.join("/")
       : String(req.params.path ?? "");
-    const { root, relative, fullPath } = resolveSafeUploadPath(rawPath);
+    const { root, relative } = resolveSafeUploadPath(rawPath);
 
     // Attachments under media/: DM participants only (IDOR guard).
     // Avatars/banners: any authenticated user (intentional product split).
@@ -64,11 +62,13 @@ router.get("/*path", protect, async (req, res, next) => {
       await assertCanAccessMediaAttachment(userId, `/api/media/${relative}`);
     }
 
-    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
-      throw createHttpError(404, "Файл не найден", "MEDIA_NOT_FOUND");
-    }
     // Confine sendFile to uploads/ via root; relative is post-canonicalize.
-    res.sendFile(relative, { root });
+    // sendFile reports missing files asynchronously — avoid sync existsSync.
+    res.sendFile(relative, { root }, (err) => {
+      if (!err) return;
+      if (res.headersSent) return;
+      next(createHttpError(404, "Файл не найден", "MEDIA_NOT_FOUND"));
+    });
   } catch (error) {
     next(error);
   }

@@ -48,6 +48,8 @@
 | Arbitrary `join_room` | allowlist `user:` / `dm:` | `server/src/socket/index.ts`, `server/src/socket/rooms.ts` |
 | Client `mediaUrl` | ignored; upload-only | `server/src/socket/index.ts`, `server/src/controllers/messageController.ts` |
 | Refresh theft/reuse | HttpOnly + rotation + family revoke | `server/src/services/authService.ts`, `server/src/middleware/cookies.ts` |
+| Logout leaves socket open | `disconnectSockets` on `user:<id>` after session revoke | `server/src/controllers/authController.ts`, `server/src/socket/index.ts` |
+| Upload orphan on 4xx | `cleanupUploadsOnError` unlinks multer files when status ≥400 | `server/src/middleware/cleanupUploadsOnError.ts` |
 | Upload type confusion | magic-bytes + sharp; ext from `file-type` | `server/src/middleware/fileValidator.ts`, `server/src/services/uploadPipeline.ts` |
 | Path traversal unlink | `safeUnlinkFromServerRoot` on profile replace | `server/src/utils/uploads.ts`, `server/src/services/authService.ts` |
 | Public media scrape | authenticated media GET + DM ACL for `media/` | `server/src/routes/mediaRoutes.ts` |
@@ -63,6 +65,7 @@
 - Email verification flows
 - Distributed / multi-instance rate limiting (`express-rate-limit` is in-memory; behind a reverse proxy set `app.set('trust proxy', …)` or limits collapse to the proxy IP)
 - DM consent / block lists (any existing userId can be messaged)
+- Per-device logout (`logoutByRefreshToken` revokes all sessions for the user, not only the current refresh family)
 
 ## Static analysis (Semgrep)
 

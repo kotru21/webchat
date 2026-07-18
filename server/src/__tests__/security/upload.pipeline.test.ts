@@ -280,11 +280,80 @@ describe("upload / media surface", () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.code).toBe("INVALID_USERNAME");
 
     const addedAvatars = (await fs.readdir(avatarsDir)).filter(
       (f) => !beforeAvatars.has(f)
     );
     expect(addedAvatars).toEqual([]);
+  });
+
+  it("drops avatar when register body validation fails after upload", async () => {
+    const PNG_1X1 = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    const avatarPng = path.join(tempDir, "reg-orphan.png");
+    await fs.writeFile(avatarPng, PNG_1X1);
+
+    const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
+    const beforeAvatars = new Set(await fs.readdir(avatarsDir));
+
+    const res = await request(app)
+      .post("/api/auth/register")
+      .field("email", "not-an-email")
+      .field("password", "weak")
+      .attach("avatar", avatarPng, {
+        filename: "reg.png",
+        contentType: "image/png",
+      });
+
+    expect(res.status).toBe(400);
+
+    // finish handler is async — allow unlink to complete
+    await new Promise((r) => setTimeout(r, 50));
+
+    const addedAvatars = (await fs.readdir(avatarsDir)).filter(
+      (f) => !beforeAvatars.has(f)
+    );
+    expect(addedAvatars).toEqual([]);
+  });
+
+  it("drops media temp file when multipart text exceeds max length", async () => {
+    const PNG_1X1 = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    const mediaPng = path.join(tempDir, "too-long-text.png");
+    await fs.writeFile(mediaPng, PNG_1X1);
+
+    const mediaDir = path.join(process.cwd(), "uploads", "media");
+    const beforeMedia = new Set(await fs.readdir(mediaDir));
+
+    const res = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${session.token}`)
+      .field("receiverId", peerId)
+      .field("text", "x".repeat(1001))
+      .attach("media", mediaPng, {
+        filename: "unused.png",
+        contentType: "image/png",
+      });
+
+    expect(res.status).toBe(400);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const addedMedia = (await fs.readdir(mediaDir)).filter(
+      (f) => !beforeMedia.has(f)
+    );
+    expect(addedMedia).toEqual([]);
+  });
+  it("rejects profile username that breaks charset rules", async () => {
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${session.token}`)
+      .field("username", "bad name!");
+
+    expect(res.status).toBe(400);
   });
 });

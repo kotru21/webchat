@@ -1,14 +1,16 @@
 import type { Request, RequestHandler } from "express";
+import { FILE_LIMITS } from "../constants/fileConstants.js";
 import { SOCKET_EVENTS } from "../constants/socketEvents.js";
-import { dmRoomId } from "../services/accessControl.js";
+import { dmRoomId, userRoomId } from "../services/accessControl.js";
 import { createMessage, listMessages } from "../services/messageService.js";
 import { createHttpError } from "../utils/errors.js";
 
 const parseAudioDuration = (value: unknown): number | null => {
-  if (typeof value !== "string") return null;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
-  return parsed;
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const parsed =
+    typeof value === "number" ? value : Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.min(Math.floor(parsed), FILE_LIMITS.VOICE_MESSAGE_MAX_DURATION);
 };
 
 const getMessageMediaFromUpload = (req: Request) => {
@@ -17,9 +19,8 @@ const getMessageMediaFromUpload = (req: Request) => {
   const mediaUrl = `/api/media/media/${req.file.filename}`;
   let mediaType: string | null = null;
 
-  if (req.body.mediaType === "audio") {
-    mediaType = "audio";
-  } else if (req.file.mimetype.startsWith("image/")) {
+  // Derive type from validated MIME only — ignore client mediaType override.
+  if (req.file.mimetype.startsWith("image/")) {
     mediaType = "image";
   } else if (req.file.mimetype.startsWith("video/")) {
     mediaType = "video";
@@ -58,7 +59,10 @@ const emitMessage = (
 
   if (!senderId || !receiverId) return;
 
-  io.to(dmRoomId(senderId, receiverId)).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
+  io.to([dmRoomId(senderId, receiverId), userRoomId(receiverId)]).emit(
+    SOCKET_EVENTS.MESSAGE_NEW,
+    message
+  );
 };
 
 export const getMessages: RequestHandler = async (req, res) => {
@@ -83,7 +87,7 @@ export const getMessages: RequestHandler = async (req, res) => {
 
 export const createMessageHandler: RequestHandler = async (req, res) => {
   if (!req.user) {
-    throw createHttpError(401, "Пользователь не авторизован", "UNAUTHORIZED");
+    throw createHttpError(401, "Не авторизован", "UNAUTHORIZED");
   }
 
   const receiverId =

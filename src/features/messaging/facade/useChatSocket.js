@@ -101,7 +101,8 @@ const useChatSocket = ({
       }
     });
     socket.on("disconnect", (reason) => {
-      if (reason === "io server disconnect") {
+      // Server kick (e.g. logout) — do not reconnect without a live access token.
+      if (reason === "io server disconnect" && getAccessToken()) {
         socket.connect();
       }
     });

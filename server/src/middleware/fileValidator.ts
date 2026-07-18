@@ -1,13 +1,16 @@
-import fs from "node:fs/promises";
 import path from "node:path";
-import { fileTypeFromBuffer } from "file-type";
-import type { RequestHandler } from "express";
+import { fileTypeFromFile } from "file-type";
+import type { NextFunction, Request, Response } from "express";
 import { FILE_LIMITS, UPLOAD_PATHS } from "../constants/fileConstants.js";
 import {
   finalizeNonImageUpload,
   isImageMime,
   reencodeImageToWebp,
 } from "../services/uploadPipeline.js";
+import {
+  collectUploadedFiles,
+  unlinkUploadedFiles,
+} from "../utils/uploadedFiles.js";
 
 const outputDirForField = (fieldname: string): string => {
   switch (fieldname) {
@@ -31,32 +34,6 @@ const MAGIC_BYTES_MAP: Record<string, string[]> = {
   "audio/mpeg": ["audio/mpeg"],
   "audio/wav": ["audio/wav", "audio/x-wav"],
   "audio/ogg": ["audio/ogg", "application/ogg"],
-};
-
-const collectUploadedFiles = (req: Express.Request) => {
-  const files: Express.Multer.File[] = [];
-
-  if (req.file) {
-    files.push(req.file);
-  }
-
-  if (req.files) {
-    if (Array.isArray(req.files)) {
-      files.push(...req.files);
-    } else {
-      for (const fieldFiles of Object.values(req.files)) {
-        if (Array.isArray(fieldFiles)) {
-          files.push(...fieldFiles);
-        }
-      }
-    }
-  }
-
-  return files;
-};
-
-const unlinkUploadedFiles = async (files: Express.Multer.File[]): Promise<void> => {
-  await Promise.all(files.map((f) => fs.unlink(f.path).catch(() => undefined)));
 };
 
 const profileSizeError = (file: Express.Multer.File): string | null => {
@@ -96,11 +73,16 @@ const applyPipelineToFile = async (
   }
 };
 
-export const validateFileMagicBytes: RequestHandler = async (req, res, next) => {
+export const validateFileMagicBytes = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   const files = collectUploadedFiles(req);
 
   if (files.length === 0) {
-    return next();
+    next();
+    return;
   }
 
   try {
@@ -108,17 +90,19 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
       const sizeError = profileSizeError(file);
       if (sizeError) {
         await unlinkUploadedFiles(files);
-        return res.status(400).json({ message: sizeError });
+        res.status(400).json({ message: sizeError });
+        return;
       }
 
-      const buffer = await fs.readFile(file.path);
-      const detectedType = await fileTypeFromBuffer(buffer);
+      // file-type reads only a small prefix — avoid loading up to 50MB into RAM.
+      const detectedType = await fileTypeFromFile(file.path);
 
       if (!detectedType) {
         await unlinkUploadedFiles(files);
-        return res.status(400).json({
+        res.status(400).json({
           message: `Не удалось определить тип файла: ${file.originalname}`,
         });
+        return;
       }
 
       const declaredMime = file.mimetype;
@@ -126,9 +110,10 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
 
       if (!validMimes.includes(detectedType.mime)) {
         await unlinkUploadedFiles(files);
-        return res.status(400).json({
+        res.status(400).json({
           message: `Тип файла не соответствует содержимому: ${file.originalname}`,
         });
+        return;
       }
 
       await applyPipelineToFile(file, detectedType.ext);
@@ -137,9 +122,6 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
     next();
   } catch (error) {
     await unlinkUploadedFiles(files);
-    return res.status(500).json({
-      message: "Ошибка при проверке файла",
-      error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
-    });
+    next(error);
   }
 };
