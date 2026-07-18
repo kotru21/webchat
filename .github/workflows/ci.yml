@@ -11,6 +11,11 @@ jobs:
     defaults:
       run:
         working-directory: server
+    env:
+      JWT_SECRET: ci-test-secret-with-enough-length-012345
+      DATABASE_URL: file:./prisma/ci-test.db
+      CLIENT_URL: http://localhost:5173
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,11 +39,6 @@ jobs:
         run: npx tsc -p tsconfig.json --noEmit
       - name: Security + unit tests
         run: npm test
-        env:
-          JWT_SECRET: ci-test-secret-with-enough-length-012345
-          DATABASE_URL: file:./prisma/ci-test.db
-          CLIENT_URL: http://localhost:5173
-          NODE_ENV: test
       - name: npm audit (non-blocking)
         run: npm audit --audit-level=high || true
 
