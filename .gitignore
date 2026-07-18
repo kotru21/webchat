@@ -20,6 +20,8 @@ docs/
 .vscode/*
 !.vscode/extensions.json
 .idea
+# Local Cursor rules/skills/agents (not shared via git)
+.cursor/
 .DS_Store
 *.suo
 *.ntvs*
