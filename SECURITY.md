@@ -69,6 +69,16 @@
 - Per-device logout (`logoutByRefreshToken` revokes all sessions for the user, not only the current refresh family)
 - Access JWT denylist after logout (stateless access tokens remain valid for REST until TTL ≈15m; sockets are disconnected on logout, but Bearer REST calls still work until expiry)
 
+## CI security gates
+
+`.github/workflows/ci.yml` (SHA-pinned actions, top-level `permissions: contents: read`, per-ref concurrency):
+
+- Blocking `npm audit --omit=dev --audit-level=high` for runtime deps (root + server); full audit stays informational
+- Server tests run with coverage thresholds (regression floor)
+- Playwright e2e smoke exercises the real auth/DM/logout flow
+- Docker job builds the server image from `Dockerfile` (secrets/DBs excluded via `.dockerignore`)
+- CodeQL (`codeql.yml`) analyzes JS/TS per PR and weekly; Semgrep uploads SARIF to code scanning
+
 ## Static analysis (Semgrep)
 
 CI runs Semgrep on every push/PR (`.github/workflows/ci.yml`) with:

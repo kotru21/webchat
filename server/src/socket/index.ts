@@ -107,25 +107,29 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
 
     socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown, cb?) => {
       void (async () => {
-        const authUser = socket.data.user as AuthenticatedUser | undefined;
-        if (!authUser || typeof roomId !== "string") {
-          cb?.({ error: "FORBIDDEN" });
-          return;
+        try {
+          const authUser = socket.data.user as AuthenticatedUser | undefined;
+          if (!authUser || typeof roomId !== "string") {
+            cb?.({ error: "FORBIDDEN" });
+            return;
+          }
+          if (!allowSocketEvent(`join:${authUser.id}`, 20, 60_000)) {
+            cb?.({ error: "RATE_LIMIT" });
+            return;
+          }
+          if (!isAllowedSocketRoom(authUser.id, roomId)) {
+            cb?.({ error: "FORBIDDEN" });
+            return;
+          }
+          if (!(await assertDmPeerExists(authUser.id, roomId))) {
+            cb?.({ error: "FORBIDDEN" });
+            return;
+          }
+          socket.join(roomId);
+          cb?.({ ok: true });
+        } catch {
+          cb?.({ error: "SERVER" });
         }
-        if (!allowSocketEvent(`join:${authUser.id}`, 20, 60_000)) {
-          cb?.({ error: "RATE_LIMIT" });
-          return;
-        }
-        if (!isAllowedSocketRoom(authUser.id, roomId)) {
-          cb?.({ error: "FORBIDDEN" });
-          return;
-        }
-        if (!(await assertDmPeerExists(authUser.id, roomId))) {
-          cb?.({ error: "FORBIDDEN" });
-          return;
-        }
-        socket.join(roomId);
-        cb?.({ ok: true });
       })();
     });
 

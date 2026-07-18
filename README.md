@@ -71,14 +71,38 @@ COOKIE_SECURE=false
 ## Tests & CI
 
 ```bash
-cd server && npm test
+npm test                        # frontend unit tests (vitest)
+npm run e2e                     # Playwright smoke (spins up server + vite)
+cd server && npm run test:coverage  # server security/unit tests + coverage gate
 cd server && npx tsc -p tsconfig.json --noEmit
 npm run lint       # root
 npm run semgrep    # SAST (JS/TS/Node/Express/OWASP/secrets + project rules)
 npm run semgrep:ci # same packs; fail on ERROR severity
 ```
 
-GitHub Actions runs lint, typecheck, security/unit tests, and Semgrep SAST. See `.github/workflows/ci.yml` and [`SECURITY.md`](./SECURITY.md).
+GitHub Actions (`.github/workflows/ci.yml`, SHA-pinned actions, least-privilege token):
+
+- **frontend** — lint, unit tests, production build, blocking `npm audit --omit=dev --audit-level=high`
+- **server** — typecheck, security/unit tests with coverage thresholds, blocking runtime-deps audit
+- **e2e** — Playwright smoke: register → login → DM between two users → logout
+- **docker** — multi-stage server image build (`Dockerfile`)
+- **semgrep** — ERROR-severity gate + SARIF upload to code scanning
+- **CodeQL** (`codeql.yml`) — weekly + per-PR JS/TS analysis
+
+Dependabot watches npm (root + server), GitHub Actions, and the Docker base image weekly.
+
+## Docker
+
+```bash
+docker build -t webchat-server .
+docker run --rm -p 5000:5000 \
+  -e JWT_SECRET=<at-least-32-chars> \
+  -e CLIENT_URL=http://localhost:5173 \
+  -v webchat-data:/data -v webchat-uploads:/app/uploads \
+  webchat-server
+```
+
+The image contains the API only; build the SPA separately (`npm run build`) and serve it behind a reverse proxy.
 
 ## License
 

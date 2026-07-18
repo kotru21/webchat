@@ -32,6 +32,13 @@ docs/
 server/uploads/avatars/
 server/uploads/media/
 server/uploads/banners/
+server/uploads/covers/
+
+# Test artifacts
+coverage/
+server/coverage/
+playwright-report/
+test-results/
 
 .env
 /server/.env

@@ -1,0 +1,19 @@
+# Never bake local state, secrets, or dev artifacts into the image.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+server/prisma/*.db
+server/prisma/*.db-*
+server/uploads
+server/coverage
+coverage
+playwright-report
+test-results
+.git
+.github
+.cursor
+.semgrep
+docs
+e2e
