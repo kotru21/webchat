@@ -2,7 +2,27 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { safeUnlinkFromServerRoot } from "./uploads.js";
+import {
+  mediaApiUrlToUploadRelative,
+  safeUnlinkFromServerRoot,
+} from "./uploads.js";
+
+describe("mediaApiUrlToUploadRelative", () => {
+  it("maps api media URLs under uploads/", () => {
+    expect(mediaApiUrlToUploadRelative("/api/media/avatars/abc.webp")).toBe(
+      "uploads/avatars/abc.webp"
+    );
+    expect(mediaApiUrlToUploadRelative("/api/media/banners/x.webp")).toBe(
+      "uploads/banners/x.webp"
+    );
+  });
+
+  it("rejects traversal and foreign URLs", () => {
+    expect(mediaApiUrlToUploadRelative("/api/media/../secret")).toBeNull();
+    expect(mediaApiUrlToUploadRelative("https://evil/x")).toBeNull();
+    expect(mediaApiUrlToUploadRelative("")).toBeNull();
+  });
+});
 
 describe("safeUnlinkFromServerRoot", () => {
   let root: string;

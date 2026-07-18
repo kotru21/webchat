@@ -16,6 +16,22 @@ export const ensureUploadDirs = async (baseDir: string): Promise<void> => {
   }
 };
 
+/**
+ * Map `/api/media/{avatars|banners|media}/file` → `uploads/.../file`.
+ * Returns null for empty, foreign, or malformed URLs.
+ */
+export const mediaApiUrlToUploadRelative = (
+  mediaUrl: string | null | undefined
+): string | null => {
+  if (!mediaUrl) return null;
+  const normalized = mediaUrl.replace(/\\/g, "/").trim();
+  const match = normalized.match(
+    /^\/api\/media\/(avatars|banners|media)\/([^/]+)$/
+  );
+  if (!match) return null;
+  return `uploads/${match[1]}/${match[2]}`;
+};
+
 export const safeUnlinkFromServerRoot = async (
   baseDir: string,
   relativePath: string | null | undefined
@@ -37,4 +53,11 @@ export const safeUnlinkFromServerRoot = async (
   } catch {
     return;
   }
+};
+
+export const safeUnlinkMediaApiUrl = async (
+  baseDir: string,
+  mediaUrl: string | null | undefined
+): Promise<void> => {
+  await safeUnlinkFromServerRoot(baseDir, mediaApiUrlToUploadRelative(mediaUrl));
 };

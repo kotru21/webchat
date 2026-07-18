@@ -10,6 +10,7 @@ import {
   refreshTokenExpiryDate,
   signAccessToken,
 } from "../utils/tokens.js";
+import { safeUnlinkMediaApiUrl } from "../utils/uploads.js";
 import { userOwnSelect, userPublicSelect } from "./dbShapes.js";
 
 interface RegisterUserInput {
@@ -298,6 +299,15 @@ export const logoutByRefreshToken = async (refreshToken: string): Promise<boolea
 };
 
 export const updateUserProfile = async (userId: string, data: UpdateProfileInput) => {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatar: true, banner: true },
+  });
+
+  if (!existing) {
+    throw createHttpError(404, "Пользователь не найден", "USER_NOT_FOUND");
+  }
+
   const updateData: UpdateProfileInput = {};
 
   if (data.username !== undefined) {
@@ -316,6 +326,14 @@ export const updateUserProfile = async (userId: string, data: UpdateProfileInput
     data: updateData,
     select: userOwnSelect,
   });
+
+  const root = process.cwd();
+  if (data.avatar !== undefined && existing.avatar && existing.avatar !== data.avatar) {
+    await safeUnlinkMediaApiUrl(root, existing.avatar);
+  }
+  if (data.banner !== undefined && existing.banner && existing.banner !== data.banner) {
+    await safeUnlinkMediaApiUrl(root, existing.banner);
+  }
 
   return toOwnUser(updated);
 };

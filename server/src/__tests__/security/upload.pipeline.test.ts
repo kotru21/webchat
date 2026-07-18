@@ -108,4 +108,116 @@ describe("upload / media surface", () => {
     expect(served.status).toBe(200);
     expect(served.headers["content-type"]).toMatch(/image\/webp/);
   });
+
+  it("rejects multipart message text longer than 1000 chars", async () => {
+    const res = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${session.token}`)
+      .field("receiverId", peerId)
+      .field("text", "x".repeat(1001));
+
+    expect(res.status).toBe(400);
+  });
+
+  it("stores non-image media with extension from magic bytes, not originalname", async () => {
+    // Minimal PCM WAV (file-type → audio/wav, ext wav).
+    const wav = Buffer.alloc(44);
+    wav.write("RIFF", 0);
+    wav.writeUInt32LE(36, 4);
+    wav.write("WAVE", 8);
+    wav.write("fmt ", 12);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(8000, 24);
+    wav.writeUInt32LE(8000, 28);
+    wav.writeUInt16LE(1, 32);
+    wav.writeUInt16LE(8, 34);
+    wav.write("data", 36);
+    wav.writeUInt32LE(0, 40);
+
+    const spoofed = path.join(tempDir, "x.html");
+    await fs.writeFile(spoofed, wav);
+
+    const res = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${session.token}`)
+      .field("receiverId", peerId)
+      .field("content", "audio-spoof-ext")
+      .attach("media", spoofed, {
+        filename: "x.html",
+        contentType: "audio/wav",
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.mediaUrl).toMatch(/^\/api\/media\/media\/[a-f0-9]+\.wav$/);
+    expect(res.body.mediaUrl).not.toMatch(/\.html$/);
+
+    const served = await request(app)
+      .get(res.body.mediaUrl as string)
+      .set("Authorization", `Bearer ${session.token}`);
+
+    expect(served.status).toBe(200);
+    expect(served.headers["content-type"]).toMatch(/audio\/(wav|x-wav)|octet-stream/);
+  });
+
+  it("rejects video upload as profile avatar", async () => {
+    // Minimal EBML/WebM header enough for file-type video/webm.
+    const webm = Buffer.from([
+      0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01, 0x42, 0xf7, 0x81,
+      0x01, 0x42, 0xf2, 0x81, 0x04, 0x42, 0xf3, 0x81, 0x08, 0x42, 0x82, 0x84,
+      0x77, 0x65, 0x62, 0x6d, 0x42, 0x87, 0x81, 0x02, 0x42, 0x85, 0x81, 0x02,
+    ]);
+    const spoofed = path.join(tempDir, "banner.webm");
+    await fs.writeFile(spoofed, webm);
+
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${session.token}`)
+      .attach("avatar", spoofed, {
+        filename: "avatar.webm",
+        contentType: "video/webm",
+      });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("unlinks previous avatar when profile avatar is replaced", async () => {
+    const pngPath = path.join(tempDir, "replace-avatar.png");
+    await fs.writeFile(
+      pngPath,
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        "base64"
+      )
+    );
+
+    const first = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${session.token}`)
+      .attach("avatar", pngPath, {
+        filename: "a1.png",
+        contentType: "image/png",
+      });
+    expect(first.status).toBe(200);
+    const oldUrl = first.body.avatar as string;
+    const oldFile = path.join(
+      process.cwd(),
+      "uploads",
+      "avatars",
+      path.basename(oldUrl)
+    );
+    await expect(fs.access(oldFile)).resolves.toBeUndefined();
+
+    const second = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${session.token}`)
+      .attach("avatar", pngPath, {
+        filename: "a2.png",
+        contentType: "image/png",
+      });
+    expect(second.status).toBe(200);
+    expect(second.body.avatar).not.toBe(oldUrl);
+    await expect(fs.access(oldFile)).rejects.toThrow();
+  });
 });

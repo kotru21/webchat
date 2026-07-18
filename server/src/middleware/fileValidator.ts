@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileTypeFromBuffer } from "file-type";
 import type { RequestHandler } from "express";
-import { UPLOAD_PATHS } from "../constants/fileConstants.js";
+import { FILE_LIMITS, UPLOAD_PATHS } from "../constants/fileConstants.js";
 import {
   finalizeNonImageUpload,
   isImageMime,
@@ -55,7 +55,29 @@ const collectUploadedFiles = (req: Express.Request) => {
   return files;
 };
 
-const applyPipelineToFile = async (file: Express.Multer.File): Promise<void> => {
+const rejectOversizedProfileFile = async (
+  file: Express.Multer.File
+): Promise<string | null> => {
+  if (file.fieldname === "avatar" && file.size > FILE_LIMITS.AVATAR_MAX_SIZE) {
+    await fs.unlink(file.path).catch(() => undefined);
+    return "Аватар слишком большой (макс. 5 МБ)";
+  }
+  if (file.fieldname === "banner" && file.size > FILE_LIMITS.BANNER_MAX_SIZE) {
+    await fs.unlink(file.path).catch(() => undefined);
+    return "Баннер слишком большой (макс. 10 МБ)";
+  }
+  return null;
+};
+
+const extensionFromDetected = (detectedExt: string): string => {
+  const cleaned = detectedExt.replace(/^\./, "").toLowerCase();
+  return cleaned ? `.${cleaned}` : ".bin";
+};
+
+const applyPipelineToFile = async (
+  file: Express.Multer.File,
+  detectedExt: string
+): Promise<void> => {
   const outputDir = outputDirForField(file.fieldname);
 
   if (isImageMime(file.mimetype) || file.mimetype.startsWith("image/")) {
@@ -67,7 +89,7 @@ const applyPipelineToFile = async (file: Express.Multer.File): Promise<void> => 
   }
 
   if (file.fieldname === "media") {
-    const ext = path.extname(file.filename) || path.extname(file.originalname);
+    const ext = extensionFromDetected(detectedExt);
     const result = await finalizeNonImageUpload(file.path, ext, outputDir);
     file.filename = result.filename;
     file.path = path.join(process.cwd(), result.relativePath);
@@ -83,6 +105,11 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
 
   try {
     for (const file of files) {
+      const sizeError = await rejectOversizedProfileFile(file);
+      if (sizeError) {
+        return res.status(400).json({ message: sizeError });
+      }
+
       const buffer = await fs.readFile(file.path);
       const detectedType = await fileTypeFromBuffer(buffer);
 
@@ -103,7 +130,7 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
         });
       }
 
-      await applyPipelineToFile(file);
+      await applyPipelineToFile(file, detectedType.ext);
     }
 
     next();

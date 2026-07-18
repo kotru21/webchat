@@ -16,8 +16,9 @@ router.post(
   "/",
   protect,
   messageLimiter,
-  validateMessage,
+  // Multer must run first so multipart fields exist for validateMessage.
   mediaUpload,
+  validateMessage,
   validateFileMagicBytes,
   createMessageHandler
 );

@@ -5,6 +5,8 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "src/__tests__/**/*.test.ts"],
     reporters: ["default"],
+    // Shared SQLite test DB + migrate deploy race under file parallelism.
+    fileParallelism: false,
     testTimeout: 30_000,
     env: {
       JWT_SECRET: "test-jwt-secret-with-enough-length-012345",

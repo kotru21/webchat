@@ -17,6 +17,7 @@ import {
   setRefreshCookie,
 } from "../middleware/cookies.js";
 import { verifyAccessToken } from "../utils/tokens.js";
+import { safeUnlinkMediaApiUrl } from "../utils/uploads.js";
 
 const profileFilePath = (files: Express.Request["files"], key: "avatar" | "banner") => {
   if (!files || Array.isArray(files)) return undefined;
@@ -29,20 +30,31 @@ const profileFilePath = (files: Express.Request["files"], key: "avatar" | "banne
 
 export const register: RequestHandler = async (req, res) => {
   const { email, password, username } = req.body;
+  const avatarUrl = req.file
+    ? `/api/media/avatars/${req.file.filename}`
+    : undefined;
 
-  const user = await registerUser({
-    email,
-    password,
-    username,
-    avatar: req.file ? `/api/media/avatars/${req.file.filename}` : undefined,
-  });
+  try {
+    const user = await registerUser({
+      email,
+      password,
+      username,
+      avatar: avatarUrl,
+    });
 
-  res.status(201).json({
-    message: "Регистрация успешна.",
-    id: user._id,
-    username: user.username,
-    email: user.email,
-  });
+    res.status(201).json({
+      message: "Регистрация успешна.",
+      id: user._id,
+      username: user.username,
+      email: user.email,
+    });
+  } catch (error) {
+    // Upload ran before registerUser; drop orphan avatar on duplicate email/username.
+    if (avatarUrl) {
+      await safeUnlinkMediaApiUrl(process.cwd(), avatarUrl);
+    }
+    throw error;
+  }
 };
 
 export const login: RequestHandler = async (req, res) => {

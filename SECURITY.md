@@ -32,11 +32,12 @@
 
 | STRIDE | Threat | Mitigation |
 |--------|--------|------------|
-| Tampering | MIME confusion | Magic-bytes check (`file-type`) |
+| Tampering | MIME confusion | Magic-bytes check (`file-type`); stored extension from detected type, not client `originalname` |
 | Tampering | Image polyglot / metadata | Sharp re-encode to WebP for images |
+| Tampering | Non-image avatar/banner | Profile uploads allow images only; separate avatar/banner size caps |
 | Information disclosure | Public static uploads | No `express.static` on `/uploads`; authenticated `GET /api/media/*` |
 | Information disclosure | IDOR on DM attachments | `media/` GETs require DM participant via `assertCanAccessMediaAttachment`; avatars/banners stay any-authenticated |
-| Elevation | Path traversal on unlink/GET | Resolve under `uploads/` only |
+| Elevation | Path traversal on unlink/GET | Resolve under `uploads/` only; replace avatar/banner unlinks old file via `safeUnlinkFromServerRoot` |
 
 ## Controls mapping
 
@@ -47,8 +48,8 @@
 | Arbitrary `join_room` | allowlist `user:` / `dm:` | `server/src/socket/index.ts`, `server/src/socket/rooms.ts` |
 | Client `mediaUrl` | ignored; upload-only | `server/src/socket/index.ts`, `server/src/controllers/messageController.ts` |
 | Refresh theft/reuse | HttpOnly + rotation + family revoke | `server/src/services/authService.ts`, `server/src/middleware/cookies.ts` |
-| Upload type confusion | magic-bytes + sharp | `server/src/middleware/fileValidator.ts`, `server/src/services/uploadPipeline.ts` |
-| Path traversal unlink | `safeUnlinkFromServerRoot` | `server/src/utils/uploads.ts` |
+| Upload type confusion | magic-bytes + sharp; ext from `file-type` | `server/src/middleware/fileValidator.ts`, `server/src/services/uploadPipeline.ts` |
+| Path traversal unlink | `safeUnlinkFromServerRoot` on profile replace | `server/src/utils/uploads.ts`, `server/src/services/authService.ts` |
 | Public media scrape | authenticated media GET + DM ACL for `media/` | `server/src/routes/mediaRoutes.ts` |
 | Weak JWT in prod | `assertStrongSecretsOrThrow` | `server/src/middleware/requireStrongSecrets.ts` |
 | Email PII leak | public DTO without email | `server/src/utils/serializers.ts`, `server/src/services/dbShapes.ts` |
@@ -60,6 +61,8 @@
 - WAF / CDN edge rules
 - Full SPA Content-Security-Policy without reverse-proxy story
 - Email verification flows
+- Distributed / multi-instance rate limiting (`express-rate-limit` is in-memory; behind a reverse proxy set `app.set('trust proxy', …)` or limits collapse to the proxy IP)
+- DM consent / block lists (any existing userId can be messaged)
 
 ## Static analysis (Semgrep)
 

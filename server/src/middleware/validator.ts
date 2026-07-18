@@ -15,6 +15,11 @@ export const validateMessage = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage("Сообщение слишком длинное"),
+  body("content")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Сообщение слишком длинное"),
   body("receiverId")
     .optional()
     .isString()
