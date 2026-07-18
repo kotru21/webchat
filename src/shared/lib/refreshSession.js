@@ -21,9 +21,18 @@ export const clearRefreshSessionFlag = () => {
   document.cookie = `${FLAG_NAME}=; Max-Age=0; Path=/`;
 };
 
+const postRefresh = () =>
+  axios.post(`${API.BASE_URL}/api/auth/refresh`, null, {
+    withCredentials: true,
+  });
+
+const isConcurrentRefresh = (error) =>
+  error?.response?.data?.code === "REFRESH_CONCURRENT";
+
 /**
  * Cookie-based access-token refresh. Dedupes concurrent callers so React
  * Strict Mode does not trigger refresh-token reuse detection.
+ * Cross-tab losers get REFRESH_CONCURRENT and retry once (shared cookie jar).
  * @returns {Promise<string>} new access token
  */
 export const refreshAccessToken = () => {
@@ -32,16 +41,21 @@ export const refreshAccessToken = () => {
   }
 
   if (!inFlightRefresh) {
-    inFlightRefresh = axios
-      .post(`${API.BASE_URL}/api/auth/refresh`, null, {
-        withCredentials: true,
-      })
+    inFlightRefresh = postRefresh()
       .then((response) => {
         const token = response.data.token;
         setAccessToken(token);
         return token;
       })
-      .catch((error) => {
+      .catch(async (error) => {
+        if (isConcurrentRefresh(error) && hasRefreshSessionFlag()) {
+          // Winner already rotated the shared cookie — brief pause then retry.
+          await new Promise((resolve) => setTimeout(resolve, 75));
+          const retry = await postRefresh();
+          const token = retry.data.token;
+          setAccessToken(token);
+          return token;
+        }
         clearRefreshSessionFlag();
         clearAccessToken();
         throw error;

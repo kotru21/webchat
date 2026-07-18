@@ -36,3 +36,19 @@ export const refreshLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isDevelopment ? 10_000 : 30,
+  message: { message: "Слишком много поисковых запросов. Подождите немного." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const logoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 10_000 : 60,
+  message: { message: "Слишком много запросов выхода." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

@@ -19,6 +19,9 @@ const optionalUsername = () =>
   body("username")
     .optional()
     .trim()
+    .customSanitizer((value) =>
+      typeof value === "string" ? value.normalize("NFKC") : value
+    )
     .isLength({ min: USERNAME_MIN, max: USERNAME_MAX })
     .withMessage("Никнейм должен содержать от 2 до 30 символов")
     .matches(USERNAME_PATTERN)
@@ -50,9 +53,9 @@ export const validateRegister = [
     .withMessage("Введите корректный email")
     .normalizeEmail(),
   body("password")
-    .isLength({ min: 8 })
-    .withMessage("Пароль должен содержать минимум 8 символов")
-    .matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/)
+    .isLength({ min: 8, max: 72 })
+    .withMessage("Пароль должен содержать от 8 до 72 символов")
+    .matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$/)
     .withMessage(
       "Пароль должен содержать заглавные и строчные буквы, цифры и специальные символы"
     ),
@@ -78,6 +81,8 @@ export const validateLogin = [
   body("password")
     .isString()
     .notEmpty()
-    .withMessage("Пароль обязателен"),
+    .withMessage("Пароль обязателен")
+    .isLength({ max: 72 })
+    .withMessage("Пароль слишком длинный"),
   handleValidationErrors,
 ];

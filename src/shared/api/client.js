@@ -94,7 +94,12 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        clearSessionAndRedirect();
+        // Concurrent-tab loss is retried inside refreshAccessToken; only fatal
+        // failures should wipe the shared session flag / redirect.
+        const code = refreshError?.response?.data?.code;
+        if (code !== "REFRESH_CONCURRENT") {
+          clearSessionAndRedirect();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

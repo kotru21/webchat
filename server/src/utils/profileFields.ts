@@ -3,12 +3,16 @@ export const DESCRIPTION_MAX = 500;
 export const USERNAME_MIN = 2;
 export const USERNAME_MAX = 30;
 
+/** NFKC + trim — collapses compatibility homoglyphs before uniqueness checks. */
+export const normalizeUsername = (value: string): string =>
+  value.trim().normalize("NFKC");
+
 export const isValidUsername = (value: string): boolean => {
-  const trimmed = value.trim();
+  const normalized = normalizeUsername(value);
   return (
-    trimmed.length >= USERNAME_MIN &&
-    trimmed.length <= USERNAME_MAX &&
-    USERNAME_PATTERN.test(trimmed)
+    normalized.length >= USERNAME_MIN &&
+    normalized.length <= USERNAME_MAX &&
+    USERNAME_PATTERN.test(normalized)
   );
 };
 

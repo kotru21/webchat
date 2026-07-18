@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileTypeFromFile } from "file-type";
 import type { NextFunction, Request, Response } from "express";
-import { FILE_LIMITS, UPLOAD_PATHS } from "../constants/fileConstants.js";
+import { ALLOWED_FILE_TYPES, FILE_LIMITS, UPLOAD_PATHS } from "../constants/fileConstants.js";
 import {
   finalizeNonImageUpload,
   isImageMime,
@@ -42,6 +42,13 @@ const profileSizeError = (file: Express.Multer.File): string | null => {
   }
   if (file.fieldname === "banner" && file.size > FILE_LIMITS.BANNER_MAX_SIZE) {
     return "Баннер слишком большой (макс. 10 МБ)";
+  }
+  if (
+    file.fieldname === "media" &&
+    ALLOWED_FILE_TYPES.AUDIO.includes(file.mimetype) &&
+    file.size > FILE_LIMITS.VOICE_MESSAGE_MAX_SIZE
+  ) {
+    return "Голосовое сообщение слишком большое (макс. 10 МБ)";
   }
   return null;
 };

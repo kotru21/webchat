@@ -93,12 +93,27 @@ describe("refresh token reuse detection", () => {
     // Atomic claim: at most one refresh may succeed for the same token.
     expect(successes).toHaveLength(1);
     expect(failures).toHaveLength(1);
+    expect(failures[0]?.body.code).toBe("REFRESH_CONCURRENT");
 
-    // Original token is spent — cannot mint another pair.
+    const isCleared = (header: string) =>
+      /Max-Age=0/i.test(header) || /Expires=/i.test(header);
+    const loserCookies = failures[0]?.headers["set-cookie"];
+    const loserHeaders = Array.isArray(loserCookies)
+      ? loserCookies
+      : loserCookies
+        ? [loserCookies]
+        : [];
+    // Loser must not clear the shared jar — winner's rotated cookie stays.
+    expect(
+      loserHeaders.some((h) => /refreshToken=/.test(h) && isCleared(h))
+    ).toBe(false);
+
+    // Original token is spent — concurrent retry within grace (no family revoke).
     const oldAgain = await request(app)
       .post("/api/auth/refresh")
       .set("Cookie", cookie);
     expect(oldAgain.status).toBe(401);
+    expect(oldAgain.body.code).toBe("REFRESH_CONCURRENT");
 
     const winnerRefresh = parseCookieValue(
       successes[0]?.headers["set-cookie"],

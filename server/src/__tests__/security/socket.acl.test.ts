@@ -126,6 +126,18 @@ describe("socket ACL", () => {
     expect(result.ok).toBeUndefined();
   });
 
+  it("rejects join_room for own dm room with non-existent peer", async () => {
+    const phantomPeer = "00000000-0000-4000-8000-000000000099";
+    const own = dmRoomId(userA.userId, phantomPeer);
+    const result = await emitAck<{ error?: string; ok?: boolean }>(
+      socketA,
+      SOCKET_EVENTS.JOIN_ROOM,
+      own
+    );
+    expect(result.error).toBe("FORBIDDEN");
+    expect(result.ok).toBeUndefined();
+  });
+
   it("rejects join_room for general and foreign user rooms", async () => {
     const general = await emitAck<{ error?: string }>(
       socketA,

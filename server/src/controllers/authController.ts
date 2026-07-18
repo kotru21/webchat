@@ -10,7 +10,7 @@ import {
   searchPublicUsers,
   updateUserProfile,
 } from "../services/authService.js";
-import { createHttpError } from "../utils/errors.js";
+import { createHttpError, isHttpError } from "../utils/errors.js";
 import {
   clearRefreshCookie,
   REFRESH_COOKIE_NAME,
@@ -84,7 +84,10 @@ export const refreshAccessToken: RequestHandler = async (req, res) => {
     setRefreshCookie(res, tokens.refreshToken);
     res.json({ token: tokens.token });
   } catch (error) {
-    clearRefreshCookie(res);
+    // Concurrent tab lost the race — do not clear the winner's rotated cookie.
+    if (!isHttpError(error) || error.code !== "REFRESH_CONCURRENT") {
+      clearRefreshCookie(res);
+    }
     throw error;
   }
 };

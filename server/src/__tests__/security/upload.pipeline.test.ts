@@ -161,6 +161,39 @@ describe("upload / media surface", () => {
     expect(served.headers["content-type"]).toMatch(/audio\/(wav|x-wav)|octet-stream/);
   });
 
+  it("rejects voice/audio uploads over VOICE_MESSAGE_MAX_SIZE", async () => {
+    const oversized = Buffer.alloc(10 * 1024 * 1024 + 64);
+    oversized.write("RIFF", 0);
+    oversized.writeUInt32LE(oversized.length - 8, 4);
+    oversized.write("WAVE", 8);
+    oversized.write("fmt ", 12);
+    oversized.writeUInt32LE(16, 16);
+    oversized.writeUInt16LE(1, 20);
+    oversized.writeUInt16LE(1, 22);
+    oversized.writeUInt32LE(8000, 24);
+    oversized.writeUInt32LE(8000, 28);
+    oversized.writeUInt16LE(1, 32);
+    oversized.writeUInt16LE(8, 34);
+    oversized.write("data", 36);
+    oversized.writeUInt32LE(oversized.length - 44, 40);
+
+    const filePath = path.join(tempDir, "big-voice.wav");
+    await fs.writeFile(filePath, oversized);
+
+    const res = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${session.token}`)
+      .field("receiverId", peerId)
+      .field("content", "too-big-voice")
+      .attach("media", filePath, {
+        filename: "big-voice.wav",
+        contentType: "audio/wav",
+      });
+
+    expect(res.status).toBe(400);
+    expect(String(res.body.message ?? res.text)).toMatch(/10|голос/i);
+  });
+
   it("rejects video upload as profile avatar", async () => {
     const webm = Buffer.from([
       0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01, 0x42, 0xf7, 0x81,

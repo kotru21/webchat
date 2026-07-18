@@ -8,7 +8,7 @@
 |--------|--------|------------|
 | Spoofing | Stolen access JWT | Short-lived access token kept in memory only |
 | Spoofing | Stolen refresh token | HttpOnly cookie, `SameSite=Lax`, path `/api/auth` |
-| Tampering | Refresh token reuse | Rotation + `familyId` revoke-on-reuse (1s grace so concurrent double-refresh does not kill the winner) |
+| Tampering | Refresh token reuse | Rotation + `familyId` revoke-on-reuse (1s grace so concurrent double-refresh does not kill the winner; losers get `REFRESH_CONCURRENT` without clearing the rotated cookie) |
 | Elevation | Weak prod secrets | Fail-closed `JWT_SECRET` entropy check |
 
 ### Messages (REST)
@@ -26,14 +26,15 @@
 | Spoofing | Unauthenticated socket | JWT required on handshake |
 | Elevation | Arbitrary `join_room` | Allowlist `user:<self>` and canonical own `dm:a:b` (sorted ids only) |
 | Tampering | Client `mediaUrl` on send | Ignored; text DM only via socket |
-| Denial of service | Event flood | Per-user socket rate limit |
+| Denial of service | Event flood | Per-user socket rate limit on `message_send` and `join_room` |
+| Denial of service | Join phantom DM rooms | `join_room` requires allowlist + existing peer user id |
 
 ### Uploads
 
 | STRIDE | Threat | Mitigation |
 |--------|--------|------------|
 | Tampering | MIME confusion | Magic-bytes check (`file-type`); stored extension from detected type, not client `originalname` |
-| Tampering | Image polyglot / metadata | Sharp re-encode to WebP for images |
+| Tampering | Image polyglot / metadata | Sharp re-encode to WebP (animated preserved); `limitInputPixels` + max dimension resize |
 | Tampering | Non-image avatar/banner | Profile uploads allow images only; separate avatar/banner size caps |
 | Information disclosure | Public static uploads | No `express.static` on `/uploads`; authenticated `GET /api/media/*` |
 | Information disclosure | IDOR on DM attachments | `media/` GETs require DM participant via `assertCanAccessMediaAttachment`; avatars/covers stay any-authenticated |
@@ -45,12 +46,12 @@
 |--------|---------|------|
 | IDOR list DM | `assertCanListDm` — `?receiverId=` is caller's thread with peer only | `server/src/services/accessControl.ts`, `messageService.ts` |
 | IDOR media attachment GET | `assertCanAccessMediaAttachment` (DM participants); avatars/covers auth-only | `server/src/routes/mediaRoutes.ts`, `accessControl.ts` |
-| Arbitrary `join_room` | allowlist `user:` / `dm:` | `server/src/socket/index.ts`, `server/src/socket/rooms.ts` |
+| Arbitrary `join_room` | allowlist `user:` / `dm:` + peer exists + rate limit | `server/src/socket/index.ts`, `server/src/socket/rooms.ts` |
 | Client `mediaUrl` | ignored; upload-only | `server/src/socket/index.ts`, `server/src/controllers/messageController.ts` |
 | Refresh theft/reuse | HttpOnly + rotation + family revoke | `server/src/services/authService.ts`, `server/src/middleware/cookies.ts` |
 | Logout leaves socket open | `disconnectSockets` on `user:<id>` after session revoke | `server/src/controllers/authController.ts`, `server/src/socket/index.ts` |
 | Upload orphan on 4xx | `cleanupUploadsOnError` unlinks multer files when status ≥400 | `server/src/middleware/cleanupUploadsOnError.ts` |
-| Upload type confusion | magic-bytes + sharp; ext from `file-type` | `server/src/middleware/fileValidator.ts`, `server/src/services/uploadPipeline.ts` |
+| Upload type confusion | magic-bytes + sharp (`limitInputPixels`, resize, animated WebP); ext from `file-type` | `server/src/middleware/fileValidator.ts`, `server/src/services/uploadPipeline.ts` |
 | Path traversal unlink | `safeUnlinkFromServerRoot` on profile replace | `server/src/utils/uploads.ts`, `server/src/services/authService.ts` |
 | Public media scrape | authenticated media GET + DM ACL for `media/` | `server/src/routes/mediaRoutes.ts` |
 | Weak JWT in prod | `assertStrongSecretsOrThrow` | `server/src/middleware/requireStrongSecrets.ts` |
@@ -66,6 +67,7 @@
 - Distributed / multi-instance rate limiting (`express-rate-limit` is in-memory; behind a reverse proxy set `app.set('trust proxy', …)` or limits collapse to the proxy IP)
 - DM consent / block lists (any existing userId can be messaged)
 - Per-device logout (`logoutByRefreshToken` revokes all sessions for the user, not only the current refresh family)
+- Access JWT denylist after logout (stateless access tokens remain valid for REST until TTL ≈15m; sockets are disconnected on logout, but Bearer REST calls still work until expiry)
 
 ## Static analysis (Semgrep)
 

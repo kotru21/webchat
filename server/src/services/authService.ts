@@ -13,6 +13,7 @@ import {
 import {
   clampDescription,
   isValidUsername,
+  normalizeUsername,
 } from "../utils/profileFields.js";
 import { safeUnlinkMediaApiUrl } from "../utils/uploads.js";
 import { userOwnSelect, userPublicSelect } from "./dbShapes.js";
@@ -35,6 +36,9 @@ const createFamilyId = (): string => crypto.randomUUID();
 
 /** Skip family revoke for concurrent double-refresh; real reuse is detected after this window. */
 const REFRESH_REUSE_GRACE_MS = 1_000;
+
+/** Fixed cost bcrypt compare for missing users (timing oracle). Generated once — not a real credential. */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("timing-oracle-pad", 10);
 
 const issueTokenPair = async (userId: string, familyId = createFamilyId()) => {
   const token = signAccessToken(userId);
@@ -140,7 +144,9 @@ export const registerUser = async ({
 }: RegisterUserInput) => {
   const normalizedEmail = email.trim().toLowerCase();
   const fallbackUsername = normalizedEmail.split("@")[0] || "user";
-  const normalizedUsername = (username?.trim() || fallbackUsername).slice(0, 30);
+  const normalizedUsername = normalizeUsername(
+    username?.trim() || fallbackUsername
+  ).slice(0, 30);
 
   const existing = await prisma.user.findFirst({
     where: {
@@ -153,10 +159,12 @@ export const registerUser = async ({
   });
 
   if (existing) {
-    if (existing.email === normalizedEmail) {
-      throw createHttpError(400, "Email уже используется", "EMAIL_TAKEN");
-    }
-    throw createHttpError(400, "Никнейм уже занят", "USERNAME_TAKEN");
+    // Same code/message for email and username — avoid account enumeration.
+    throw createHttpError(
+      400,
+      "Не удалось зарегистрироваться с этими данными",
+      "REGISTRATION_CONFLICT"
+    );
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -185,12 +193,11 @@ export const loginUser = async (email: string, password: string) => {
     },
   });
 
-  if (!user) {
-    throw createHttpError(400, "Неверный email или пароль", "INVALID_CREDENTIALS");
-  }
-
-  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordMatches) {
+  const passwordMatches = await bcrypt.compare(
+    password,
+    user?.passwordHash ?? DUMMY_PASSWORD_HASH
+  );
+  if (!user || !passwordMatches) {
     throw createHttpError(400, "Неверный email или пароль", "INVALID_CREDENTIALS");
   }
 
@@ -224,8 +231,23 @@ export const refreshUserTokens = async (refreshToken: string) => {
     const revokedAgeMs = Date.now() - session.revokedAt.getTime();
     // Concurrent refresh losers hit this path immediately after the winner's
     // atomic claim — do not nuke the winner's new session in that window.
+    // Only treat as concurrent when a live sibling session still exists in the family
+    // (rotation race). After family-wide revoke there is no sibling → real reuse.
     if (revokedAgeMs < REFRESH_REUSE_GRACE_MS) {
-      throw createHttpError(401, "Недействительный refresh token", "INVALID_REFRESH_TOKEN");
+      const siblingAlive = await prisma.refreshSession.findFirst({
+        where: {
+          familyId: session.familyId,
+          revokedAt: null,
+        },
+        select: { id: true },
+      });
+      if (siblingAlive) {
+        throw createHttpError(
+          401,
+          "Refresh уже выполняется в другой вкладке",
+          "REFRESH_CONCURRENT"
+        );
+      }
     }
     await revokeAllSessionsInFamily(session.familyId);
     throw createHttpError(
@@ -266,9 +288,12 @@ export const refreshUserTokens = async (refreshToken: string) => {
   });
 
   if (claimed.count !== 1) {
-    // Lost the race — winner already claimed; stay inside the grace window path
-    // on retry rather than revoking the new family session.
-    throw createHttpError(401, "Недействительный refresh token", "INVALID_REFRESH_TOKEN");
+    // Lost the race — winner already claimed; client must retry with rotated cookie.
+    throw createHttpError(
+      401,
+      "Refresh уже выполняется в другой вкладке",
+      "REFRESH_CONCURRENT"
+    );
   }
 
   return issueTokenPair(session.userId, session.familyId);
@@ -324,7 +349,7 @@ export const updateUserProfile = async (userId: string, data: UpdateProfileInput
     if (!isValidUsername(data.username)) {
       throw createHttpError(400, "Некорректный никнейм", "INVALID_USERNAME");
     }
-    updateData.username = data.username.trim();
+    updateData.username = normalizeUsername(data.username);
   }
   if (data.description !== undefined) {
     updateData.description = clampDescription(data.description);

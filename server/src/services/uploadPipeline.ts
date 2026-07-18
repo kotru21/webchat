@@ -11,6 +11,11 @@ const IMAGE_MIMES = new Set([
   "image/webp",
 ]);
 
+/** Cap decoded raster size to bound RAM (DoS via decompression bombs). */
+export const IMAGE_LIMIT_INPUT_PIXELS = 40_000_000;
+/** Longest edge after re-encode — keeps memory and disk bounded. */
+export const IMAGE_MAX_DIMENSION = 4096;
+
 export const isImageMime = (mime: string): boolean => IMAGE_MIMES.has(mime);
 
 export const randomUploadFilename = (extension: string): string => {
@@ -27,8 +32,41 @@ export const reencodeImageToWebp = async (
   const filename = randomUploadFilename(".webp");
   const outputPath = path.join(outputDir, filename);
 
-  await sharp(inputPath).rotate().webp({ quality: 80 }).toFile(outputPath);
-  await fs.unlink(inputPath).catch(() => undefined);
+  const sharpOpts = {
+    animated: true,
+    limitInputPixels: IMAGE_LIMIT_INPUT_PIXELS,
+  } as const;
+
+  const meta = await sharp(inputPath, sharpOpts).metadata();
+  const isAnimated = (meta.pages ?? 1) > 1;
+
+  // Fresh instance after metadata() — avoids Windows file-lock on unlink.
+  let pipeline = sharp(inputPath, sharpOpts);
+  // EXIF rotate can break multi-frame toilet-roll layout.
+  if (!isAnimated) {
+    pipeline = pipeline.rotate();
+  }
+
+  // Height cap on animated input scales the whole stack and drops frames —
+  // constrain width only; stills use both axes.
+  pipeline = pipeline.resize({
+    width: IMAGE_MAX_DIMENSION,
+    ...(isAnimated ? {} : { height: IMAGE_MAX_DIMENSION }),
+    fit: "inside",
+    withoutEnlargement: true,
+  });
+
+  await pipeline.webp({ quality: 80 }).toFile(outputPath);
+
+  // Windows may keep the input handle briefly after sharp finishes.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await fs.unlink(inputPath);
+      break;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
 
   return {
     filename,

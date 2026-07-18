@@ -10,7 +10,7 @@ import { createMessage } from "../services/messageService.js";
 import type { AuthenticatedUser } from "../types/auth.js";
 import { verifyAccessToken } from "../utils/tokens.js";
 import { allowSocketEvent } from "./rateLimit.js";
-import { isAllowedSocketRoom, userRoomId } from "./rooms.js";
+import { isAllowedSocketRoom, peerIdFromDmRoom, userRoomId } from "./rooms.js";
 
 interface CorsOptions {
   origin: string;
@@ -25,6 +25,19 @@ const extractBearerToken = (authorizationHeader: string | undefined): string | u
   const [scheme, token] = authorizationHeader.split(" ");
   if (scheme !== "Bearer" || !token) return undefined;
   return token;
+};
+
+const assertDmPeerExists = async (
+  selfId: string,
+  roomId: string
+): Promise<boolean> => {
+  const peerId = peerIdFromDmRoom(selfId, roomId);
+  if (!peerId) return true; // user:<self> — no peer
+  const peer = await prisma.user.findUnique({
+    where: { id: peerId },
+    select: { id: true },
+  });
+  return peer != null;
 };
 
 export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOptions) => {
@@ -93,17 +106,27 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
     }
 
     socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown, cb?) => {
-      const authUser = socket.data.user as AuthenticatedUser | undefined;
-      if (!authUser || typeof roomId !== "string") {
-        cb?.({ error: "FORBIDDEN" });
-        return;
-      }
-      if (!isAllowedSocketRoom(authUser.id, roomId)) {
-        cb?.({ error: "FORBIDDEN" });
-        return;
-      }
-      socket.join(roomId);
-      cb?.({ ok: true });
+      void (async () => {
+        const authUser = socket.data.user as AuthenticatedUser | undefined;
+        if (!authUser || typeof roomId !== "string") {
+          cb?.({ error: "FORBIDDEN" });
+          return;
+        }
+        if (!allowSocketEvent(`join:${authUser.id}`, 20, 60_000)) {
+          cb?.({ error: "RATE_LIMIT" });
+          return;
+        }
+        if (!isAllowedSocketRoom(authUser.id, roomId)) {
+          cb?.({ error: "FORBIDDEN" });
+          return;
+        }
+        if (!(await assertDmPeerExists(authUser.id, roomId))) {
+          cb?.({ error: "FORBIDDEN" });
+          return;
+        }
+        socket.join(roomId);
+        cb?.({ ok: true });
+      })();
     });
 
     socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload, cb) => {
