@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -44,7 +43,11 @@ describe("uploadPipeline reencodeImageToWebp", () => {
   let tempDir: string;
 
   beforeAll(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "wc-pipeline-"));
+    // Pipeline enforces inputs under uploads/ (multer invariant) — keep the
+    // fixtures where production files actually live.
+    const uploadsMedia = path.join(process.cwd(), "uploads", "media");
+    await fs.mkdir(uploadsMedia, { recursive: true });
+    tempDir = await fs.mkdtemp(path.join(uploadsMedia, "wc-pipeline-"));
   });
 
   afterAll(async () => {
