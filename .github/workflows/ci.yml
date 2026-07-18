@@ -25,6 +25,8 @@ jobs:
         run: npm ci
       - name: Install server
         run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
       - name: Frontend lint
         working-directory: .
         run: npm run lint
