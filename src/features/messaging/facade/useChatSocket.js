@@ -61,15 +61,14 @@ const useChatSocket = ({
 
     let refreshInFlight = false;
 
-    const joinRooms = () => {
-      socket.emit(SOCKET_EVENTS.USER_CONNECTED);
+    const joinDmRoom = () => {
       if (peerId) {
         socket.emit(SOCKET_EVENTS.JOIN_ROOM, dmRoomId(user.id, peerId));
       }
     };
 
-    socket.on("connect", joinRooms);
-    socket.on("reconnect", joinRooms);
+    socket.on("connect", joinDmRoom);
+    socket.on("reconnect", joinDmRoom);
     socket.on("reconnect_failed", () => {
       notify("error", "Не удалось восстановить соединение. Обновите страницу.");
     });
@@ -101,12 +100,12 @@ const useChatSocket = ({
       }
     });
     socket.on("disconnect", (reason) => {
-      // Server kick (e.g. logout) — do not reconnect without a live access token.
-      if (reason === "io server disconnect" && getAccessToken()) {
-        socket.connect();
+      // Server kick (logout): never auto-reconnect — token may still be in memory
+      // until AuthContext finally clears it after POST /logout returns.
+      if (reason === "io server disconnect") {
+        return;
       }
     });
-
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, (msg) => {
       const senderId = msg.sender?._id || msg.sender;
       const receiverId = (msg.receiver && msg.receiver._id) || msg.receiver;

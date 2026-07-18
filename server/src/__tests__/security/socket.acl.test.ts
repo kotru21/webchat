@@ -191,7 +191,6 @@ describe("socket ACL", () => {
 
   it("delivers MESSAGE_NEW to receiver user room without dm join", async () => {
     const socketB = await connectSocket(server.baseUrl, userB.token);
-    socketB.emit(SOCKET_EVENTS.USER_CONNECTED);
 
     const received = new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("no MESSAGE_NEW")), 10_000);
@@ -200,9 +199,6 @@ describe("socket ACL", () => {
         resolve(msg);
       });
     });
-
-    // Give join time to process
-    await new Promise((r) => setTimeout(r, 50));
 
     const result = await emitAck<{ ok?: boolean; id?: string }>(
       socketA,
@@ -221,8 +217,6 @@ describe("socket ACL", () => {
 
   it("disconnects user sockets on logout", async () => {
     const sock = await connectSocket(server.baseUrl, userC.token);
-    sock.emit(SOCKET_EVENTS.USER_CONNECTED);
-    await new Promise((r) => setTimeout(r, 50));
 
     const disconnected = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("socket stayed up")), 10_000);

@@ -86,11 +86,11 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
   });
 
   ioInstance.on("connection", (socket) => {
-    socket.on(SOCKET_EVENTS.USER_CONNECTED, () => {
-      const authUser = socket.data.user as AuthenticatedUser | undefined;
-      if (!authUser) return;
-      socket.join(userRoomId(authUser.id));
-    });
+    const authUser = socket.data.user as AuthenticatedUser | undefined;
+    if (authUser) {
+      // Join immediately — do not rely on client USER_CONNECTED for logout kicks.
+      void socket.join(userRoomId(authUser.id));
+    }
 
     socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown, cb?) => {
       const authUser = socket.data.user as AuthenticatedUser | undefined;

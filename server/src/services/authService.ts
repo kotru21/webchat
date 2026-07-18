@@ -13,7 +13,7 @@ import {
 import {
   clampDescription,
   isValidUsername,
-} from "../middleware/validator.js";
+} from "../utils/profileFields.js";
 import { safeUnlinkMediaApiUrl } from "../utils/uploads.js";
 import { userOwnSelect, userPublicSelect } from "./dbShapes.js";
 
