@@ -88,6 +88,9 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
         working-directory: server
+        env:
+          # prisma.config.ts resolves DATABASE_URL even for generate; no DB is touched.
+          DATABASE_URL: "file:./prisma/e2e.db"
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run e2e smoke suite
