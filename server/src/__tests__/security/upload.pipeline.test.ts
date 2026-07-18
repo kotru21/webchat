@@ -231,7 +231,7 @@ describe("upload / media surface", () => {
     await fs.writeFile(badBanner, "not-an-image");
 
     const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
-    const bannersDir = path.join(process.cwd(), "uploads", "banners");
+    const bannersDir = path.join(process.cwd(), "uploads", "covers");
     const beforeAvatars = new Set(await fs.readdir(avatarsDir));
     const beforeBanners = new Set(await fs.readdir(bannersDir));
 

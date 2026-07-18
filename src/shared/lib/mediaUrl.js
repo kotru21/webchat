@@ -5,9 +5,19 @@ const ABSOLUTE_URL_RE = /^(?:https?:|blob:|data:)/i;
 
 const toApiMediaPath = (url) => {
   if (!url) return "";
-  if (url.startsWith("/api/media/")) return url;
-  if (url.startsWith("/uploads/")) return `/api/media/${url.slice("/uploads/".length)}`;
-  if (url.startsWith("uploads/")) return `/api/media/${url.slice("uploads/".length)}`;
+  if (url.startsWith("/api/media/")) {
+    return url.replace("/api/media/banners/", "/api/media/covers/");
+  }
+  if (url.startsWith("/uploads/")) {
+    return `/api/media/${url
+      .slice("/uploads/".length)
+      .replace(/^banners\//, "covers/")}`;
+  }
+  if (url.startsWith("uploads/")) {
+    return `/api/media/${url
+      .slice("uploads/".length)
+      .replace(/^banners\//, "covers/")}`;
+  }
   return url.startsWith("/") ? url : `/${url}`;
 };
 
@@ -21,9 +31,14 @@ export const isAuthorizedMediaTarget = (url) => {
 
 export function toAbsoluteMediaUrl(url) {
   if (!url) return "";
-  if (ABSOLUTE_URL_RE.test(url)) return url;
+  // Adblockers block path segment "banners" — rewrite legacy URLs.
+  const withoutBannedSegment = url.replace(
+    /\/api\/media\/banners\//g,
+    "/api/media/covers/"
+  );
+  if (ABSOLUTE_URL_RE.test(withoutBannedSegment)) return withoutBannedSegment;
 
-  const normalizedPath = toApiMediaPath(url);
+  const normalizedPath = toApiMediaPath(withoutBannedSegment);
   return API_BASE ? `${API_BASE}${normalizedPath}` : normalizedPath;
 }
 

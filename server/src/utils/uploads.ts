@@ -5,7 +5,7 @@ import { UPLOAD_PATHS } from "../constants/fileConstants.js";
 const uploadDirs = [
   "uploads",
   UPLOAD_PATHS.AVATARS,
-  UPLOAD_PATHS.BANNERS,
+  UPLOAD_PATHS.COVERS,
   UPLOAD_PATHS.MEDIA,
 ];
 
@@ -17,7 +17,8 @@ export const ensureUploadDirs = async (baseDir: string): Promise<void> => {
 };
 
 /**
- * Map `/api/media/{avatars|banners|media}/file` → `uploads/.../file`.
+ * Map `/api/media/{avatars|covers|media}/file` → `uploads/.../file`.
+ * Legacy `/api/media/banners/...` maps to `uploads/covers/...` (adblock-safe rename).
  * Returns null for empty, foreign, or malformed URLs.
  */
 export const mediaApiUrlToUploadRelative = (
@@ -26,10 +27,19 @@ export const mediaApiUrlToUploadRelative = (
   if (!mediaUrl) return null;
   const normalized = mediaUrl.replace(/\\/g, "/").trim();
   const match = normalized.match(
-    /^\/api\/media\/(avatars|banners|media)\/([^/]+)$/
+    /^\/api\/media\/(avatars|covers|banners|media)\/([^/]+)$/
   );
   if (!match) return null;
-  return `uploads/${match[1]}/${match[2]}`;
+  const folder = match[1] === "banners" ? "covers" : match[1];
+  return `uploads/${folder}/${match[2]}`;
+};
+
+/** Rewrite stored banner URLs that still use the adblock-triggering segment. */
+export const canonicalizeMediaApiUrl = (
+  mediaUrl: string | null | undefined
+): string | null | undefined => {
+  if (!mediaUrl) return mediaUrl;
+  return mediaUrl.replace(/^\/api\/media\/banners\//, "/api/media/covers/");
 };
 
 export const safeUnlinkFromServerRoot = async (

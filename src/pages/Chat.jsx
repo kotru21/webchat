@@ -43,36 +43,45 @@ const Chat = () => {
   const peerId = resolvePeerId(selectedUser);
   const { isLoading: chatsLoading, isEmpty: chatsEmpty } =
     useEnsureChatSelection();
-  const { handleMediaClick, handleProfileUpdate, handleStartChat } =
-    useChatPageActions({
-      currentUserId: user?.id,
-      setSelectedUser,
-      setSidebarOpen,
-      openMedia,
-      updateUser,
-      closeProfileEditor,
-      startTransition,
-      showMessage: showErrorMessage,
-    });
+  const { handleMediaClick, handleProfileUpdate } = useChatPageActions({
+    currentUserId: user?.id,
+    setSelectedUser,
+    setSidebarOpen,
+    openMedia,
+    updateUser,
+    closeProfileEditor,
+    startTransition,
+    showMessage: showErrorMessage,
+  });
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">
+        Перейти к чату
+      </a>
+
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-primary/12 blur-3xl" />
         <div className="absolute -right-16 bottom-0 h-96 w-96 rounded-full bg-accent/25 blur-3xl" />
       </div>
 
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-foreground/25 backdrop-blur-[1px] md:hidden"
+      {isSidebarOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-20 cursor-pointer bg-foreground/25 backdrop-blur-[1px] md:hidden"
+          aria-label="Закрыть список чатов"
           onClick={() => setSidebarOpen(false)}
         />
-      )}
+      ) : null}
 
       <div className="relative z-30 flex-none md:w-76 lg:w-84">
         <Suspense
           fallback={
-            <div className="m3-surface-high h-full flex items-center justify-center text-sm text-muted-foreground animate-pulse md:rounded-r-3xl md:border-r md:border-border/70">
+            <div
+              className="m3-surface-high flex h-full items-center justify-center text-sm text-muted-foreground animate-pulse md:rounded-r-3xl md:border-r md:border-border/70"
+              role="status">
               Загрузка чатов...
             </div>
           }>
@@ -83,7 +92,9 @@ const Chat = () => {
         </Suspense>
       </div>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden md:m-4 md:rounded-4xl md:border md:border-border/70 md:bg-card/75 md:backdrop-blur-md md:m3-elev-1">
+      <main
+        id="main-content"
+        className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:m-4 md:rounded-4xl md:border md:border-border/70 md:bg-card/75 md:backdrop-blur-md md:m3-elev-1">
         <ChatHeader
           user={user}
           emptyTitle={
@@ -107,21 +118,20 @@ const Chat = () => {
               messages={messages}
               currentUser={user}
               onMediaClick={handleMediaClick}
-              onStartChat={handleStartChat}
               ProfileWidgetComponent={UserProfileWidget}
             />
             <SendMessageForm receiverId={peerId} />
           </>
         ) : chatsLoading ? (
           <div
-            className="flex flex-1 min-h-0 flex-col items-center justify-center px-6 text-center"
+            className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center"
             role="status">
             <p className="text-sm text-muted-foreground animate-pulse">
               Загрузка чатов…
             </p>
           </div>
         ) : chatsEmpty ? (
-          <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 px-6 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             <p className="text-base font-medium text-foreground">
               У вас пока нет диалогов
             </p>
@@ -132,19 +142,21 @@ const Chat = () => {
           </div>
         ) : (
           <div
-            className="flex flex-1 min-h-0 flex-col items-center justify-center px-6 text-center"
+            className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center"
             role="status">
             <p className="text-sm text-muted-foreground animate-pulse">
               Открываем чат…
             </p>
           </div>
         )}
-      </div>
+      </main>
       {fullscreenMedia && (
         <Suspense
           fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75">
-              <div className="text-white text-lg">Загрузка медиа...</div>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/75"
+              role="status">
+              <div className="text-lg text-white">Загрузка медиа...</div>
             </div>
           }>
           <MediaViewer
@@ -157,8 +169,12 @@ const Chat = () => {
       {isProfileEditorOpen && (
         <Suspense
           fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-              <div className="text-lg text-foreground">Загрузка редактора профиля...</div>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+              role="status">
+              <div className="text-lg text-foreground">
+                Загрузка редактора профиля...
+              </div>
             </div>
           }>
           <ProfileEditor

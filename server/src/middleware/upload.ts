@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
         uploadPath = UPLOAD_PATHS.AVATARS;
         break;
       case "banner":
-        uploadPath = UPLOAD_PATHS.BANNERS;
+        uploadPath = UPLOAD_PATHS.COVERS;
         break;
       default:
         uploadPath = UPLOAD_PATHS.MEDIA;

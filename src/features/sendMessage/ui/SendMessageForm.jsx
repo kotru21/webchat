@@ -1,8 +1,5 @@
 import { memo } from "react";
-import { IoMdAttach, IoMdSend } from "react-icons/io";
-import { BiLoaderAlt } from "react-icons/bi";
-import { FiAlertCircle } from "react-icons/fi";
-import { BsMicFill } from "react-icons/bs";
+import { FiAlertCircle, FiLoader, FiMic, FiPaperclip, FiSend } from "react-icons/fi";
 import VoiceRecorder from "@features/recordVoice/ui/VoiceRecorder";
 import { INPUT_LIMITS } from "@constants/appConstants";
 import { useSendMessageForm } from "../model/useSendMessageForm";
@@ -41,9 +38,11 @@ export const SendMessageForm = memo(function SendMessageForm({
         <Input
           ref={textInputRef}
           type="text"
+          id="message-composer"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Сообщение..."
+          aria-label="Текст сообщения"
           className="h-12 min-w-0 flex-1 rounded-full bg-background/85 px-4"
           maxLength={INPUT_LIMITS.MESSAGE_MAX_LENGTH}
         />
@@ -53,6 +52,8 @@ export const SendMessageForm = memo(function SendMessageForm({
           onChange={handleFileSelect}
           accept="image/*, video/mp4, video/webm"
           className="hidden"
+          aria-hidden
+          tabIndex={-1}
         />
         <Button
           type="button"
@@ -62,7 +63,7 @@ export const SendMessageForm = memo(function SendMessageForm({
           className="h-12 w-12 shrink-0"
           disabled={loading}
           aria-label="Прикрепить файл">
-          <IoMdAttach size={20} />
+          <FiPaperclip size={20} />
         </Button>
         <Button
           type="button"
@@ -72,17 +73,19 @@ export const SendMessageForm = memo(function SendMessageForm({
           className="h-12 w-12 shrink-0"
           disabled={loading}
           aria-label="Записать голосовое сообщение">
-          <BsMicFill size={20} />
+          <FiMic size={20} />
         </Button>
         <Button
           type="submit"
           disabled={loading}
           size="icon"
-          className="h-12 w-12 shrink-0">
+          className="h-12 w-12 shrink-0"
+          aria-label={loading ? "Отправка…" : "Отправить сообщение"}
+          aria-busy={loading}>
           {loading ? (
-            <BiLoaderAlt size={20} className="animate-spin" />
+            <FiLoader size={20} className="animate-spin" />
           ) : (
-            <IoMdSend size={20} />
+            <FiSend size={20} />
           )}
         </Button>
       </div>
@@ -101,7 +104,10 @@ export const SendMessageForm = memo(function SendMessageForm({
       )}
       {renderInputArea()}
       {selectedFile && !isRecording && (
-        <div className="mt-2 truncate px-1 text-xs text-muted-foreground animate-fadeIn">
+        <div
+          className="mt-2 truncate px-1 text-xs text-muted-foreground animate-fadeIn"
+          role="status"
+          aria-live="polite">
           Файл: {selectedFile.name}
         </div>
       )}

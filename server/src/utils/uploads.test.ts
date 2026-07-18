@@ -12,8 +12,11 @@ describe("mediaApiUrlToUploadRelative", () => {
     expect(mediaApiUrlToUploadRelative("/api/media/avatars/abc.webp")).toBe(
       "uploads/avatars/abc.webp"
     );
+    expect(mediaApiUrlToUploadRelative("/api/media/covers/x.webp")).toBe(
+      "uploads/covers/x.webp"
+    );
     expect(mediaApiUrlToUploadRelative("/api/media/banners/x.webp")).toBe(
-      "uploads/banners/x.webp"
+      "uploads/covers/x.webp"
     );
   });
 

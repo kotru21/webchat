@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from "react";
-import { FiSearch, FiX } from "react-icons/fi";
+import { memo, useCallback, useEffect, useState } from "react";
+import { FiImage, FiSearch, FiVideo, FiX } from "react-icons/fi";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUserChats } from "@features/chats/api/useUserChats";
@@ -9,6 +9,24 @@ import { resolvePeerId } from "@shared/lib/peerId";
 import { AuthorizedMediaImg } from "@shared/ui/AuthorizedMediaImg";
 import { Button } from "@shared/ui/button";
 import { Input } from "@shared/ui/input";
+
+function useIsMobileDrawer() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 767px)").matches
+      : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return isMobile;
+}
 
 const ChatsList = memo(({ isOpen, onClose }) => {
   const selectedUser = useChatStore((s) => s.selectedUser);
@@ -24,6 +42,8 @@ const ChatsList = memo(({ isOpen, onClose }) => {
     isFetching: searchLoading,
     isError: searchError,
   } = useUserSearch(trimmedQuery);
+  const isMobile = useIsMobileDrawer();
+  const drawerHidden = isMobile && !isOpen;
 
   const formatMessageTime = useCallback(
     (d) =>
@@ -35,8 +55,25 @@ const ChatsList = memo(({ isOpen, onClose }) => {
 
   const formatLastMessage = useCallback((m) => {
     if (!m) return "Нет сообщений";
-    if (m.mediaUrl)
-      return m.mediaType === "image" ? "🖼️ Изображение" : "🎬 Видео";
+    if (m.mediaUrl) {
+      if (m.mediaType === "image") {
+        return (
+          <span className="inline-flex items-center gap-1">
+            <FiImage size={12} aria-hidden className="shrink-0" />
+            Изображение
+          </span>
+        );
+      }
+      if (m.mediaType === "video") {
+        return (
+          <span className="inline-flex items-center gap-1">
+            <FiVideo size={12} aria-hidden className="shrink-0" />
+            Видео
+          </span>
+        );
+      }
+      return "Медиа";
+    }
     return m.content.length > 25 ? m.content.slice(0, 25) + "..." : m.content;
   }, []);
 
@@ -64,13 +101,23 @@ const ChatsList = memo(({ isOpen, onClose }) => {
   );
 
   return (
-    <div
+    <nav
+      aria-label="Список чатов"
+      aria-hidden={drawerHidden || undefined}
+      inert={drawerHidden || undefined}
       className={`${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } fixed inset-y-0 left-0 z-30 h-full w-76 m3-surface-high border-r border-border/70 transition-transform duration-300 ease-in-out md:relative md:inset-auto md:w-full md:translate-x-0 md:rounded-r-4xl md:m3-elev-1`}>
       <div className="flex h-full flex-col p-4">
         <div className="mb-4 flex min-h-12 items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Чаты</h2>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
+              Kotikov
+            </p>
+            <h2 className="font-heading text-lg font-semibold tracking-tight">
+              Чаты
+            </h2>
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -117,11 +164,13 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                 Результаты поиска
               </h3>
               {searchLoading ? (
-                <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
+                <div
+                  className="p-4 text-center text-sm text-muted-foreground animate-pulse"
+                  role="status">
                   Поиск…
                 </div>
               ) : searchError ? (
-                <div className="p-4 text-center text-sm text-destructive">
+                <div className="p-4 text-center text-sm text-destructive" role="alert">
                   Не удалось выполнить поиск
                 </div>
               ) : searchResults.length === 0 ? (
@@ -129,43 +178,39 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                   Никого не найдено
                 </div>
               ) : (
-                searchResults.map((user) => {
-                  const peerId = resolvePeerId(user);
-                  return (
-                    <div
-                      key={peerId}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openPeer(user)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          openPeer(user);
-                        }
-                      }}
-                      className={`mb-2 min-h-14 cursor-pointer rounded-2xl border px-4 py-3 transition-all duration-200 hover:border-primary/35 hover:bg-card/70 ${
-                        selectedPeerId === peerId
-                          ? "border-primary/45 bg-primary/10"
-                          : "border-transparent"
-                      }`}>
-                      <div className="flex min-w-0 items-center gap-4">
-                        <AuthorizedMediaImg
-                          src={user.avatar}
-                          alt={user.username}
-                          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-border/70"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium leading-5">
-                            {user.username}
-                          </p>
-                          <p className="truncate text-xs leading-4 text-muted-foreground">
-                            Написать сообщение
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                <ul className="list-none p-0" role="list">
+                  {searchResults.map((user) => {
+                    const peerId = resolvePeerId(user);
+                    const selected = selectedPeerId === peerId;
+                    return (
+                      <li key={peerId}>
+                        <button
+                          type="button"
+                          onClick={() => openPeer(user)}
+                          aria-current={selected ? "true" : undefined}
+                          className={`mb-2 flex min-h-14 w-full cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-200 hover:border-primary/35 hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 ${
+                            selected
+                              ? "border-primary/45 bg-primary/10"
+                              : "border-transparent"
+                          }`}>
+                          <AuthorizedMediaImg
+                            src={user.avatar}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-border/70"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium leading-5">
+                              {user.username}
+                            </p>
+                            <p className="truncate text-xs leading-4 text-muted-foreground">
+                              Написать сообщение
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </>
           ) : (
@@ -175,7 +220,10 @@ const ChatsList = memo(({ isOpen, onClose }) => {
               </h3>
 
               {loading ? (
-                <div className="flex items-center justify-center py-4">
+                <div
+                  className="flex items-center justify-center py-4"
+                  role="status"
+                  aria-label="Загрузка чатов">
                   <div className="flex animate-pulse space-x-4">
                     <div className="h-10 w-10 rounded-full bg-muted" />
                     <div className="flex-1 space-y-2">
@@ -185,7 +233,7 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                   </div>
                 </div>
               ) : error ? (
-                <div className="p-4 text-center text-sm text-destructive">
+                <div className="p-4 text-center text-sm text-destructive" role="alert">
                   {error}
                 </div>
               ) : chats.length === 0 ? (
@@ -199,63 +247,71 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                   </p>
                 </div>
               ) : (
-                chats.map((chat) => {
-                  const chatPeerId = resolvePeerId(chat.user);
-                  return (
-                    <div
-                      key={chatPeerId}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleSelectChat(chat)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          handleSelectChat(chat);
-                        }
-                      }}
-                      className={`mb-2 min-h-16 cursor-pointer rounded-2xl border px-4 py-3 transition-all duration-200 hover:border-primary/35 hover:bg-card/70 ${
-                        selectedPeerId === chatPeerId
-                          ? "border-primary/45 bg-primary/10"
-                          : "border-transparent"
-                      }`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 items-center gap-4">
-                          <div className="relative shrink-0">
-                            <AuthorizedMediaImg
-                              src={chat.user.avatar}
-                              alt={chat.user.username}
-                              className="h-10 w-10 rounded-full object-cover ring-1 ring-border/70"
-                            />
+                <ul className="list-none p-0" role="list">
+                  {chats.map((chat) => {
+                    const chatPeerId = resolvePeerId(chat.user);
+                    const unread =
+                      unreadCounts[chatPeerId] || chat.unreadCount || 0;
+                    const selected = selectedPeerId === chatPeerId;
+                    const label = [
+                      chat.user.username,
+                      unread > 0 ? `${unread} непрочитанных` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(", ");
+
+                    return (
+                      <li key={chatPeerId}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectChat(chat)}
+                          aria-current={selected ? "true" : undefined}
+                          aria-label={label}
+                          className={`mb-2 flex min-h-16 w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-left transition-all duration-200 hover:border-primary/35 hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 ${
+                            selected
+                              ? "border-primary/45 bg-primary/10"
+                              : "border-transparent"
+                          }`}>
+                          <div className="flex min-w-0 flex-1 items-center gap-4">
+                            <div className="relative shrink-0">
+                              <AuthorizedMediaImg
+                                src={chat.user.avatar}
+                                alt=""
+                                className="h-10 w-10 rounded-full object-cover ring-1 ring-border/70"
+                              />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium leading-5">
+                                {chat.user.username}
+                              </p>
+                              <p className="truncate text-xs leading-4 text-muted-foreground">
+                                {formatLastMessage(chat.lastMessage)}
+                              </p>
+                              <p className="mt-1 text-xs leading-4 text-muted-foreground">
+                                {formatMessageTime(chat.lastMessage?.createdAt)}
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium leading-5">
-                              {chat.user.username}
-                            </p>
-                            <p className="truncate text-xs leading-4 text-muted-foreground">
-                              {formatLastMessage(chat.lastMessage)}
-                            </p>
-                            <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                              {formatMessageTime(chat.lastMessage?.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {(unreadCounts[chatPeerId] || chat.unreadCount) > 0 && (
-                          <span className="m3-pill ml-2 min-w-6 bg-destructive px-2 py-1 text-center text-xs text-destructive-foreground">
-                            {unreadCounts[chatPeerId] || chat.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+                          {unread > 0 && (
+                            <span
+                              className="m3-pill ml-2 min-w-6 bg-destructive px-2 py-1 text-center text-xs text-destructive-foreground"
+                              aria-hidden>
+                              {unread}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </>
           )}
         </div>
       </div>
-    </div>
+    </nav>
   );
 });
 

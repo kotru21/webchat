@@ -1,5 +1,6 @@
 import type { Message, User } from "../generated/prisma/client.js";
 import type { AuthenticatedUser, OwnUser, PublicUser } from "../types/auth.js";
+import { canonicalizeMediaApiUrl } from "./uploads.js";
 
 type PublicUserSelection = Pick<
   User,
@@ -23,7 +24,7 @@ export const toPublicUser = (user: PublicUserSelection): PublicUser => ({
   _id: user.id,
   username: user.username,
   avatar: user.avatar,
-  banner: user.banner,
+  banner: canonicalizeMediaApiUrl(user.banner) ?? user.banner,
   description: user.description,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,

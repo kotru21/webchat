@@ -53,7 +53,7 @@ router.get("/*path", protect, async (req, res, next) => {
     const { root, relative } = resolveSafeUploadPath(rawPath);
 
     // Attachments under media/: DM participants only (IDOR guard).
-    // Avatars/banners: any authenticated user (intentional product split).
+    // Avatars/covers: any authenticated user (intentional product split).
     if (isMessageAttachmentPath(relative)) {
       const userId = req.user?.id;
       if (!userId) {

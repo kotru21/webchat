@@ -36,7 +36,7 @@
 | Tampering | Image polyglot / metadata | Sharp re-encode to WebP for images |
 | Tampering | Non-image avatar/banner | Profile uploads allow images only; separate avatar/banner size caps |
 | Information disclosure | Public static uploads | No `express.static` on `/uploads`; authenticated `GET /api/media/*` |
-| Information disclosure | IDOR on DM attachments | `media/` GETs require DM participant via `assertCanAccessMediaAttachment`; avatars/banners stay any-authenticated |
+| Information disclosure | IDOR on DM attachments | `media/` GETs require DM participant via `assertCanAccessMediaAttachment`; avatars/covers stay any-authenticated |
 | Elevation | Path traversal on unlink/GET | Resolve under `uploads/` only; replace avatar/banner unlinks old file via `safeUnlinkFromServerRoot` |
 
 ## Controls mapping
@@ -44,7 +44,7 @@
 | Threat | Control | Code |
 |--------|---------|------|
 | IDOR list DM | `assertCanListDm` — `?receiverId=` is caller's thread with peer only | `server/src/services/accessControl.ts`, `messageService.ts` |
-| IDOR media attachment GET | `assertCanAccessMediaAttachment` (DM participants); avatars/banners auth-only | `server/src/routes/mediaRoutes.ts`, `accessControl.ts` |
+| IDOR media attachment GET | `assertCanAccessMediaAttachment` (DM participants); avatars/covers auth-only | `server/src/routes/mediaRoutes.ts`, `accessControl.ts` |
 | Arbitrary `join_room` | allowlist `user:` / `dm:` | `server/src/socket/index.ts`, `server/src/socket/rooms.ts` |
 | Client `mediaUrl` | ignored; upload-only | `server/src/socket/index.ts`, `server/src/controllers/messageController.ts` |
 | Refresh theft/reuse | HttpOnly + rotation + family revoke | `server/src/services/authService.ts`, `server/src/middleware/cookies.ts` |

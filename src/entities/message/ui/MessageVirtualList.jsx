@@ -14,13 +14,12 @@ export const MessageVirtualList = memo(function MessageVirtualList({
   indexByMessageIdRef,
   onItemsRange,
   onMediaClick,
-  onStartChat,
-  ProfileWidgetComponent,
+  onOpenProfile,
   // Material 3 (4/8dp): 16dp between bubbles, 24dp around day chips, 16dp hour marks
   gaps = { message: 16, day: 24, hour: 16 },
 }) {
   const messageRefs = useRef({});
-  const rowHeight = useDynamicRowHeight({ defaultRowHeight: 80 });
+  const rowHeight = useDynamicRowHeight({ defaultRowHeight: 112 });
 
   const setListApiRef = useCallback(
     (api) => {
@@ -79,8 +78,7 @@ export const MessageVirtualList = memo(function MessageVirtualList({
               message={message}
               currentUser={currentUser}
               onMediaClick={onMediaClick}
-              onStartChat={onStartChat}
-              ProfileWidgetComponent={ProfileWidgetComponent}
+              onOpenProfile={onOpenProfile}
             />
           </div>
         </div>
@@ -93,8 +91,7 @@ export const MessageVirtualList = memo(function MessageVirtualList({
       gaps.hour,
       gaps.message,
       onMediaClick,
-      onStartChat,
-      ProfileWidgetComponent,
+      onOpenProfile,
     ]
   );
 

@@ -25,7 +25,7 @@ const profileFilePath = (files: Request["files"], key: "avatar" | "banner") => {
   if (!file) return undefined;
 
   if (key === "avatar") return `/api/media/avatars/${file.filename}`;
-  return `/api/media/banners/${file.filename}`;
+  return `/api/media/covers/${file.filename}`;
 };
 
 const disconnectUserSockets = (req: Request, userId: string) => {

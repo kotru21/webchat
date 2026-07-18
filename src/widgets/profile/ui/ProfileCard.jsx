@@ -11,22 +11,33 @@ export function ProfileCard({ profile, onStartChat, isCurrentUser, onClose }) {
           <AuthorizedMediaImg
             src={profile.banner}
             fallback=""
-            alt="Баннер"
-            className="w-full h-full object-cover"
+            alt="Обложка профиля"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div className="h-full w-full bg-linear-to-r from-primary/80 via-primary to-accent-foreground/80" />
+          <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-primary/80 via-primary to-accent/80" />
         )}
       </div>
       <div className="relative px-4 pb-4">
-        <div className="flex justify-between items-end -mt-10 mb-3">
-          <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted">
+        <div className="mb-3 flex items-end justify-between -mt-10">
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-background bg-muted">
             <AuthorizedMediaImg
               src={profile.avatar}
-              className="w-full h-full object-cover"
-              alt="avatar"
+              className="h-full w-full object-cover"
+              alt=""
             />
           </div>
+          {onClose ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="mb-1"
+              aria-label="Закрыть профиль">
+              Закрыть
+            </Button>
+          ) : null}
         </div>
         <div className="mb-3 text-left">
           <h2 className="truncate text-xl font-bold text-foreground">

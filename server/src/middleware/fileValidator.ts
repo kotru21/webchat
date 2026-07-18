@@ -17,7 +17,7 @@ const outputDirForField = (fieldname: string): string => {
     case "avatar":
       return path.join(process.cwd(), UPLOAD_PATHS.AVATARS);
     case "banner":
-      return path.join(process.cwd(), UPLOAD_PATHS.BANNERS);
+      return path.join(process.cwd(), UPLOAD_PATHS.COVERS);
     default:
       return path.join(process.cwd(), UPLOAD_PATHS.MEDIA);
   }

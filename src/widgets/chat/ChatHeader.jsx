@@ -1,10 +1,20 @@
-import { useState, useEffect, useRef, memo } from "react";
-import { FiMenu } from "react-icons/fi";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
+import { FiLogOut, FiMenu, FiMonitor, FiMoon, FiSun } from "react-icons/fi";
 import { ANIMATION_DELAYS } from "@constants/appConstants";
 import { setupHoverPrefetch } from "@shared/lib/prefetch";
 import { useSelectedUser } from "@shared/store/chatSelectors";
+import { useUIStore } from "@shared/store/uiStore";
+import { useAuth } from "@context/useAuth";
 import { AuthorizedMediaImg } from "@shared/ui/AuthorizedMediaImg";
 import { Button } from "@shared/ui/button";
+
+const THEME_CYCLE = ["system", "light", "dark"];
+
+const themeMeta = {
+  system: { icon: FiMonitor, label: "Тема: системная" },
+  light: { icon: FiSun, label: "Тема: светлая" },
+  dark: { icon: FiMoon, label: "Тема: тёмная" },
+};
 
 const ChatHeaderComponent = ({
   user,
@@ -12,8 +22,12 @@ const ChatHeaderComponent = ({
   onOpenSidebar,
   onOpenProfileEditor,
 }) => {
+  const { logout } = useAuth();
   const selectedUser = useSelectedUser();
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const titleSource = selectedUser
     ? selectedUser.username || selectedUser.email
     : emptyTitle;
@@ -34,12 +48,30 @@ const ChatHeaderComponent = ({
   const avatarRef = useRef(null);
 
   useEffect(() => {
-    // Префетч виджета редактора профиля по наведению на аватар
     const cleanup = setupHoverPrefetch(avatarRef.current, () =>
       import("@widgets/profile/ProfileEditor.jsx")
     );
     return cleanup;
   }, []);
+
+  const cycleTheme = useCallback(() => {
+    const idx = THEME_CYCLE.indexOf(theme);
+    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+    setTheme(next);
+  }, [setTheme, theme]);
+
+  const handleLogout = useCallback(async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [loggingOut, logout]);
+
+  const ThemeIcon = themeMeta[theme]?.icon || FiMonitor;
+  const themeLabel = themeMeta[theme]?.label || "Сменить тему";
 
   return (
     <header className="m3-surface-high sticky top-0 z-20 border-b border-border/70 px-4 py-3 backdrop-blur-xl sm:px-5 md:rounded-t-4xl">
@@ -64,22 +96,50 @@ const ChatHeaderComponent = ({
           </h1>
         </div>
 
-        <div className="flex items-stretch justify-between gap-3 sm:items-center sm:justify-end sm:gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <AuthorizedMediaImg
-              ref={avatarRef}
+        <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-end sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-12 gap-2 rounded-full px-2"
               onClick={onOpenProfileEditor}
-              src={user?.avatar}
-              alt="Your avatar"
-              loading="lazy"
-              decoding="async"
-              className="h-10 w-10 shrink-0 cursor-pointer rounded-full object-cover ring-2 ring-primary/30 transition-all duration-200 hover:scale-105 hover:opacity-90"
-            />
-            <div className="flex min-w-0 flex-col leading-5">
-              <span className="max-w-[40vw] truncate text-xs text-muted-foreground sm:max-w-60 sm:text-sm">
+              aria-label="Открыть профиль">
+              <AuthorizedMediaImg
+                ref={avatarRef}
+                src={user?.avatar}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-primary/30"
+              />
+              <span className="max-w-[28vw] truncate text-xs text-muted-foreground sm:max-w-40 sm:text-sm">
                 {user?.username || user?.email || "Пользователь"}
               </span>
-            </div>
+            </Button>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12 text-muted-foreground hover:text-foreground"
+              onClick={cycleTheme}
+              aria-label={themeLabel}
+              title={themeLabel}>
+              <ThemeIcon size={20} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12 text-muted-foreground hover:text-foreground"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              aria-label={loggingOut ? "Выход…" : "Выйти из аккаунта"}
+              aria-busy={loggingOut}>
+              <FiLogOut size={20} />
+            </Button>
           </div>
         </div>
       </div>
