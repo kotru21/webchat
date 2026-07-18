@@ -1,0 +1,30 @@
+# Dependencies & build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+coverage/
+**/.vite/
+**/*.min.js
+
+# Generated / local data
+server/src/generated/
+server/prisma/*.db
+server/prisma/*.db-*
+server/uploads/
+uploads/
+
+# Env and secrets files (scanned separately via p/secrets on tracked sources)
+.env
+.env.*
+!**/.env.example
+
+# Lockfiles & tooling noise
+package-lock.json
+**/package-lock.json
+*.log
+
+# Local planning docs (not application code)
+docs/
+.superpowers/

@@ -26,7 +26,7 @@ const Login = () => {
     handleSubmit,
   } = useLoginForm({
     onAuthenticated: (data) => {
-      authLogin(data, data.token, data.refreshToken);
+      authLogin(data, data.token);
       navigate("/");
     },
   });

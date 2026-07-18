@@ -1,12 +1,45 @@
+import { getAccessToken } from "./accessToken";
+
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const ABSOLUTE_URL_RE = /^(?:https?:|blob:|data:)/i;
+
+const toApiMediaPath = (url) => {
+  if (!url) return "";
+  if (url.startsWith("/api/media/")) return url;
+  if (url.startsWith("/uploads/")) return `/api/media/${url.slice("/uploads/".length)}`;
+  if (url.startsWith("uploads/")) return `/api/media/${url.slice("uploads/".length)}`;
+  return url.startsWith("/") ? url : `/${url}`;
+};
 
 export function toAbsoluteMediaUrl(url) {
   if (!url) return "";
   if (ABSOLUTE_URL_RE.test(url)) return url;
 
-  const normalizedPath = url.startsWith("/") ? url : `/${url}`;
+  const normalizedPath = toApiMediaPath(url);
   return API_BASE ? `${API_BASE}${normalizedPath}` : normalizedPath;
+}
+
+export async function fetchAuthorizedMediaUrl(url) {
+  const absolute = toAbsoluteMediaUrl(url);
+  if (
+    !absolute ||
+    (ABSOLUTE_URL_RE.test(url) && !url.startsWith("http"))
+  ) {
+    return absolute;
+  }
+
+  const token = getAccessToken();
+  const response = await fetch(absolute, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new Error(`MEDIA_FETCH_FAILED_${response.status}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }
 
 export function stripApiBase(url) {

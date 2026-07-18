@@ -4,13 +4,14 @@ import { useAuth } from "@context/useAuth";
 import ChatHeader from "@widgets/chat/ChatHeader.jsx";
 import { MessagesList } from "@entities/message/ui/MessagesList.jsx";
 import { SendMessageForm } from "@features/sendMessage/ui/SendMessageForm.jsx";
-import MessageEditor from "@features/editMessage/ui/MessageEditor.jsx";
 import { UserProfileWidget } from "@widgets/profile";
 const ChatsList = lazy(() => import("@widgets/chats/ChatsList"));
 import useChatFeature from "@features/messaging/facade/useChatFeature";
+import { useEnsureChatSelection } from "@features/chats/model/useEnsureChatSelection";
 import { notify } from "@features/notifications/notify";
 import { useUIStore } from "@shared/store/uiStore";
 import { useChatStore } from "@shared/store/chatStore";
+import { resolvePeerId } from "@shared/lib/peerId";
 import { useChatPageActions } from "./model/useChatPageActions";
 
 const MediaViewer = React.lazy(() => import("@widgets/media/MediaViewer.jsx"));
@@ -35,10 +36,13 @@ const Chat = () => {
     notify(type, message);
   }, []);
 
-  const { messages, api } = useChatFeature({
+  const { messages } = useChatFeature({
     onError: (msg) => showErrorMessage(msg),
   });
   const selectedUser = useChatStore((s) => s.selectedUser);
+  const peerId = resolvePeerId(selectedUser);
+  const { isLoading: chatsLoading, isEmpty: chatsEmpty } =
+    useEnsureChatSelection();
   const { handleMediaClick, handleProfileUpdate, handleStartChat } =
     useChatPageActions({
       currentUserId: user?.id,
@@ -82,6 +86,13 @@ const Chat = () => {
       <div className="relative z-10 flex min-w-0 flex-1 flex-col min-h-0 md:m-3 md:rounded-4xl md:border md:border-border/70 md:bg-card/75 md:backdrop-blur-md md:m3-elev-1">
         <ChatHeader
           user={user}
+          emptyTitle={
+            chatsEmpty
+              ? "Найдите собеседника"
+              : chatsLoading
+                ? "Загрузка…"
+                : "Выберите чат"
+          }
           onOpenSidebar={() => setSidebarOpen(true)}
           onOpenProfileEditor={() => {
             startTransition(() => {
@@ -90,19 +101,44 @@ const Chat = () => {
           }}
         />
 
-        <MessagesList
-          messages={messages}
-          currentUser={user}
-          onMarkAsRead={api.markRead}
-          onEditMessage={api.edit}
-          onDeleteMessage={api.remove}
-          onMediaClick={handleMediaClick}
-          onPinMessage={api.pin}
-          onStartChat={handleStartChat}
-          MessageEditorComponent={MessageEditor}
-          ProfileWidgetComponent={UserProfileWidget}
-        />
-        <SendMessageForm receiverId={selectedUser?.id || null} />
+        {peerId ? (
+          <>
+            <MessagesList
+              messages={messages}
+              currentUser={user}
+              onMediaClick={handleMediaClick}
+              onStartChat={handleStartChat}
+              ProfileWidgetComponent={UserProfileWidget}
+            />
+            <SendMessageForm receiverId={peerId} />
+          </>
+        ) : chatsLoading ? (
+          <div
+            className="flex flex-1 min-h-0 flex-col items-center justify-center px-6 text-center"
+            role="status">
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Загрузка чатов…
+            </p>
+          </div>
+        ) : chatsEmpty ? (
+          <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 px-6 text-center">
+            <p className="text-base font-medium text-foreground">
+              У вас пока нет диалогов
+            </p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Найдите пользователя по нику в списке слева и отправьте первое
+              сообщение.
+            </p>
+          </div>
+        ) : (
+          <div
+            className="flex flex-1 min-h-0 flex-col items-center justify-center px-6 text-center"
+            role="status">
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Открываем чат…
+            </p>
+          </div>
+        )}
       </div>
       {fullscreenMedia && (
         <Suspense
@@ -132,7 +168,6 @@ const Chat = () => {
           />
         </Suspense>
       )}
-      {/* Toasts */}
     </div>
   );
 };

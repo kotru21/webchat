@@ -28,3 +28,11 @@ export const profileLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 10_000 : 30,
+  message: { message: "Слишком много запросов обновления сессии." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

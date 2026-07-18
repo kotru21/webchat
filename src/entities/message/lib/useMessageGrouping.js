@@ -40,10 +40,5 @@ export function useMessageGrouping(messages, { largeDayThreshold = 60 } = {}) {
     return result;
   }, [groupedByDay, largeDayThreshold]);
 
-  const pinnedMessages = useMemo(
-    () => messages.filter((m) => m.isPinned),
-    [messages]
-  );
-
-  return { groupedByDay, flatItems, pinnedMessages };
+  return { groupedByDay, flatItems };
 }

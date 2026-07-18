@@ -7,7 +7,9 @@
     "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "semgrep": "semgrep scan --config p/javascript --config p/typescript --config p/nodejs --config p/expressjs --config p/owasp-top-ten --config p/secrets --config .semgrep/rules --metrics=auto",
+    "semgrep:ci": "semgrep scan --config p/javascript --config p/typescript --config p/nodejs --config p/expressjs --config p/owasp-top-ten --config p/secrets --config .semgrep/rules --severity ERROR --error --metrics=off"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

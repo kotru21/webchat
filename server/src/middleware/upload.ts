@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import multer from "multer";
 import path from "node:path";
 import { ALLOWED_FILE_TYPES, FILE_LIMITS, UPLOAD_PATHS } from "../constants/fileConstants.js";
@@ -20,8 +21,9 @@ const storage = multer.diskStorage({
     cb(null, path.join(process.cwd(), uploadPath));
   },
   filename: (_req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
+    const ext = path.extname(file.originalname).toLowerCase() || ".bin";
+    const safeExt = ext.length <= 10 ? ext : ".bin";
+    cb(null, `${crypto.randomBytes(16).toString("hex")}${safeExt}`);
   },
 });
 

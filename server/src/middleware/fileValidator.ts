@@ -1,6 +1,24 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 import { fileTypeFromBuffer } from "file-type";
 import type { RequestHandler } from "express";
+import { UPLOAD_PATHS } from "../constants/fileConstants.js";
+import {
+  finalizeNonImageUpload,
+  isImageMime,
+  reencodeImageToWebp,
+} from "../services/uploadPipeline.js";
+
+const outputDirForField = (fieldname: string): string => {
+  switch (fieldname) {
+    case "avatar":
+      return path.join(process.cwd(), UPLOAD_PATHS.AVATARS);
+    case "banner":
+      return path.join(process.cwd(), UPLOAD_PATHS.BANNERS);
+    default:
+      return path.join(process.cwd(), UPLOAD_PATHS.MEDIA);
+  }
+};
 
 const MAGIC_BYTES_MAP: Record<string, string[]> = {
   "image/jpeg": ["image/jpeg"],
@@ -37,6 +55,25 @@ const collectUploadedFiles = (req: Express.Request) => {
   return files;
 };
 
+const applyPipelineToFile = async (file: Express.Multer.File): Promise<void> => {
+  const outputDir = outputDirForField(file.fieldname);
+
+  if (isImageMime(file.mimetype) || file.mimetype.startsWith("image/")) {
+    const result = await reencodeImageToWebp(file.path, outputDir);
+    file.filename = result.filename;
+    file.path = path.join(process.cwd(), result.relativePath);
+    file.mimetype = "image/webp";
+    return;
+  }
+
+  if (file.fieldname === "media") {
+    const ext = path.extname(file.filename) || path.extname(file.originalname);
+    const result = await finalizeNonImageUpload(file.path, ext, outputDir);
+    file.filename = result.filename;
+    file.path = path.join(process.cwd(), result.relativePath);
+  }
+};
+
 export const validateFileMagicBytes: RequestHandler = async (req, res, next) => {
   const files = collectUploadedFiles(req);
 
@@ -65,6 +102,8 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
           message: `Тип файла не соответствует содержимому: ${file.originalname}`,
         });
       }
+
+      await applyPipelineToFile(file);
     }
 
     next();

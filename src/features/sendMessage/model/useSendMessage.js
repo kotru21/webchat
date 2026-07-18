@@ -1,20 +1,30 @@
 import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { sendMessage } from "@features/messaging/api/messagesApi";
 import { useAuth } from "@context/useAuth";
 import { useMessagesStore } from "@shared/store/messagesStore";
 import { notify } from "@features/notifications/notify";
+import { queryKeys } from "@shared/api/queryKeys";
 
 // Bridge хук. Позже sendMessageUsecase будет перенесён внутрь этой feature.
 export function useSendMessage({ receiverId }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const addPending = useMessagesStore((s) => s.addPendingMessage);
   const finalizePending = useMessagesStore((s) => s.finalizePendingMessage);
   const failPending = useMessagesStore((s) => s.failPendingMessage);
 
   const send = useCallback(
     async ({ text, file, mediaType, audioDuration }) => {
+      if (!receiverId) {
+        const err = new Error("Выберите собеседника");
+        setError(err);
+        notify("error", "Выберите чат, чтобы отправить сообщение");
+        return { ok: false, error: err };
+      }
+
       setLoading(true);
       setError(null);
       try {
@@ -23,12 +33,12 @@ export function useSendMessage({ receiverId }) {
         if (file) formData.append("media", file);
         if (mediaType) formData.append("mediaType", mediaType);
         if (audioDuration) formData.append("audioDuration", audioDuration);
-        if (receiverId) formData.append("receiverId", receiverId);
+        formData.append("receiverId", receiverId);
         // optimistic
         const tempId = `temp-${Date.now()}-${Math.random()
           .toString(36)
           .slice(2, 8)}`;
-        addPending(receiverId || null, {
+        addPending(receiverId, {
           _id: tempId,
           content: text || (file ? "Медиа" : ""),
           sender: {
@@ -37,11 +47,8 @@ export function useSendMessage({ receiverId }) {
             email: user.email,
             avatar: user.avatar,
           },
-          receiver: receiverId || null,
+          receiver: receiverId,
           createdAt: new Date().toISOString(),
-          isPinned: false,
-          isDeleted: false,
-          isEdited: false,
           mediaUrl: null,
           mediaType: mediaType || null,
           optimistic: true,
@@ -49,6 +56,7 @@ export function useSendMessage({ receiverId }) {
         try {
           const dto = await sendMessage(formData);
           finalizePending(tempId, dto);
+          void queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
           return { ok: true, value: dto };
         } catch (e) {
           failPending(tempId);
@@ -72,7 +80,14 @@ export function useSendMessage({ receiverId }) {
         setLoading(false);
       }
     },
-    [receiverId, addPending, finalizePending, failPending, user]
+    [
+      receiverId,
+      addPending,
+      finalizePending,
+      failPending,
+      user,
+      queryClient,
+    ]
   );
 
   return { send, loading, error };

@@ -15,4 +15,11 @@ export async function updateProfile(formData) {
   return res.data;
 }
 
-export default { login, register, updateProfile };
+export async function searchUsers(q) {
+  const res = await apiClient.get("/api/auth/users", {
+    params: { q },
+  });
+  return res.data;
+}
+
+export default { login, register, updateProfile, searchUsers };

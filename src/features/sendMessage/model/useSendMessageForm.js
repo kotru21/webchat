@@ -57,6 +57,10 @@ export function useSendMessageForm({ receiverId, onSent }) {
   const submit = useCallback(
     async (e) => {
       e.preventDefault();
+      if (!receiverId) {
+        setError("Выберите чат, чтобы отправить сообщение");
+        return;
+      }
       if (!text.trim() && !selectedFile) return;
       if (text.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
         setError(
@@ -76,11 +80,15 @@ export function useSendMessageForm({ receiverId, onSent }) {
         setError(result.error?.message || "Не удалось отправить сообщение");
       }
     },
-    [onSent, selectedFile, send, text]
+    [onSent, receiverId, selectedFile, send, text]
   );
 
   const sendVoice = useCallback(
     async (audioFile, duration) => {
+      if (!receiverId) {
+        setError("Выберите чат, чтобы отправить сообщение");
+        return;
+      }
       const result = await send({
         file: audioFile,
         mediaType: "audio",
@@ -97,7 +105,7 @@ export function useSendMessageForm({ receiverId, onSent }) {
         );
       }
     },
-    [onSent, send]
+    [onSent, receiverId, send]
   );
 
   return {

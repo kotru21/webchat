@@ -2,15 +2,21 @@ import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import prisma from "../config/prisma.js";
 import { SOCKET_EVENTS } from "../constants/socketEvents.js";
+import {
+  assertCanListDm,
+  dmRoomId,
+} from "../services/accessControl.js";
 import { createMessage } from "../services/messageService.js";
 import type { AuthenticatedUser } from "../types/auth.js";
 import { verifyAccessToken } from "../utils/tokens.js";
+import { allowSocketEvent } from "./rateLimit.js";
+import { isAllowedSocketRoom, userRoomId } from "./rooms.js";
 
-type CorsOptions = {
+interface CorsOptions {
   origin: string;
   methods: string[];
   credentials: boolean;
-};
+}
 
 let ioInstance: Server | undefined;
 
@@ -26,21 +32,17 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
 
   ioInstance.use(async (socket, next) => {
     try {
+      // Prefer handshake.auth / Authorization — never query (log/referrer leak).
       const tokenFromAuth =
         typeof socket.handshake.auth?.token === "string"
           ? socket.handshake.auth.token
-          : undefined;
-
-      const tokenFromQuery =
-        typeof socket.handshake.query?.token === "string"
-          ? socket.handshake.query.token
           : undefined;
 
       const tokenFromHeader = extractBearerToken(
         socket.handshake.headers.authorization
       );
 
-      const token = tokenFromAuth ?? tokenFromQuery ?? tokenFromHeader;
+      const token = tokenFromAuth ?? tokenFromHeader;
 
       if (!token) {
         next(new Error("AUTH_REQUIRED"));
@@ -87,12 +89,21 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
     socket.on(SOCKET_EVENTS.USER_CONNECTED, () => {
       const authUser = socket.data.user as AuthenticatedUser | undefined;
       if (!authUser) return;
-      socket.join(authUser.id);
+      socket.join(userRoomId(authUser.id));
     });
 
-    socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown) => {
-      if (typeof roomId !== "string" || !roomId) return;
+    socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown, cb?) => {
+      const authUser = socket.data.user as AuthenticatedUser | undefined;
+      if (!authUser || typeof roomId !== "string") {
+        cb?.({ error: "FORBIDDEN" });
+        return;
+      }
+      if (!isAllowedSocketRoom(authUser.id, roomId)) {
+        cb?.({ error: "FORBIDDEN" });
+        return;
+      }
       socket.join(roomId);
+      cb?.({ ok: true });
     });
 
     socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload, cb) => {
@@ -102,39 +113,40 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
           cb?.({ error: "NO_USER" });
           return;
         }
+        if (!allowSocketEvent(authUser.id)) {
+          cb?.({ error: "RATE_LIMIT" });
+          return;
+        }
 
         const receiverId =
           payload && typeof payload.receiverId === "string"
             ? payload.receiverId
             : undefined;
-
         const content =
           payload && typeof payload.content === "string" ? payload.content : "";
 
-        if (!content.trim() && !payload?.mediaUrl) {
+        // BAN: client mediaUrl / mediaType are ignored
+        if (!receiverId || !content.trim()) {
           cb?.({ error: "EMPTY" });
           return;
         }
 
+        assertCanListDm(authUser.id, receiverId);
+
+        const room = dmRoomId(authUser.id, receiverId);
         const savedMessage = await createMessage({
           senderId: authUser.id,
           senderUsername: authUser.username || authUser.email,
-          receiverId: receiverId ?? null,
+          receiverId,
           content,
-          mediaUrl: payload?.mediaUrl ?? null,
-          mediaType: payload?.mediaType ?? null,
-          audioDuration: payload?.audioDuration ?? null,
-          isPrivate: Boolean(receiverId),
+          mediaUrl: null,
+          mediaType: null,
+          audioDuration: null,
+          isPrivate: true,
+          roomId: room,
         });
 
-        if (savedMessage.isPrivate && savedMessage.receiver) {
-          ioInstance?.to(savedMessage.sender._id)
-            .to(savedMessage.receiver._id)
-            .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
-        } else {
-          ioInstance?.to("general").emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
-        }
-
+        ioInstance?.to(room).emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
         cb?.({ ok: true, id: savedMessage._id });
       } catch {
         cb?.({ error: "SERVER" });

@@ -160,38 +160,6 @@ export function removeMessageMutation(state, messageId) {
   return { chats: nextChats };
 }
 
-export function markMessageDeletedMutation(state, messageId) {
-  const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
-    messages.map((message) =>
-      message._id === messageId
-        ? { ...message, isDeleted: true, content: message.content }
-        : message
-    )
-  );
-
-  return { chats: nextChats };
-}
-
-export function markReadMutation(state, messageId, readBy) {
-  const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
-    messages.map((message) =>
-      message._id === messageId ? { ...message, readBy } : message
-    )
-  );
-
-  return { chats: nextChats };
-}
-
-export function pinMessageMutation(state, messageId, isPinned) {
-  const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
-    messages.map((message) =>
-      message._id === messageId ? { ...message, isPinned } : message
-    )
-  );
-
-  return { chats: nextChats };
-}
-
 export function saveChatViewMutation(state, selectedUserId, view) {
   const key = resolveChatKey(selectedUserId);
 

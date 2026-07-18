@@ -1,12 +1,13 @@
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import path from "node:path";
 import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import mediaRoutes from "./routes/mediaRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 
 export const createApp = () => {
@@ -14,6 +15,7 @@ export const createApp = () => {
 
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
   app.use(
     cors({
       origin: env.CLIENT_URL,
@@ -39,15 +41,7 @@ export const createApp = () => {
     res.json({ status: "ok" });
   });
 
-  app.use(
-    "/uploads",
-    (_req, res, next) => {
-      res.set("Cross-Origin-Resource-Policy", "cross-origin");
-      next();
-    },
-    express.static(path.join(process.cwd(), "uploads"))
-  );
-
+  app.use("/api/media", mediaRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/messages", messageRoutes);
   app.use("/api/chats", chatRoutes);

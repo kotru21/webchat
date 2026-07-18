@@ -1,40 +1,43 @@
-import type { Message, MessageRead, User } from "../generated/prisma/client.js";
-import type { AuthenticatedUser, SafeUser } from "../types/auth.js";
+import type { Message, User } from "../generated/prisma/client.js";
+import type { AuthenticatedUser, OwnUser, PublicUser } from "../types/auth.js";
 
-type UserSelection = Pick<
+type PublicUserSelection = Pick<
   User,
   | "id"
   | "username"
-  | "email"
   | "avatar"
   | "banner"
   | "description"
-  | "isVerified"
   | "createdAt"
   | "updatedAt"
 >;
 
-type ReadWithUser = MessageRead & { user: UserSelection };
+type OwnUserSelection = PublicUserSelection & Pick<User, "email">;
 
 type MessageWithRelations = Message & {
-  sender: UserSelection;
-  receiver: UserSelection | null;
-  readBy: ReadWithUser[];
+  sender: PublicUserSelection;
+  receiver: PublicUserSelection | null;
 };
 
-export const toSafeUser = (user: UserSelection): SafeUser => ({
+export const toPublicUser = (user: PublicUserSelection): PublicUser => ({
   _id: user.id,
   username: user.username,
-  email: user.email,
   avatar: user.avatar,
   banner: user.banner,
   description: user.description,
-  isVerified: user.isVerified,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
 
-export const toAuthUser = (user: UserSelection): AuthenticatedUser => ({
+export const toOwnUser = (user: OwnUserSelection): OwnUser => ({
+  ...toPublicUser(user),
+  email: user.email,
+});
+
+/** @deprecated Prefer toPublicUser / toOwnUser */
+export const toSafeUser = toOwnUser;
+
+export const toAuthUser = (user: OwnUserSelection): AuthenticatedUser => ({
   id: user.id,
   username: user.username,
   email: user.email,
@@ -44,8 +47,8 @@ export const toAuthUser = (user: UserSelection): AuthenticatedUser => ({
 export const toMessageDto = (message: MessageWithRelations) => {
   return {
     _id: message.id,
-    sender: toSafeUser(message.sender),
-    receiver: message.receiver ? toSafeUser(message.receiver) : null,
+    sender: toPublicUser(message.sender),
+    receiver: message.receiver ? toPublicUser(message.receiver) : null,
     senderUsername: message.senderUsername,
     content: message.content,
     mediaUrl: message.mediaUrl,
@@ -53,10 +56,6 @@ export const toMessageDto = (message: MessageWithRelations) => {
     audioDuration: message.audioDuration,
     roomId: message.roomId,
     isPrivate: message.isPrivate,
-    readBy: message.readBy.map((item) => toSafeUser(item.user)),
-    isEdited: message.isEdited,
-    isDeleted: message.isDeleted,
-    isPinned: message.isPinned,
     createdAt: message.createdAt,
     updatedAt: message.updatedAt,
   };

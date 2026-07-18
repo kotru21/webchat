@@ -4,9 +4,6 @@ import {
   addPendingMessageMutation,
   failPendingMessageMutation,
   finalizePendingMessageMutation,
-  markMessageDeletedMutation,
-  markReadMutation,
-  pinMessageMutation,
   removeMessageMutation,
   resolveChatKey,
   saveChatViewMutation,
@@ -39,15 +36,6 @@ export const useMessagesStore = create((set, get) => ({
 
   removeMessage: (messageId) =>
     set((state) => removeMessageMutation(state, messageId)),
-
-  markMessageDeleted: (messageId) =>
-    set((state) => markMessageDeletedMutation(state, messageId)),
-
-  markRead: (messageId, readBy) =>
-    set((state) => markReadMutation(state, messageId, readBy)),
-
-  pinMessage: (messageId, isPinned) =>
-    set((state) => pinMessageMutation(state, messageId, isPinned)),
 
   getMessages: (selectedUserId) => {
     const key = resolveChatKey(selectedUserId);

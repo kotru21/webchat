@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  security-and-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - name: Install root
+        working-directory: .
+        run: npm ci
+      - name: Install server
+        run: npm ci
+      - name: Frontend lint
+        working-directory: .
+        run: npm run lint
+      - name: Server typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+      - name: Security + unit tests
+        run: npm test
+        env:
+          JWT_SECRET: ci-test-secret-with-enough-length-012345
+          DATABASE_URL: file:./prisma/ci-test.db
+          CLIENT_URL: http://localhost:5173
+          NODE_ENV: test
+      - name: npm audit (non-blocking)
+        run: npm audit --audit-level=high || true
+
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan (ERROR severity gate)
+        run: |
+          semgrep scan \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/expressjs \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --config .semgrep/rules \
+            --severity ERROR \
+            --error \
+            --metrics=off

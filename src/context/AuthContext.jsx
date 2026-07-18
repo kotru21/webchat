@@ -1,62 +1,96 @@
 import { useReducer, useEffect } from "react";
 import { authReducer, normalizeUser } from "@features/auth/model/authState";
 import apiClient from "@shared/api/client";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "@shared/lib/accessToken";
+import {
+  clearRefreshSessionFlag,
+  hasRefreshSessionFlag,
+  refreshAccessToken,
+} from "@shared/lib/refreshSession";
 import { AuthContext } from "./AuthContextBase";
+
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, {
     user: null,
     loading: true,
   });
 
-  // Загрузка данных из localStorage при старте
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-    if (token && userData) {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      // Avoid POST /api/auth/refresh when there is clearly no session.
+      if (!hasRefreshSessionFlag()) {
+        if (!cancelled) {
+          clearAccessToken();
+          dispatch({ type: "LOGOUT" });
+        }
+        return;
+      }
+
       try {
-        const parsedUser = JSON.parse(userData);
-        const normalizedUser = normalizeUser(parsedUser);
-        dispatch({ type: "LOGIN", payload: normalizedUser });
-      } catch (error) {
-        console.error("Ошибка парсинга данных из localStorage:", error);
-        localStorage.removeItem("user");
+        // Single-flight refresh restores in-memory access token.
+        const token = await refreshAccessToken();
+        if (cancelled) return;
+        setAccessToken(token);
+        const me = await apiClient.get("/api/auth/me");
+        if (cancelled) return;
+        dispatch({ type: "LOGIN", payload: normalizeUser(me.data) });
+      } catch {
+        if (cancelled) return;
+        clearAccessToken();
+        clearRefreshSessionFlag();
         dispatch({ type: "LOGOUT" });
       }
+    };
+
+    if (getAccessToken()) {
+      apiClient
+        .get("/api/auth/me")
+        .then((me) => {
+          if (!cancelled) {
+            dispatch({ type: "LOGIN", payload: normalizeUser(me.data) });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            clearAccessToken();
+            dispatch({ type: "LOGOUT" });
+          }
+        });
     } else {
-      dispatch({ type: "LOGOUT" });
+      bootstrap();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Принцип SRP: разделение ответственности для аутентификации
-  const login = async (userData, token, refreshToken) => {
+  const login = async (userData, token) => {
     const normalizedUser = normalizeUser(userData);
+    setAccessToken(token);
     dispatch({ type: "LOGIN", payload: normalizedUser });
-    localStorage.setItem("token", token);
-    if (refreshToken) {
-      localStorage.setItem("refreshToken", refreshToken);
-    }
-    localStorage.setItem("user", JSON.stringify(normalizedUser));
   };
 
-  // Обновление профиля
   const updateUser = (updatedUser) => {
     const normalizedUser = normalizeUser(updatedUser);
     dispatch({ type: "UPDATE_PROFILE", payload: normalizedUser });
-    localStorage.setItem("user", JSON.stringify(normalizedUser));
   };
 
-  // Выход из системы
   const logout = async () => {
     try {
       await apiClient.post("/api/auth/logout");
     } catch (error) {
       console.error("Ошибка при выходе:", error);
     } finally {
-      // Всегда выполняем локальный выход
+      clearAccessToken();
+      clearRefreshSessionFlag();
       dispatch({ type: "LOGOUT" });
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
     }
   };
 
@@ -73,5 +107,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-// useAuth вынесен в отдельный файл @context/useAuth для корректного Fast Refresh.

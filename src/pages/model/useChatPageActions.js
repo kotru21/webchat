@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { updateProfile } from "@features/auth/api/authApi";
 import apiClient from "@shared/api/client";
 import { toAbsoluteMediaUrl } from "@shared/lib/mediaUrl";
+import { resolvePeerId } from "@shared/lib/peerId";
 
 const PROFILE_UPDATE_ERRORS = Object.freeze({
   400: "Некорректные данные для обновления профиля",
@@ -78,15 +79,15 @@ export function useChatPageActions({
 
   const handleStartChat = useCallback(
     (target) => {
-      if (!target?.id || target.id === currentUserId) {
+      const peerId = resolvePeerId(target);
+      if (!peerId || peerId === currentUserId) {
         return;
       }
 
       setSelectedUser({
-        id: target.id,
+        id: peerId,
         username: target.username,
         avatar: target.avatar,
-        email: target.email,
       });
 
       setSidebarOpen(false);

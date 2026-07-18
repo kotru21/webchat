@@ -59,6 +59,7 @@ export const SendMessageForm = memo(function SendMessageForm({
           variant="outline"
           size="icon"
           className="h-10 w-10"
+          disabled={loading}
           aria-label="Прикрепить файл">
           <IoMdAttach size={20} />
         </Button>
@@ -68,6 +69,7 @@ export const SendMessageForm = memo(function SendMessageForm({
           variant="outline"
           size="icon"
           className="h-10 w-10"
+          disabled={loading}
           aria-label="Записать голосовое сообщение">
           <BsMicFill size={20} />
         </Button>

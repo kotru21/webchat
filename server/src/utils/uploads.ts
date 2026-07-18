@@ -21,8 +21,17 @@ export const safeUnlinkFromServerRoot = async (
   relativePath: string | null | undefined
 ): Promise<void> => {
   if (!relativePath) return;
-  const normalized = relativePath.replace(/^\/+/, "");
-  const fullPath = path.join(baseDir, normalized);
+
+  const normalized = relativePath.replace(/^\/+/, "").replace(/\\/g, "/");
+  if (!normalized.startsWith("uploads/")) return;
+
+  const uploadsRoot = path.resolve(baseDir, "uploads");
+  const fullPath = path.resolve(baseDir, normalized);
+
+  if (!fullPath.startsWith(uploadsRoot + path.sep) && fullPath !== uploadsRoot) {
+    return;
+  }
+
   try {
     await fs.unlink(fullPath);
   } catch {

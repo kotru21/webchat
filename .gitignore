@@ -7,11 +7,14 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-.github/
 node_modules
 dist
 dist-ssr
 *.local
+
+# Local design/planning docs (specs, plans, brainstorming).
+# Public security docs stay at repo root: SECURITY.md + README (tracked).
+docs/
 
 # Editor directories and files
 .vscode/*
