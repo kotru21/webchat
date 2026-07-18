@@ -7,16 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-.github/
 node_modules
 dist
 dist-ssr
 *.local
 
+# Local design/planning docs (specs, plans, brainstorming).
+# Public security docs stay at repo root: SECURITY.md + README (tracked).
+docs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
+# Local Cursor rules/skills/agents (not shared via git)
+.cursor/
 .DS_Store
 *.suo
 *.ntvs*
@@ -27,6 +32,13 @@ dist-ssr
 server/uploads/avatars/
 server/uploads/media/
 server/uploads/banners/
+server/uploads/covers/
+
+# Test artifacts
+coverage/
+server/coverage/
+playwright-report/
+test-results/
 
 .env
 /server/.env

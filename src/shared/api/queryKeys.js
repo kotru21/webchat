@@ -2,6 +2,9 @@ export const queryKeys = {
   chats: {
     all: ["chats"],
   },
+  users: {
+    search: (q) => ["users", "search", q],
+  },
   profile: {
     byId: (id) => ["profile", id],
   },

@@ -93,6 +93,17 @@ export function finalizePendingMessageMutation(state, tempId, realDto) {
   }
 
   const realMessage = mapMessageDto(realDto);
+  const pendingMessage = chat.messages.find((message) => message._id === tempId);
+  if (
+    pendingMessage?.sender?.avatar &&
+    realMessage?.sender &&
+    !realMessage.sender.avatar
+  ) {
+    realMessage.sender = {
+      ...realMessage.sender,
+      avatar: pendingMessage.sender.avatar,
+    };
+  }
   const alreadyExists = chat.messages.some(
     (message) => message._id === realMessage._id && message._id !== tempId
   );
@@ -155,38 +166,6 @@ export function updateMessageMutation(state, messageId, dto) {
 export function removeMessageMutation(state, messageId) {
   const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
     messages.filter((message) => message._id !== messageId)
-  );
-
-  return { chats: nextChats };
-}
-
-export function markMessageDeletedMutation(state, messageId) {
-  const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
-    messages.map((message) =>
-      message._id === messageId
-        ? { ...message, isDeleted: true, content: message.content }
-        : message
-    )
-  );
-
-  return { chats: nextChats };
-}
-
-export function markReadMutation(state, messageId, readBy) {
-  const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
-    messages.map((message) =>
-      message._id === messageId ? { ...message, readBy } : message
-    )
-  );
-
-  return { chats: nextChats };
-}
-
-export function pinMessageMutation(state, messageId, isPinned) {
-  const nextChats = updateMessagesInAllChats(state.chats, (messages) =>
-    messages.map((message) =>
-      message._id === messageId ? { ...message, isPinned } : message
-    )
   );
 
   return { chats: nextChats };

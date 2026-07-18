@@ -4,11 +4,11 @@ import { useSendMessage } from "@features/sendMessage";
 import useChatSocket from "./useChatSocket";
 import { useAuth } from "@context/useAuth";
 import { useChatStore } from "@shared/store/chatStore";
+import { resolvePeerId } from "@shared/lib/peerId";
 
-// Фасад объединяющий сообщения, сокет и счётчики непрочитанного
 export function useChatFeature({ onError } = {}) {
-  // Берём selectedUser из zustand
   const selectedUser = useChatStore((s) => s.selectedUser);
+  const peerId = resolvePeerId(selectedUser);
   const { user } = useAuth();
   const incrementUnread = useChatStore((s) => s.incrementUnread);
   const resetUnread = useChatStore((s) => s.resetUnread);
@@ -18,20 +18,14 @@ export function useChatFeature({ onError } = {}) {
     loading: messagesLoading,
     error,
     setError,
-    markAsReadHandler,
-    editMessageHandler,
-    deleteMessageHandler,
-    pinMessageHandler,
   } = useChatMessages(selectedUser);
 
-  // отправка теперь напрямую через feature sendMessage (включает optimistic)
   const { send, loading: sending } = useSendMessage({
-    receiverId: selectedUser?.id || null,
+    receiverId: peerId,
   });
 
   useChatSocket({ user, selectedUser, incrementUnread });
 
-  // Пробрасываем ошибки через эффект, чтобы не вызывать setState в рендере
   useEffect(() => {
     if (error && onError) {
       onError(error);
@@ -39,22 +33,7 @@ export function useChatFeature({ onError } = {}) {
     }
   }, [error, onError, setError]);
 
-  const api = useMemo(
-    () => ({
-      send, // оставляем для совместимости, но Chat.jsx может теперь использовать useSendMessageForm
-      markRead: markAsReadHandler,
-      edit: editMessageHandler,
-      remove: deleteMessageHandler,
-      pin: pinMessageHandler,
-    }),
-    [
-      send,
-      markAsReadHandler,
-      editMessageHandler,
-      deleteMessageHandler,
-      pinMessageHandler,
-    ]
-  );
+  const api = useMemo(() => ({ send }), [send]);
 
   return {
     messages,

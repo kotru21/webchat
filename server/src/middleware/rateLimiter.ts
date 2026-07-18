@@ -28,3 +28,45 @@ export const profileLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 10_000 : 30,
+  message: { message: "Слишком много запросов обновления сессии." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isDevelopment ? 10_000 : 30,
+  message: { message: "Слишком много поисковых запросов. Подождите немного." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const logoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 10_000 : 60,
+  message: { message: "Слишком много запросов выхода." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/** Authenticated read endpoints (profiles, chat/message lists). */
+export const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isDevelopment ? 10_000 : 120,
+  message: { message: "Слишком много запросов. Подождите немного." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/** Media GETs burst hard (avatar per chat row) — higher ceiling than readLimiter. */
+export const mediaLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isDevelopment ? 10_000 : 300,
+  message: { message: "Слишком много запросов медиа. Подождите немного." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

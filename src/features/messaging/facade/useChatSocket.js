@@ -4,8 +4,26 @@ import { SOCKET_EVENTS } from "@constants/socketEvents";
 import { useMessagesStore } from "@shared/store/messagesStore";
 import { notify } from "@shared/event/notify";
 import { getApiBaseUrl } from "@shared/lib/apiUrl";
+import { clearAccessToken, getAccessToken, setAccessToken } from "@shared/lib/accessToken";
+import {
+  clearRefreshSessionFlag,
+  refreshAccessToken,
+} from "@shared/lib/refreshSession";
+import { resolvePeerId } from "@shared/lib/peerId";
 
 const MAX_RECONNECTION_ATTEMPTS = 15;
+
+const dmRoomId = (userA, userB) => {
+  const [minId, maxId] = [userA, userB].sort();
+  return `dm:${minId}:${maxId}`;
+};
+
+const forceLogin = () => {
+  clearAccessToken();
+  clearRefreshSessionFlag();
+  notify("error", "Ошибка авторизации. Пожалуйста, войдите снова.");
+  window.location.href = "/login";
+};
 
 const useChatSocket = ({
   user,
@@ -14,17 +32,13 @@ const useChatSocket = ({
   onSocketSendRef,
 }) => {
   const addMessage = useMessagesStore((s) => s.addMessage);
-  const updateMessage = useMessagesStore((s) => s.updateMessage);
-  const removeMessage = useMessagesStore((s) => s.removeMessage);
-  const markRead = useMessagesStore((s) => s.markRead);
-  const pinMessage = useMessagesStore((s) => s.pinMessage);
-
   const socketRef = useRef(null);
+  const peerId = resolvePeerId(selectedUser);
 
   useEffect(() => {
     if (!user) return;
 
-    const token = localStorage.getItem("token");
+    const token = getAccessToken();
     if (!token) {
       console.warn("[Socket] No auth token found, skipping connection");
       return;
@@ -45,84 +59,71 @@ const useChatSocket = ({
       : io(socketOptions);
     socketRef.current = socket;
 
-    const joinRooms = () => {
-      socket.emit(SOCKET_EVENTS.JOIN_ROOM, "general");
-      if (selectedUser?.id)
-        socket.emit(SOCKET_EVENTS.JOIN_ROOM, selectedUser.id);
+    let refreshInFlight = false;
+
+    const joinDmRoom = () => {
+      if (peerId) {
+        socket.emit(SOCKET_EVENTS.JOIN_ROOM, dmRoomId(user.id, peerId));
+      }
     };
 
-    socket.on("connect", joinRooms);
-    socket.on("reconnect", joinRooms);
-    socket.on("reconnect_error", () => {
-      // Можно добавить notify при желании
-    });
+    socket.on("connect", joinDmRoom);
+    socket.on("reconnect", joinDmRoom);
     socket.on("reconnect_failed", () => {
       notify("error", "Не удалось восстановить соединение. Обновите страницу.");
     });
-    socket.on("connect_error", (error) => {
+    socket.on("connect_error", async (error) => {
       if (
         error.message === "AUTH_REQUIRED" ||
         error.message === "INVALID_TOKEN"
       ) {
-        notify("error", "Ошибка авторизации. Пожалуйста, войдите снова.");
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      } else if (error.message === "TOKEN_EXPIRED") {
-        notify("error", "Сессия истекла. Пожалуйста, войдите снова.");
-        localStorage.removeItem("token");
-        window.location.href = "/login";
+        forceLogin();
+        return;
+      }
+
+      if (error.message !== "TOKEN_EXPIRED") return;
+      if (refreshInFlight) return;
+
+      refreshInFlight = true;
+      socket.io.opts.reconnection = false;
+
+      try {
+        const newToken = await refreshAccessToken();
+        setAccessToken(newToken);
+        socket.auth = { token: newToken };
+        socket.io.opts.reconnection = true;
+        socket.connect();
+      } catch {
+        forceLogin();
+      } finally {
+        refreshInFlight = false;
       }
     });
     socket.on("disconnect", (reason) => {
+      // Server kick (logout): never auto-reconnect — token may still be in memory
+      // until AuthContext finally clears it after POST /logout returns.
       if (reason === "io server disconnect") {
-        // требуется ручное подключение
-        socket.connect();
+        return;
       }
     });
-
-    socket.emit(SOCKET_EVENTS.USER_CONNECTED, {
-      id: user.id,
-      username: user.username,
-      avatar: user.avatar,
-    });
-
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, (msg) => {
-      const isPrivate = !!msg.isPrivate || !!msg.receiver;
       const senderId = msg.sender?._id || msg.sender;
       const receiverId = (msg.receiver && msg.receiver._id) || msg.receiver;
-      const currentSelectedId = selectedUser?.id;
+      const currentSelectedId = peerId;
       const isOwn = senderId === user.id;
 
-      if (isPrivate) {
-        const isCurrentChat =
-          currentSelectedId &&
-          (senderId === currentSelectedId || receiverId === currentSelectedId);
-        if (isCurrentChat) {
-          addMessage(selectedUser?.id, msg);
-        } else if (!isOwn) {
-          const otherId = senderId !== user.id ? senderId : receiverId;
-          if (otherId) incrementUnread(otherId);
-        }
-      } else {
-        if (!selectedUser) addMessage(null, msg);
-        else if (!isOwn) {
-          incrementUnread("general");
-        }
+      if (!msg.isPrivate && !msg.receiver) return;
+
+      const isCurrentChat =
+        currentSelectedId &&
+        (senderId === currentSelectedId || receiverId === currentSelectedId);
+      if (isCurrentChat) {
+        addMessage(peerId, msg);
+      } else if (!isOwn) {
+        const otherId = senderId !== user.id ? senderId : receiverId;
+        if (otherId) incrementUnread(otherId);
       }
     });
-
-    socket.on(SOCKET_EVENTS.MESSAGE_READ, ({ messageId, readBy }) =>
-      markRead(messageId, readBy)
-    );
-    socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, (updatedMessage) =>
-      updateMessage(updatedMessage._id, updatedMessage)
-    );
-    socket.on(SOCKET_EVENTS.MESSAGE_DELETE, (messageId) =>
-      removeMessage(messageId)
-    );
-    socket.on(SOCKET_EVENTS.MESSAGE_PINNED, ({ messageId, isPinned }) =>
-      pinMessage(messageId, isPinned)
-    );
 
     if (onSocketSendRef) {
       onSocketSendRef.current = (payload, cb) => {
@@ -134,26 +135,19 @@ const useChatSocket = ({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [
-    user,
-    selectedUser,
-    incrementUnread,
-    addMessage,
-    markRead,
-    removeMessage,
-    updateMessage,
-    pinMessage,
-    onSocketSendRef,
-  ]);
+  }, [user, peerId, incrementUnread, addMessage, onSocketSendRef]);
 
   const prevSelectedRef = useRef(null);
   useEffect(() => {
-    if (!socketRef.current) return;
-    if (selectedUser?.id && prevSelectedRef.current !== selectedUser.id) {
-      socketRef.current.emit(SOCKET_EVENTS.JOIN_ROOM, selectedUser.id);
-      prevSelectedRef.current = selectedUser.id;
+    if (!socketRef.current || !user?.id) return;
+    if (peerId && prevSelectedRef.current !== peerId) {
+      socketRef.current.emit(
+        SOCKET_EVENTS.JOIN_ROOM,
+        dmRoomId(user.id, peerId)
+      );
+      prevSelectedRef.current = peerId;
     }
-  }, [selectedUser?.id]);
+  }, [peerId, user?.id]);
 
   return {};
 };

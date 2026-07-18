@@ -1,59 +1,29 @@
-export function MessageSenderAvatar({
-  sender,
-  senderAvatar,
-  isOwnMessage,
-  profileTriggerRef,
-  isProfileOpen,
-  onProfileClick,
-  onCloseProfile,
-  ProfileWidgetComponent,
-  currentUserId,
-  onStartChat,
-}) {
-  const displayName = sender?.username || sender?.email || "User";
+import { forwardRef } from "react";
+import { AuthorizedMediaImg } from "@shared/ui/AuthorizedMediaImg";
+
+export const MessageSenderAvatar = forwardRef(function MessageSenderAvatar(
+  { sender, senderAvatar, onClick },
+  ref
+) {
+  const displayName = sender?.username || sender?.email || "Пользователь";
 
   return (
-    <div className="cursor-pointer flex items-center gap-2">
-      <div
-        ref={profileTriggerRef}
-        onClick={onProfileClick}
-        className="relative">
-        <img
-          loading="lazy"
-          decoding="async"
-          src={senderAvatar}
-          alt={`${displayName}'s avatar`}
-          className="w-8 h-8 rounded-full object-cover shrink-0 hover:opacity-80 transition-opacity"
-          onError={(event) => {
-            if (event.currentTarget.src.endsWith("/default-avatar.png")) {
-              return;
-            }
-
-            event.currentTarget.src = "/default-avatar.png";
-          }}
-        />
-        {isProfileOpen && (
-          <div className="absolute top-0">
-            {ProfileWidgetComponent ? (
-              <ProfileWidgetComponent
-                userId={sender?._id}
-                onClose={onCloseProfile}
-                anchorRef={profileTriggerRef}
-                isReversed={isOwnMessage}
-                containerClassName={
-                  isOwnMessage
-                    ? "right-full translate-x-[-8px]"
-                    : "left-full translate-x-[8px]"
-                }
-                currentUserId={currentUserId}
-                onStartChat={onStartChat}
-              />
-            ) : null}
-          </div>
-        )}
-      </div>
-    </div>
+    <button
+      type="button"
+      ref={ref}
+      onClick={onClick}
+      data-profile-anchor
+      aria-label={`Открыть профиль: ${displayName}`}
+      className="shrink-0 cursor-pointer rounded-full p-0 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+      <AuthorizedMediaImg
+        loading="lazy"
+        decoding="async"
+        src={senderAvatar}
+        alt=""
+        className="h-8 w-8 shrink-0 rounded-full object-cover"
+      />
+    </button>
   );
-}
+});
 
 export default MessageSenderAvatar;

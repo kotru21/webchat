@@ -1,5 +1,14 @@
 import axios from "axios";
 import { API } from "@constants/appConstants";
+import {
+  clearAccessToken,
+  getAccessToken,
+} from "@shared/lib/accessToken";
+import {
+  clearRefreshSessionFlag,
+  hasRefreshSessionFlag,
+  refreshAccessToken,
+} from "@shared/lib/refreshSession";
 
 export const apiClient = axios.create({
   baseURL: API.BASE_URL,
@@ -20,8 +29,14 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const clearSessionAndRedirect = () => {
+  clearAccessToken();
+  clearRefreshSessionFlag();
+  window.location.href = "/login";
+};
+
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = getAccessToken();
   if (!config.headers) {
     config.headers = {};
   }
@@ -48,7 +63,6 @@ apiClient.interceptors.response.use(
       });
     }
 
-    // Don't retry refresh endpoint or already retried requests
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
@@ -68,36 +82,24 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      if (!refreshToken) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-        return Promise.reject(error);
-      }
-
       try {
-        const response = await axios.post(`${API.BASE_URL}/api/auth/refresh`, {
-          refreshToken,
-        });
+        if (!hasRefreshSessionFlag()) {
+          throw new Error("NO_REFRESH_SESSION");
+        }
 
-        const { token: newToken, refreshToken: newRefreshToken } =
-          response.data;
-
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("refreshToken", newRefreshToken);
-
+        const newToken = await refreshAccessToken();
         processQueue(null, newToken);
 
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
+        // Concurrent-tab loss is retried inside refreshAccessToken; only fatal
+        // failures should wipe the shared session flag / redirect.
+        const code = refreshError?.response?.data?.code;
+        if (code !== "REFRESH_CONCURRENT") {
+          clearSessionAndRedirect();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

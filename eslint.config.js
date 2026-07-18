@@ -6,7 +6,16 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import eslintPluginImport from "eslint-plugin-import";
 
 export default [
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      "coverage",
+      "server/coverage",
+      "server/dist",
+      "playwright-report",
+      "test-results",
+    ],
+  },
   {
     files: ["**/*.{js,jsx}"],
     languageOptions: {
@@ -21,7 +30,7 @@ export default [
         sourceType: "module",
       },
     },
-    settings: { react: { version: "18.3" } },
+    settings: { react: { version: "19.2" } },
     plugins: {
       react,
       "react-hooks": reactHooks,

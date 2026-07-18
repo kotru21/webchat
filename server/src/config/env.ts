@@ -24,4 +24,5 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET as string,
   ACCESS_TOKEN_TTL: process.env.ACCESS_TOKEN_TTL ?? "15m",
   REFRESH_TOKEN_TTL_DAYS: parseNumber(process.env.REFRESH_TOKEN_TTL_DAYS, 7),
+  COOKIE_SECURE: process.env.COOKIE_SECURE === "true",
 };

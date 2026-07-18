@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Least-privilege default; jobs that need more declare it explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (lint, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Audit runtime dependencies (blocking)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all dependencies (informational)
+        run: npm audit || true
+
+  server:
+    name: Server (typecheck, tests, coverage)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      JWT_SECRET: ci-test-secret-with-enough-length-012345
+      DATABASE_URL: file:./prisma/ci-test.db
+      CLIENT_URL: http://localhost:5173
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+      - name: Security + unit tests with coverage gate
+        run: npm run test:coverage
+      - name: Audit runtime dependencies (blocking)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all dependencies (informational)
+        run: npm audit || true
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - name: Install root
+        run: npm ci
+      - name: Install server
+        run: npm ci
+        working-directory: server
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: server
+        env:
+          # prisma.config.ts resolves DATABASE_URL even for generate; no DB is touched.
+          DATABASE_URL: "file:./prisma/e2e.db"
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e smoke suite
+        run: npx playwright test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Build server image
+        run: docker build -t webchat-server:ci .
+
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep:1.170.0
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Scan (ERROR severity gate)
+        run: |
+          semgrep scan \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/expressjs \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --config .semgrep/rules \
+            --severity ERROR \
+            --error \
+            --sarif-output=semgrep.sarif \
+            --metrics=off
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@b7351df727350dca84cb9d725d57dcf5bc82ba26 # v3.37.1
+        if: always()
+        # Requires GitHub code scanning (public repo or GHAS); informational otherwise.
+        continue-on-error: true
+        with:
+          sarif_file: semgrep.sarif

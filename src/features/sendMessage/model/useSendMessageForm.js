@@ -9,6 +9,11 @@ export function useSendMessageForm({ receiverId, onSent }) {
   const [error, setError] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
+  const textInputRef = useRef(null);
+
+  const focusTextInput = useCallback(() => {
+    queueMicrotask(() => textInputRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     if (error) {
@@ -57,6 +62,10 @@ export function useSendMessageForm({ receiverId, onSent }) {
   const submit = useCallback(
     async (e) => {
       e.preventDefault();
+      if (!receiverId) {
+        setError("Выберите чат, чтобы отправить сообщение");
+        return;
+      }
       if (!text.trim() && !selectedFile) return;
       if (text.length > INPUT_LIMITS.MESSAGE_MAX_LENGTH) {
         setError(
@@ -64,6 +73,8 @@ export function useSendMessageForm({ receiverId, onSent }) {
         );
         return;
       }
+      // Keep caret in the composer (submit button / disabled controls steal focus).
+      focusTextInput();
       const result = await send({ text: text.trim(), file: selectedFile });
       if (result?.ok) {
         setText("");
@@ -75,12 +86,17 @@ export function useSendMessageForm({ receiverId, onSent }) {
       } else if (result && !result.ok) {
         setError(result.error?.message || "Не удалось отправить сообщение");
       }
+      focusTextInput();
     },
-    [onSent, selectedFile, send, text]
+    [focusTextInput, onSent, receiverId, selectedFile, send, text]
   );
 
   const sendVoice = useCallback(
     async (audioFile, duration) => {
+      if (!receiverId) {
+        setError("Выберите чат, чтобы отправить сообщение");
+        return;
+      }
       const result = await send({
         file: audioFile,
         mediaType: "audio",
@@ -89,6 +105,7 @@ export function useSendMessageForm({ receiverId, onSent }) {
       if (result?.ok) {
         setIsRecording(false);
         onSent?.(result.value);
+        focusTextInput();
       } else if (result?.error?.response?.status === 429) {
         setError("Слишком часто. Подождите.");
       } else if (result && !result.ok) {
@@ -97,7 +114,7 @@ export function useSendMessageForm({ receiverId, onSent }) {
         );
       }
     },
-    [onSent, send]
+    [focusTextInput, onSent, receiverId, send]
   );
 
   return {
@@ -110,12 +127,16 @@ export function useSendMessageForm({ receiverId, onSent }) {
     loading,
     // refs
     fileInputRef,
+    textInputRef,
     // actions
     handleFileSelect,
     submit,
     sendVoice,
     startRecording: () => setIsRecording(true),
-    cancelRecording: () => setIsRecording(false),
+    cancelRecording: () => {
+      setIsRecording(false);
+      focusTextInput();
+    },
   };
 }
 

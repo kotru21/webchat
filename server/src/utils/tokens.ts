@@ -6,11 +6,16 @@ import type { JwtPayload } from "../types/auth.js";
 
 export const signAccessToken = (userId: string): string => {
   const expiresIn = env.ACCESS_TOKEN_TTL as SignOptions["expiresIn"];
-  return jwt.sign({ id: userId }, env.JWT_SECRET, { expiresIn });
+  return jwt.sign({ id: userId }, env.JWT_SECRET, {
+    expiresIn,
+    algorithm: "HS256",
+  });
 };
 
 export const verifyAccessToken = (token: string): JwtPayload => {
-  return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  return jwt.verify(token, env.JWT_SECRET, {
+    algorithms: ["HS256"],
+  }) as JwtPayload;
 };
 
 export const createRefreshToken = (): string => {

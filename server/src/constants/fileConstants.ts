@@ -17,6 +17,7 @@ export const ALLOWED_FILE_TYPES = {
 
 export const UPLOAD_PATHS = {
   AVATARS: "uploads/avatars",
-  BANNERS: "uploads/banners",
+  /** Profile cover images. Named "covers" — "banners" is blocked by common adblockers. */
+  COVERS: "uploads/covers",
   MEDIA: "uploads/media",
 } as const;

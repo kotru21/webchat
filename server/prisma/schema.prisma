@@ -8,45 +8,37 @@ datasource db {
 }
 
 model User {
-  id                       String          @id @default(cuid())
-  username                 String          @unique
-  email                    String          @unique
-  passwordHash             String
-  avatar                   String          @default("")
-  isVerified               Boolean         @default(false)
-  verificationToken        String?
-  verificationTokenExpires DateTime?
-  description              String          @default("")
-  banner                   String          @default("")
-  createdAt                DateTime        @default(now())
-  updatedAt                DateTime        @updatedAt
-  sentMessages             Message[]       @relation("UserSentMessages")
-  receivedMessages         Message[]       @relation("UserReceivedMessages")
-  messageReads             MessageRead[]
-  refreshSessions          RefreshSession[]
+  id               String           @id @default(cuid())
+  username         String           @unique
+  email            String           @unique
+  passwordHash     String
+  avatar           String           @default("")
+  description      String           @default("")
+  banner           String           @default("")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  sentMessages     Message[]        @relation("UserSentMessages")
+  receivedMessages Message[]        @relation("UserReceivedMessages")
+  refreshSessions  RefreshSession[]
 
   @@index([createdAt])
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   senderId       String
   receiverId     String?
   senderUsername String
-  content        String       @default("")
+  content        String   @default("")
   mediaUrl       String?
   mediaType      String?
   audioDuration  Int?
-  roomId         String       @default("general")
-  isPrivate      Boolean      @default(false)
-  isEdited       Boolean      @default(false)
-  isDeleted      Boolean      @default(false)
-  isPinned       Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  sender         User         @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver       User?        @relation("UserReceivedMessages", fields: [receiverId], references: [id], onDelete: SetNull)
-  readBy         MessageRead[]
+  roomId         String   @default("general")
+  isPrivate      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  sender         User     @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver       User?    @relation("UserReceivedMessages", fields: [receiverId], references: [id], onDelete: SetNull)
 
   @@index([senderId, receiverId])
   @@index([createdAt])
@@ -54,31 +46,20 @@ model Message {
   @@index([receiverId, createdAt])
   @@index([senderId, createdAt])
   @@index([receiverId, senderId, createdAt])
-  @@index([isPinned, createdAt])
-  @@index([isDeleted])
-}
-
-model MessageRead {
-  messageId String
-  userId    String
-  readAt    DateTime @default(now())
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([messageId, userId])
-  @@index([userId])
-  @@index([readAt])
+  @@index([mediaUrl])
 }
 
 model RefreshSession {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  tokenHash String   @unique
+  familyId  String
+  tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
+  @@index([familyId])
   @@index([expiresAt])
 }

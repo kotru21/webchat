@@ -1,6 +1,27 @@
-import fs from "node:fs/promises";
-import { fileTypeFromBuffer } from "file-type";
-import type { RequestHandler } from "express";
+import path from "node:path";
+import { fileTypeFromFile } from "file-type";
+import type { NextFunction, Request, Response } from "express";
+import { ALLOWED_FILE_TYPES, FILE_LIMITS, UPLOAD_PATHS } from "../constants/fileConstants.js";
+import {
+  finalizeNonImageUpload,
+  isImageMime,
+  reencodeImageToWebp,
+} from "../services/uploadPipeline.js";
+import {
+  collectUploadedFiles,
+  unlinkUploadedFiles,
+} from "../utils/uploadedFiles.js";
+
+const outputDirForField = (fieldname: string): string => {
+  switch (fieldname) {
+    case "avatar":
+      return path.join(process.cwd(), UPLOAD_PATHS.AVATARS);
+    case "banner":
+      return path.join(process.cwd(), UPLOAD_PATHS.COVERS);
+    default:
+      return path.join(process.cwd(), UPLOAD_PATHS.MEDIA);
+  }
+};
 
 const MAGIC_BYTES_MAP: Record<string, string[]> = {
   "image/jpeg": ["image/jpeg"],
@@ -15,63 +36,99 @@ const MAGIC_BYTES_MAP: Record<string, string[]> = {
   "audio/ogg": ["audio/ogg", "application/ogg"],
 };
 
-const collectUploadedFiles = (req: Express.Request) => {
-  const files: Express.Multer.File[] = [];
-
-  if (req.file) {
-    files.push(req.file);
+const profileSizeError = (file: Express.Multer.File): string | null => {
+  if (file.fieldname === "avatar" && file.size > FILE_LIMITS.AVATAR_MAX_SIZE) {
+    return "Аватар слишком большой (макс. 5 МБ)";
   }
-
-  if (req.files) {
-    if (Array.isArray(req.files)) {
-      files.push(...req.files);
-    } else {
-      for (const fieldFiles of Object.values(req.files)) {
-        if (Array.isArray(fieldFiles)) {
-          files.push(...fieldFiles);
-        }
-      }
-    }
+  if (file.fieldname === "banner" && file.size > FILE_LIMITS.BANNER_MAX_SIZE) {
+    return "Баннер слишком большой (макс. 10 МБ)";
   }
-
-  return files;
+  if (
+    file.fieldname === "media" &&
+    ALLOWED_FILE_TYPES.AUDIO.includes(file.mimetype) &&
+    file.size > FILE_LIMITS.VOICE_MESSAGE_MAX_SIZE
+  ) {
+    return "Голосовое сообщение слишком большое (макс. 10 МБ)";
+  }
+  return null;
 };
 
-export const validateFileMagicBytes: RequestHandler = async (req, res, next) => {
+const extensionFromDetected = (detectedExt: string): string => {
+  const cleaned = detectedExt.replace(/^\./, "").toLowerCase();
+  return cleaned ? `.${cleaned}` : ".bin";
+};
+
+const applyPipelineToFile = async (
+  file: Express.Multer.File,
+  detectedExt: string
+): Promise<void> => {
+  const outputDir = outputDirForField(file.fieldname);
+
+  if (isImageMime(file.mimetype) || file.mimetype.startsWith("image/")) {
+    const result = await reencodeImageToWebp(file.path, outputDir);
+    file.filename = result.filename;
+    file.path = path.join(process.cwd(), result.relativePath);
+    file.mimetype = "image/webp";
+    return;
+  }
+
+  if (file.fieldname === "media") {
+    const ext = extensionFromDetected(detectedExt);
+    const result = await finalizeNonImageUpload(file.path, ext, outputDir);
+    file.filename = result.filename;
+    file.path = path.join(process.cwd(), result.relativePath);
+  }
+};
+
+export const validateFileMagicBytes = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   const files = collectUploadedFiles(req);
 
   if (files.length === 0) {
-    return next();
+    next();
+    return;
   }
 
   try {
     for (const file of files) {
-      const buffer = await fs.readFile(file.path);
-      const detectedType = await fileTypeFromBuffer(buffer);
+      const sizeError = profileSizeError(file);
+      if (sizeError) {
+        await unlinkUploadedFiles(files);
+        res.status(400).json({ message: sizeError });
+        return;
+      }
+
+      // file-type reads only a small prefix — avoid loading up to 50MB into RAM.
+      const detectedType = await fileTypeFromFile(file.path);
 
       if (!detectedType) {
-        await fs.unlink(file.path).catch(() => undefined);
-        return res.status(400).json({
+        await unlinkUploadedFiles(files);
+        res.status(400).json({
           message: `Не удалось определить тип файла: ${file.originalname}`,
         });
+        return;
       }
 
       const declaredMime = file.mimetype;
       const validMimes = MAGIC_BYTES_MAP[declaredMime] ?? [declaredMime];
 
       if (!validMimes.includes(detectedType.mime)) {
-        await fs.unlink(file.path).catch(() => undefined);
-        return res.status(400).json({
+        await unlinkUploadedFiles(files);
+        res.status(400).json({
           message: `Тип файла не соответствует содержимому: ${file.originalname}`,
         });
+        return;
       }
+
+      await applyPipelineToFile(file, detectedType.ext);
     }
 
     next();
   } catch (error) {
-    return res.status(500).json({
-      message: "Ошибка при проверке файла",
-      error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
-    });
+    await unlinkUploadedFiles(files);
+    next(error);
   }
 };

@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import prisma from "./config/prisma.js";
+import { assertStrongSecretsOrThrow } from "./middleware/requireStrongSecrets.js";
 import { initializeSocket } from "./socket/index.js";
 import { ensureUploadDirs } from "./utils/uploads.js";
 
@@ -12,6 +13,7 @@ const enableSqlitePragmas = async () => {
 };
 
 const bootstrap = async () => {
+  assertStrongSecretsOrThrow();
   await ensureUploadDirs(process.cwd());
   await enableSqlitePragmas();
 

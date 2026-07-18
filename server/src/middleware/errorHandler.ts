@@ -1,5 +1,6 @@
 import { Prisma } from "../generated/prisma/client.js";
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import multer from "multer";
 import { env } from "../config/env.js";
 import { isHttpError } from "../utils/errors.js";
 
@@ -10,12 +11,41 @@ export const notFoundHandler: RequestHandler = (req, res) => {
   });
 };
 
+const UPLOAD_REJECT_MESSAGES = new Set([
+  "Разрешены только изображения",
+  "Неподдерживаемый формат файла",
+]);
+
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (isHttpError(error)) {
     return res.status(error.statusCode).json({
       message: error.message,
       code: error.code,
       details: error.details,
+    });
+  }
+
+  if (error instanceof multer.MulterError) {
+    const status =
+      error.code === "LIMIT_FILE_SIZE" || error.code === "LIMIT_FIELD_VALUE"
+        ? 413
+        : 400;
+    const message =
+      error.code === "LIMIT_FILE_SIZE"
+        ? "Файл слишком большой"
+        : error.code === "LIMIT_FIELD_VALUE"
+          ? "Поле слишком большое"
+          : "Ошибка загрузки файла";
+    return res.status(status).json({
+      message,
+      code: error.code,
+    });
+  }
+
+  if (error instanceof Error && UPLOAD_REJECT_MESSAGES.has(error.message)) {
+    return res.status(400).json({
+      message: error.message,
+      code: "UNSUPPORTED_FILE_TYPE",
     });
   }
 

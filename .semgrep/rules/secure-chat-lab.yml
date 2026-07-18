@@ -1,0 +1,112 @@
+# Custom Secure Chat Lab rules — portfolio AppSec guardrails.
+# Registry packs (p/javascript, p/typescript, p/nodejs, p/expressjs,
+# p/owasp-top-ten, p/secrets) are applied via npm scripts / CI.
+rules:
+  - id: secure-chat.no-public-uploads-static
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Do not serve uploads via express.static. Media must go through
+      authenticated GET /api/media/* (see SECURITY.md uploads threat model).
+    metadata:
+      category: security
+      cwe: "CWE-552: Files or Directories Accessible to External Parties"
+      owasp: "A01:2021 - Broken Access Control"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      references:
+        - https://github.com/semgrep/semgrep
+    patterns:
+      - pattern-either:
+          - pattern: express.static($PATH)
+          - pattern: express.static($PATH, ...)
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: (?i).*(upload|uploads|media|avatar).*
+
+  - id: secure-chat.no-client-mediaurl-persistence
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Persisting req.body.mediaUrl (or equivalent client-supplied media URL)
+      bypasses the upload pipeline. Ignore client mediaUrl; accept only
+      server-generated paths from the upload pipeline.
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: |
+              { ..., mediaUrl: req.body.mediaUrl, ... }
+          - pattern: |
+              { ..., mediaUrl: $REQ.body.mediaUrl, ... }
+          - pattern: mediaUrl = req.body.mediaUrl
+          - pattern: $X.mediaUrl = req.body.mediaUrl
+
+  - id: secure-chat.no-placeholder-jwt-secret
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Hard-coded or placeholder JWT secret detected. Use a strong secret from
+      the environment and fail closed in production.
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+    pattern-either:
+      - pattern: |
+          jwt.sign($P, "...")
+      - pattern: |
+          jwt.verify($T, "...")
+      - pattern: |
+          JWT_SECRET = "your_jwt_secret"
+      - pattern: |
+          JWT_SECRET = "your_jwt_secret_key"
+      - pattern: |
+          process.env.JWT_SECRET || "..."
+
+  # IDOR guardrail: auth-only protect is not enough for message attachments.
+  # Registry packs catch sendFile traversal/secrets; missing authorization is
+  # semantic — this rule fails when a mediaRoutes GET handler calls sendFile
+  # without referencing assertCanAccessMediaAttachment (DM participant check).
+  # Avatar/banner paths may stay auth-only inside that same handler.
+  - id: secure-chat.media-sendfile-requires-dm-acl
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      GET media sendFile must authorize DM attachments via
+      assertCanAccessMediaAttachment. Authentication alone (protect) allows
+      IDOR on private DM mediaUrl paths. Keep avatar/banner auth-only, but do
+      not remove the media/ ACL call from this handler.
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+    paths:
+      include:
+        - "**/routes/mediaRoutes.ts"
+        - "**/routes/mediaRoutes.js"
+    patterns:
+      - pattern: |
+          async ($REQ, $RES, $NEXT) => {
+            ...
+            $RES.sendFile(...);
+            ...
+          }
+      - pattern-not: |
+          async ($REQ, $RES, $NEXT) => {
+            ...
+            assertCanAccessMediaAttachment(...);
+            ...
+          }

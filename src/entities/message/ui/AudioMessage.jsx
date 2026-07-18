@@ -52,7 +52,12 @@ function AudioMessage({ audioUrl, duration }) {
               max="100"
               value={progress}
               onChange={handleSeek}
-              className="absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+              className="absolute left-0 top-0 h-full w-full cursor-pointer opacity-0"
+              aria-label="Позиция воспроизведения"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress)}
+              aria-valuetext={`${formatTime(currentTime)} из ${durationLabel}`}
             />
             <span className="ml-2">{durationLabel}</span>
           </div>

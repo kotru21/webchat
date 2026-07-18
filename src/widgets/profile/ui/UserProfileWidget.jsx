@@ -1,14 +1,71 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import ProfileCard from "./ProfileCard";
 import { useUserProfile } from "@features/profile/api/useUserProfile";
+
+const CARD_WIDTH = 320;
+const VIEW_MARGIN = 8;
+/** Keep popover clear of the message composer / safe area. */
+const BOTTOM_RESERVE = 88;
+const FALLBACK_CARD_HEIGHT = 300;
+
+function readAnchorRect(anchorRef, anchorEl, anchorRect) {
+  const el = anchorRef?.current ?? anchorEl;
+  if (el?.getBoundingClientRect) {
+    return el.getBoundingClientRect();
+  }
+  return anchorRect || null;
+}
+
+function computePopoverPosition({
+  rect,
+  isReversed,
+  cardHeight = FALLBACK_CARD_HEIGHT,
+}) {
+  if (!rect) {
+    return { top: VIEW_MARGIN, left: VIEW_MARGIN };
+  }
+
+  const horizontalOffset = 12;
+  const preferredLeft = isReversed
+    ? rect.left - CARD_WIDTH - horizontalOffset
+    : rect.right + horizontalOffset;
+
+  const maxLeft = Math.max(VIEW_MARGIN, window.innerWidth - CARD_WIDTH - VIEW_MARGIN);
+  let left = Math.min(Math.max(preferredLeft, VIEW_MARGIN), maxLeft);
+
+  // If preferred side overflows, flip to the other side of the avatar.
+  if (!isReversed && preferredLeft > maxLeft) {
+    left = Math.min(
+      Math.max(rect.left - CARD_WIDTH - horizontalOffset, VIEW_MARGIN),
+      maxLeft
+    );
+  } else if (isReversed && preferredLeft < VIEW_MARGIN) {
+    left = Math.min(
+      Math.max(rect.right + horizontalOffset, VIEW_MARGIN),
+      maxLeft
+    );
+  }
+
+  const maxTop = Math.max(
+    VIEW_MARGIN,
+    window.innerHeight - cardHeight - VIEW_MARGIN - BOTTOM_RESERVE
+  );
+  // Prefer aligning to avatar top; nudge up if the card would cover the composer.
+  const top = Math.min(Math.max(rect.top, VIEW_MARGIN), maxTop);
+
+  return { top, left };
+}
 
 export function UserProfileWidget({
   userId,
   profileData,
   anchorEl,
   anchorRef,
+  anchorRect,
   isReversed,
+  /** "popover" (default) = fixed portal card; "embedded" = in-flow layout */
+  variant = "popover",
   containerClassName = "",
   currentUserId,
   onStartChat,
@@ -23,60 +80,77 @@ export function UserProfileWidget({
   });
   const profile = profileData || fetchedProfile;
   const popoverRef = useRef(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-
-  const isInlineMode = useMemo(
-    () => containerClassName.includes("relative"),
-    [containerClassName]
+  const [position, setPosition] = useState(() =>
+    computePopoverPosition({
+      rect: anchorRect || null,
+      isReversed,
+    })
+  );
+  const [ready, setReady] = useState(
+    () => variant === "embedded" || Boolean(anchorRect)
   );
 
-  useEffect(() => {
-    if (isInlineMode) return;
+  const isEmbedded =
+    variant === "embedded" || containerClassName.includes("relative");
 
-    const resolvedAnchor = anchorRef?.current ?? anchorEl;
-    if (!resolvedAnchor) return;
+  const updatePosition = useCallback(() => {
+    const rect = readAnchorRect(anchorRef, anchorEl, anchorRect);
+    const cardHeight =
+      popoverRef.current?.offsetHeight || FALLBACK_CARD_HEIGHT;
+    setPosition(
+      computePopoverPosition({ rect, isReversed, cardHeight })
+    );
+    setReady(true);
+  }, [anchorEl, anchorRef, anchorRect, isReversed]);
 
-    const updatePosition = () => {
-      const rect = resolvedAnchor.getBoundingClientRect();
-      const horizontalOffset = 12;
-      const cardWidth = 320;
-      const top = rect.top;
-      const preferredLeft = isReversed
-        ? rect.left - cardWidth - horizontalOffset
-        : rect.right + horizontalOffset;
-
-      const minLeft = 8;
-      const maxLeft = window.innerWidth - cardWidth - 8;
-      const left = Math.min(Math.max(preferredLeft, minLeft), maxLeft);
-
-      setPosition({ top, left });
-    };
-
+  useLayoutEffect(() => {
+    if (isEmbedded) return undefined;
     updatePosition();
+  }, [isEmbedded, updatePosition, userId, loading, profile]);
+
+  useEffect(() => {
+    if (isEmbedded) return undefined;
+
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
-
     return () => {
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [anchorEl, anchorRef, isInlineMode, isReversed]);
+  }, [isEmbedded, updatePosition]);
 
   useEffect(() => {
-    const resolvedAnchor = anchorRef?.current ?? anchorEl;
+    if (isEmbedded) return undefined;
 
-    const handleClickOutside = (e) => {
+    const handlePointerDown = (e) => {
+      // Switching to another avatar: let that click open the next preview
+      // without a close→open remount flash.
+      if (e.target.closest?.("[data-profile-anchor]")) return;
+
+      const anchor = anchorRef?.current ?? anchorEl;
       if (
         popoverRef.current &&
         !popoverRef.current.contains(e.target) &&
-        !resolvedAnchor?.contains(e.target)
+        !anchor?.contains?.(e.target)
       ) {
-        onClose && onClose();
+        onClose?.();
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [anchorEl, anchorRef, onClose]);
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose?.();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [anchorEl, anchorRef, isEmbedded, onClose]);
 
   const isCurrentUser = () => {
     if (!profile || !currentUserId) return false;
@@ -86,23 +160,38 @@ export function UserProfileWidget({
   const content = (
     <div
       ref={popoverRef}
-      className={`${
-        isReversed ? "profile-enter" : "profile-enter-reverse"
-      } ${containerClassName}`}
-      style={{
-        position: isInlineMode ? "absolute" : "fixed",
-        top: isInlineMode ? undefined : `${position.top}px`,
-        left: isInlineMode ? undefined : `${position.left}px`,
-        zIndex: 2147483647,
-        willChange: "transform, opacity",
-      }}>
+      role={isEmbedded ? undefined : "dialog"}
+      aria-modal={isEmbedded ? undefined : false}
+      aria-label={
+        isEmbedded
+          ? undefined
+          : profile?.username
+            ? `Профиль: ${profile.username}`
+            : "Профиль пользователя"
+      }
+      className={containerClassName}
+      style={
+        isEmbedded
+          ? { position: "relative" }
+          : {
+              position: "fixed",
+              top: position.top,
+              left: position.left,
+              zIndex: 60,
+              visibility: ready ? "visible" : "hidden",
+            }
+      }>
       {loading && (
-        <div className="m3-surface-high w-[320px] rounded-2xl border border-border/70 p-4 text-sm text-muted-foreground shadow-xl">
+        <div
+          className="m3-surface-high w-[320px] rounded-2xl border border-border/70 p-4 text-sm text-muted-foreground shadow-xl"
+          role="status">
           Загрузка...
         </div>
       )}
       {error && !loading && (
-        <div className="m3-surface-high w-[320px] rounded-2xl border border-destructive/35 p-4 text-sm text-destructive shadow-xl">
+        <div
+          className="m3-surface-high w-[320px] rounded-2xl border border-destructive/35 p-4 text-sm text-destructive shadow-xl"
+          role="alert">
           {error}
         </div>
       )}
@@ -117,7 +206,7 @@ export function UserProfileWidget({
     </div>
   );
 
-  if (isInlineMode) {
+  if (isEmbedded) {
     return content;
   }
 

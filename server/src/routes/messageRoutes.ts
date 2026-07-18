@@ -1,41 +1,28 @@
 import { Router } from "express";
 import {
   createMessageHandler,
-  deleteMessage,
   getMessages,
-  markAsRead,
-  pinMessage,
-  updateMessage,
 } from "../controllers/messageController.js";
 import protect from "../middleware/auth.js";
+import { cleanupUploadsOnError } from "../middleware/cleanupUploadsOnError.js";
 import { validateFileMagicBytes } from "../middleware/fileValidator.js";
-import { messageLimiter } from "../middleware/rateLimiter.js";
+import { messageLimiter, readLimiter } from "../middleware/rateLimiter.js";
 import { mediaUpload } from "../middleware/upload.js";
 import { validateMessage } from "../middleware/validator.js";
 
 const router = Router();
 
-router.get("/", protect, getMessages);
+router.get("/", protect, readLimiter, getMessages);
 router.post(
   "/",
   protect,
   messageLimiter,
-  validateMessage,
+  // Multer must run first so multipart fields exist for validateMessage.
   mediaUpload,
+  cleanupUploadsOnError,
+  validateMessage,
   validateFileMagicBytes,
   createMessageHandler
 );
-router.put(
-  "/:messageId",
-  protect,
-  messageLimiter,
-  validateMessage,
-  mediaUpload,
-  validateFileMagicBytes,
-  updateMessage
-);
-router.put("/:messageId/pin", protect, pinMessage);
-router.delete("/:messageId", protect, deleteMessage);
-router.post("/:messageId/read", protect, markAsRead);
 
 export default router;

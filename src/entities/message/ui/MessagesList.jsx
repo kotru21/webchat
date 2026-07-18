@@ -1,79 +1,50 @@
-import { memo, useState, useCallback } from "react";
-import { useChatStore } from "@shared/store/chatStore";
+import { memo, useCallback, useState } from "react";
 import NewMessagesButton from "./NewMessagesButton";
-import { PinnedMessagesPanel } from "./PinnedMessagesPanel";
 import { MessageVirtualList } from "./MessageVirtualList";
 import { useMessagesListController } from "@entities/message/model/useMessagesListController";
-import { usePinnedMessagesPanel } from "@entities/message/model/usePinnedMessagesPanel";
 
 export const MessagesList = memo(function MessagesList({
   messages,
   currentUser,
-  onMarkAsRead,
-  onEditMessage,
-  onDeleteMessage,
   onMediaClick,
-  onPinMessage,
-  onStartChat,
-  MessageEditorComponent,
   ProfileWidgetComponent,
-  enablePinnedPanel = true,
 }) {
-  const setSelectedUser = useChatStore((s) => s.setSelectedUser);
+  const [openProfile, setOpenProfile] = useState(null);
 
   const controller = useMessagesListController({
     messages,
     currentUser,
-    onMarkAsRead,
   });
 
   const {
     flatItems,
-    pinnedMessages,
     newMessagesCount,
     listRef,
     scrollContainerRef,
     indexByMessageIdRef,
-    activeMessageMenu,
-    setActiveMessageMenu,
-    scrollToMessage,
     scrollToBottom,
     onItemsRange,
   } = controller;
 
-  const [showAllPinned, setShowAllPinned] = useState(false);
-  const { toggleShowAll } = usePinnedMessagesPanel({
-    pinnedMessages,
-    showAllPinned,
-    setShowAllPinned,
-    currentUserId: currentUser.id,
-    scrollToMessage,
-    onPinMessage,
-  });
+  const handleOpenProfile = useCallback((next) => {
+    setOpenProfile((prev) => {
+      if (prev?.userId === next.userId) {
+        return null;
+      }
+      return next;
+    });
+  }, []);
 
-  const handleStartChat = useCallback(
-    (user) => {
-      if (!user || user.id === currentUser.id) return;
-      setSelectedUser({
-        id: user.id,
-        username: user.username,
-        avatar: user.avatar,
-        email: user.email,
-      });
-      onStartChat?.(user);
-    },
-    [currentUser.id, onStartChat, setSelectedUser]
-  );
+  const handleCloseProfile = useCallback(() => {
+    setOpenProfile(null);
+  }, []);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
-      <PinnedMessagesPanel
-        pinnedMessages={pinnedMessages}
-        enable={enablePinnedPanel}
-        onSelect={(pid) => scrollToMessage(pid)}
-        showAll={showAllPinned}
-        onToggleShowAll={toggleShowAll}
-      />
+    <div
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      role="log"
+      aria-label="Сообщения"
+      aria-relevant="additions">
       <MessageVirtualList
         flatItems={flatItems}
         currentUser={currentUser}
@@ -81,15 +52,8 @@ export const MessagesList = memo(function MessagesList({
         scrollContainerRef={scrollContainerRef}
         indexByMessageIdRef={indexByMessageIdRef}
         onItemsRange={onItemsRange}
-        onDeleteMessage={onDeleteMessage}
-        onEditMessage={onEditMessage}
         onMediaClick={onMediaClick}
-        onPinMessage={onPinMessage}
-        onStartChat={handleStartChat}
-        MessageEditorComponent={MessageEditorComponent}
-        ProfileWidgetComponent={ProfileWidgetComponent}
-        activeMessageMenu={activeMessageMenu}
-        setActiveMessageMenu={setActiveMessageMenu}
+        onOpenProfile={handleOpenProfile}
       />
       {newMessagesCount > 0 && (
         <NewMessagesButton
@@ -97,6 +61,16 @@ export const MessagesList = memo(function MessagesList({
           onClick={() => scrollToBottom()}
         />
       )}
+      {openProfile && ProfileWidgetComponent ? (
+        <ProfileWidgetComponent
+          userId={openProfile.userId}
+          anchorRef={openProfile.anchorRef}
+          anchorRect={openProfile.anchorRect}
+          isReversed={openProfile.isReversed}
+          currentUserId={currentUser.id}
+          onClose={handleCloseProfile}
+        />
+      ) : null}
     </div>
   );
 });

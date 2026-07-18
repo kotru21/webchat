@@ -13,10 +13,19 @@ const useMessageScroll = ({
   isTransitioning,
 }) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [seenTransitioning, setSeenTransitioning] = useState(isTransitioning);
   const lastMessageTimeRef = useRef(null);
   const isAtBottomRef = useRef(true);
   const initialLoadRef = useRef(true);
   const lastViewedMessageRef = useRef(null);
+
+  // Reset count when chat transition starts (adjust state during render).
+  if (isTransitioning !== seenTransitioning) {
+    setSeenTransitioning(isTransitioning);
+    if (isTransitioning) {
+      setNewMessagesCount(0);
+    }
+  }
 
   const getScrollElement = useCallback(() => {
     return scrollContainerRef?.current || listRef.current?.element || null;
@@ -34,11 +43,6 @@ const useMessageScroll = ({
       if (atBottom) setNewMessagesCount(0);
     }
   }, [getScrollElement]);
-
-  // Сброс при переходах
-  useEffect(() => {
-    if (isTransitioning) setNewMessagesCount(0);
-  }, [isTransitioning]);
 
   const scrollToBottom = useCallback(
     (smooth = true) => {
@@ -120,12 +124,14 @@ const useMessageScroll = ({
     [currentUserId, isTransitioning]
   );
 
-  // Первичная прокрутка в самый низ без двойного RAF
+  // Первичная прокрутка в самый низ (async to avoid sync setState-in-effect).
   useEffect(() => {
-    if (initialLoadRef.current && listRef.current) {
-      initialLoadRef.current = false;
+    if (!initialLoadRef.current || !listRef.current) return undefined;
+    initialLoadRef.current = false;
+    const frame = requestAnimationFrame(() => {
       scrollToBottom(false);
-    }
+    });
+    return () => cancelAnimationFrame(frame);
   }, [scrollToBottom, listRef]);
 
   // слушаем скролл контейнера

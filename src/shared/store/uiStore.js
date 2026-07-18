@@ -1,14 +1,16 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
+let systemThemeListenerBound = false;
+
 export const useUIStore = create(
   devtools(
     persist(
       (set, get) => ({
         isSidebarOpen: false,
-        fullscreenMedia: null, // { url, type }
+        fullscreenMedia: null,
         isProfileEditorOpen: false,
-        theme: "system", // 'light' | 'dark' | 'system'
+        theme: "system",
         setSidebarOpen: (v) => set({ isSidebarOpen: v }),
         toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
         openMedia: (media) => set({ fullscreenMedia: media }),
@@ -17,15 +19,11 @@ export const useUIStore = create(
         closeProfileEditor: () => set({ isProfileEditorOpen: false }),
         setTheme: (t) => {
           set({ theme: t });
-          applyTheme(t, get().theme);
+          applyTheme(t);
         },
-        detectSystemTheme: () => {
-          const mq = window.matchMedia("(prefers-color-scheme: dark)");
-          return mq.matches ? "dark" : "light";
-        },
+        detectSystemTheme: () => systemTheme(),
         applyCurrentTheme: () => {
-          const state = get();
-          applyTheme(state.theme);
+          applyTheme(get().theme);
         },
       }),
       {
@@ -33,6 +31,7 @@ export const useUIStore = create(
         partialize: (s) => ({ theme: s.theme }),
         onRehydrateStorage: () => (state) => {
           if (state?.theme) applyTheme(state.theme);
+          bindSystemThemeListener();
         },
       }
     )
@@ -53,4 +52,30 @@ function systemTheme() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
+}
+
+function bindSystemThemeListener() {
+  if (systemThemeListenerBound || typeof window === "undefined") return;
+  systemThemeListenerBound = true;
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => {
+    const { theme, applyCurrentTheme } = useUIStore.getState();
+    if (theme === "system") applyCurrentTheme();
+  };
+  mq.addEventListener("change", onChange);
+}
+
+export function initTheme() {
+  const stored = (() => {
+    try {
+      const raw = localStorage.getItem("ui-store");
+      if (!raw) return "system";
+      const parsed = JSON.parse(raw);
+      return parsed?.state?.theme || "system";
+    } catch {
+      return "system";
+    }
+  })();
+  applyTheme(stored);
+  bindSystemThemeListener();
 }

@@ -1,24 +1,29 @@
-export type SafeUser = {
+export interface PublicUser {
   _id: string;
   username: string;
-  email: string;
   avatar: string;
   banner: string;
   description: string;
-  isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
-};
+}
 
-export type AuthenticatedUser = {
+export interface OwnUser extends PublicUser {
+  email: string;
+}
+
+/** @deprecated Prefer PublicUser / OwnUser */
+export type SafeUser = OwnUser;
+
+export interface AuthenticatedUser {
   id: string;
   username: string;
   email: string;
   avatar: string;
-};
+}
 
-export type JwtPayload = {
+export interface JwtPayload {
   id: string;
   iat?: number;
   exp?: number;
-};
+}

@@ -2,15 +2,21 @@ import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import prisma from "../config/prisma.js";
 import { SOCKET_EVENTS } from "../constants/socketEvents.js";
+import {
+  assertCanListDm,
+  dmRoomId,
+} from "../services/accessControl.js";
 import { createMessage } from "../services/messageService.js";
 import type { AuthenticatedUser } from "../types/auth.js";
 import { verifyAccessToken } from "../utils/tokens.js";
+import { allowSocketEvent } from "./rateLimit.js";
+import { isAllowedSocketRoom, peerIdFromDmRoom, userRoomId } from "./rooms.js";
 
-type CorsOptions = {
+interface CorsOptions {
   origin: string;
   methods: string[];
   credentials: boolean;
-};
+}
 
 let ioInstance: Server | undefined;
 
@@ -21,26 +27,35 @@ const extractBearerToken = (authorizationHeader: string | undefined): string | u
   return token;
 };
 
+const assertDmPeerExists = async (
+  selfId: string,
+  roomId: string
+): Promise<boolean> => {
+  const peerId = peerIdFromDmRoom(selfId, roomId);
+  if (!peerId) return true; // user:<self> — no peer
+  const peer = await prisma.user.findUnique({
+    where: { id: peerId },
+    select: { id: true },
+  });
+  return peer != null;
+};
+
 export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOptions) => {
   ioInstance = new Server(httpServer, { cors: corsOptions });
 
   ioInstance.use(async (socket, next) => {
     try {
+      // Prefer handshake.auth / Authorization — never query (log/referrer leak).
       const tokenFromAuth =
         typeof socket.handshake.auth?.token === "string"
           ? socket.handshake.auth.token
-          : undefined;
-
-      const tokenFromQuery =
-        typeof socket.handshake.query?.token === "string"
-          ? socket.handshake.query.token
           : undefined;
 
       const tokenFromHeader = extractBearerToken(
         socket.handshake.headers.authorization
       );
 
-      const token = tokenFromAuth ?? tokenFromQuery ?? tokenFromHeader;
+      const token = tokenFromAuth ?? tokenFromHeader;
 
       if (!token) {
         next(new Error("AUTH_REQUIRED"));
@@ -84,15 +99,38 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
   });
 
   ioInstance.on("connection", (socket) => {
-    socket.on(SOCKET_EVENTS.USER_CONNECTED, () => {
-      const authUser = socket.data.user as AuthenticatedUser | undefined;
-      if (!authUser) return;
-      socket.join(authUser.id);
-    });
+    const authUser = socket.data.user as AuthenticatedUser | undefined;
+    if (authUser) {
+      // Join immediately — do not rely on client USER_CONNECTED for logout kicks.
+      void socket.join(userRoomId(authUser.id));
+    }
 
-    socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown) => {
-      if (typeof roomId !== "string" || !roomId) return;
-      socket.join(roomId);
+    socket.on(SOCKET_EVENTS.JOIN_ROOM, (roomId: unknown, cb?) => {
+      void (async () => {
+        try {
+          const authUser = socket.data.user as AuthenticatedUser | undefined;
+          if (!authUser || typeof roomId !== "string") {
+            cb?.({ error: "FORBIDDEN" });
+            return;
+          }
+          if (!allowSocketEvent(`join:${authUser.id}`, 20, 60_000)) {
+            cb?.({ error: "RATE_LIMIT" });
+            return;
+          }
+          if (!isAllowedSocketRoom(authUser.id, roomId)) {
+            cb?.({ error: "FORBIDDEN" });
+            return;
+          }
+          if (!(await assertDmPeerExists(authUser.id, roomId))) {
+            cb?.({ error: "FORBIDDEN" });
+            return;
+          }
+          socket.join(roomId);
+          cb?.({ ok: true });
+        } catch {
+          cb?.({ error: "SERVER" });
+        }
+      })();
     });
 
     socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload, cb) => {
@@ -102,39 +140,49 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
           cb?.({ error: "NO_USER" });
           return;
         }
+        if (!allowSocketEvent(authUser.id)) {
+          cb?.({ error: "RATE_LIMIT" });
+          return;
+        }
 
         const receiverId =
           payload && typeof payload.receiverId === "string"
             ? payload.receiverId
             : undefined;
-
         const content =
           payload && typeof payload.content === "string" ? payload.content : "";
 
-        if (!content.trim() && !payload?.mediaUrl) {
+        // BAN: client mediaUrl / mediaType are ignored
+        if (!receiverId || !content.trim()) {
           cb?.({ error: "EMPTY" });
           return;
         }
 
-        const savedMessage = await createMessage({
-          senderId: authUser.id,
-          senderUsername: authUser.username || authUser.email,
-          receiverId: receiverId ?? null,
-          content,
-          mediaUrl: payload?.mediaUrl ?? null,
-          mediaType: payload?.mediaType ?? null,
-          audioDuration: payload?.audioDuration ?? null,
-          isPrivate: Boolean(receiverId),
-        });
-
-        if (savedMessage.isPrivate && savedMessage.receiver) {
-          ioInstance?.to(savedMessage.sender._id)
-            .to(savedMessage.receiver._id)
-            .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
-        } else {
-          ioInstance?.to("general").emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
+        // Match REST validateMessage max length.
+        if (content.length > 1000) {
+          cb?.({ error: "TOO_LONG" });
+          return;
         }
 
+        assertCanListDm(authUser.id, receiverId);
+
+        const room = dmRoomId(authUser.id, receiverId);
+        const savedMessage = await createMessage({
+          senderId: authUser.id,
+          senderUsername: authUser.username?.trim() || "user",
+          receiverId,
+          content,
+          mediaUrl: null,
+          mediaType: null,
+          audioDuration: null,
+          isPrivate: true,
+          roomId: room,
+        });
+
+        // DM room for open chat + user room so receiver gets it in any UI state.
+        ioInstance
+          ?.to([room, userRoomId(receiverId)])
+          .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
         cb?.({ ok: true, id: savedMessage._id });
       } catch {
         cb?.({ error: "SERVER" });
