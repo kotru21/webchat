@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { sendMessage } from "@features/messaging/api/messagesApi";
 import { useAuth } from "@context/useAuth";
@@ -15,6 +15,7 @@ export function useSendMessage({ receiverId }) {
   const addPending = useMessagesStore((s) => s.addPendingMessage);
   const finalizePending = useMessagesStore((s) => s.finalizePendingMessage);
   const failPending = useMessagesStore((s) => s.failPendingMessage);
+  const sendRef = useRef(null);
 
   const send = useCallback(
     async ({ text, file, mediaType, audioDuration }) => {
@@ -65,8 +66,7 @@ export function useSendMessage({ receiverId }) {
               {
                 label: "Повторить",
                 onClick: () => {
-                  // рекурсия повторной попытки
-                  send({ text, file, mediaType, audioDuration });
+                  sendRef.current?.({ text, file, mediaType, audioDuration });
                 },
               },
             ],
@@ -89,6 +89,10 @@ export function useSendMessage({ receiverId }) {
       queryClient,
     ]
   );
+
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   return { send, loading, error };
 }

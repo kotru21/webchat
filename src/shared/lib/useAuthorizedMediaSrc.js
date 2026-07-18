@@ -38,9 +38,8 @@ export function useAuthorizedMediaSrc(url, { fallback = "" } = {}) {
     }
 
     const key = cacheKeyFor(url);
-    const hit = mediaBlobCache.get(key);
-    if (hit) {
-      setFetched({ key, src: hit });
+    // Cache hits are resolved during render via mediaBlobCache — no setState needed.
+    if (mediaBlobCache.has(key)) {
       return undefined;
     }
 

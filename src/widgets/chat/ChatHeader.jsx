@@ -26,24 +26,29 @@ const ChatHeaderComponent = ({
   const selectedUser = useSelectedUser();
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const titleSource = selectedUser
     ? selectedUser.username || selectedUser.email
     : emptyTitle;
   const [title, setTitle] = useState(titleSource);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const titleTransitionKey = useRef(titleSource);
 
   useEffect(() => {
-    setIsTransitioning(true);
-    const newTitle = selectedUser
-      ? selectedUser.username || selectedUser.email
-      : emptyTitle;
-    const t = setTimeout(() => {
-      setTitle(newTitle);
+    if (titleTransitionKey.current === titleSource) return undefined;
+    titleTransitionKey.current = titleSource;
+    const fadeOut = window.setTimeout(() => {
+      setIsTransitioning(true);
+    }, 0);
+    const swap = window.setTimeout(() => {
+      setTitle(titleSource);
       setIsTransitioning(false);
     }, ANIMATION_DELAYS.CHAT_TRANSITION);
-    return () => clearTimeout(t);
-  }, [selectedUser, emptyTitle]);
+    return () => {
+      window.clearTimeout(fadeOut);
+      window.clearTimeout(swap);
+    };
+  }, [titleSource]);
 
   const avatarRef = useRef(null);
 

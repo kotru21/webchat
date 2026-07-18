@@ -24,8 +24,6 @@ export const useChatMessages = (selectedUser) => {
 
     // DM-only API: do not call GET /api/messages without receiverId (400 INVALID_PEER).
     if (!receiverId) {
-      setMessagesLoading(false);
-      setError("");
       return undefined;
     }
 
@@ -75,8 +73,8 @@ export const useChatMessages = (selectedUser) => {
 
   return {
     messages: reactiveMessages,
-    loading: messagesLoading,
-    error,
+    loading: Boolean(peerId) && messagesLoading,
+    error: peerId ? error : "",
     setError,
   };
 };
