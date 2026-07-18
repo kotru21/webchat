@@ -55,15 +55,15 @@ const collectUploadedFiles = (req: Express.Request) => {
   return files;
 };
 
-const rejectOversizedProfileFile = async (
-  file: Express.Multer.File
-): Promise<string | null> => {
+const unlinkUploadedFiles = async (files: Express.Multer.File[]): Promise<void> => {
+  await Promise.all(files.map((f) => fs.unlink(f.path).catch(() => undefined)));
+};
+
+const profileSizeError = (file: Express.Multer.File): string | null => {
   if (file.fieldname === "avatar" && file.size > FILE_LIMITS.AVATAR_MAX_SIZE) {
-    await fs.unlink(file.path).catch(() => undefined);
     return "Аватар слишком большой (макс. 5 МБ)";
   }
   if (file.fieldname === "banner" && file.size > FILE_LIMITS.BANNER_MAX_SIZE) {
-    await fs.unlink(file.path).catch(() => undefined);
     return "Баннер слишком большой (макс. 10 МБ)";
   }
   return null;
@@ -105,8 +105,9 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
 
   try {
     for (const file of files) {
-      const sizeError = await rejectOversizedProfileFile(file);
+      const sizeError = profileSizeError(file);
       if (sizeError) {
+        await unlinkUploadedFiles(files);
         return res.status(400).json({ message: sizeError });
       }
 
@@ -114,7 +115,7 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
       const detectedType = await fileTypeFromBuffer(buffer);
 
       if (!detectedType) {
-        await fs.unlink(file.path).catch(() => undefined);
+        await unlinkUploadedFiles(files);
         return res.status(400).json({
           message: `Не удалось определить тип файла: ${file.originalname}`,
         });
@@ -124,7 +125,7 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
       const validMimes = MAGIC_BYTES_MAP[declaredMime] ?? [declaredMime];
 
       if (!validMimes.includes(detectedType.mime)) {
-        await fs.unlink(file.path).catch(() => undefined);
+        await unlinkUploadedFiles(files);
         return res.status(400).json({
           message: `Тип файла не соответствует содержимому: ${file.originalname}`,
         });
@@ -135,6 +136,7 @@ export const validateFileMagicBytes: RequestHandler = async (req, res, next) => 
 
     next();
   } catch (error) {
+    await unlinkUploadedFiles(files);
     return res.status(500).json({
       message: "Ошибка при проверке файла",
       error: error instanceof Error ? error.message : "UNKNOWN_ERROR",

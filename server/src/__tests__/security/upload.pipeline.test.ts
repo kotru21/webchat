@@ -162,7 +162,6 @@ describe("upload / media surface", () => {
   });
 
   it("rejects video upload as profile avatar", async () => {
-    // Minimal EBML/WebM header enough for file-type video/webm.
     const webm = Buffer.from([
       0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01, 0x42, 0xf7, 0x81,
       0x01, 0x42, 0xf2, 0x81, 0x04, 0x42, 0xf3, 0x81, 0x08, 0x42, 0x82, 0x84,
@@ -179,7 +178,7 @@ describe("upload / media surface", () => {
         contentType: "video/webm",
       });
 
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBe(400);
   });
 
   it("unlinks previous avatar when profile avatar is replaced", async () => {
@@ -219,5 +218,73 @@ describe("upload / media surface", () => {
     expect(second.status).toBe(200);
     expect(second.body.avatar).not.toBe(oldUrl);
     await expect(fs.access(oldFile)).rejects.toThrow();
+  });
+
+  it("drops pipeline files when banner magic-check fails after avatar", async () => {
+    const PNG_1X1 = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    const avatarPng = path.join(tempDir, "ok-avatar.png");
+    const badBanner = path.join(tempDir, "bad-banner.png");
+    await fs.writeFile(avatarPng, PNG_1X1);
+    await fs.writeFile(badBanner, "not-an-image");
+
+    const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
+    const bannersDir = path.join(process.cwd(), "uploads", "banners");
+    const beforeAvatars = new Set(await fs.readdir(avatarsDir));
+    const beforeBanners = new Set(await fs.readdir(bannersDir));
+
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${session.token}`)
+      .attach("avatar", avatarPng, {
+        filename: "ok.png",
+        contentType: "image/png",
+      })
+      .attach("banner", badBanner, {
+        filename: "bad.png",
+        contentType: "image/png",
+      });
+
+    expect(res.status).toBe(400);
+
+    const addedAvatars = (await fs.readdir(avatarsDir)).filter(
+      (f) => !beforeAvatars.has(f)
+    );
+    const addedBanners = (await fs.readdir(bannersDir)).filter(
+      (f) => !beforeBanners.has(f)
+    );
+    expect(addedAvatars).toEqual([]);
+    expect(addedBanners).toEqual([]);
+  });
+
+  it("drops new avatar when updateUserProfile rejects username", async () => {
+    const PNG_1X1 = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    const avatarPng = path.join(tempDir, "orphan-avatar.png");
+    await fs.writeFile(avatarPng, PNG_1X1);
+
+    const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
+    const beforeAvatars = new Set(await fs.readdir(avatarsDir));
+
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${session.token}`)
+      .field("username", "x")
+      .attach("avatar", avatarPng, {
+        filename: "orphan.png",
+        contentType: "image/png",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("INVALID_USERNAME");
+
+    const addedAvatars = (await fs.readdir(avatarsDir)).filter(
+      (f) => !beforeAvatars.has(f)
+    );
+    expect(addedAvatars).toEqual([]);
   });
 });

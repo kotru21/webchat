@@ -130,14 +130,24 @@ export const updateProfile: RequestHandler = async (req, res) => {
     throw createHttpError(401, "Не авторизован", "UNAUTHORIZED");
   }
 
-  const user = await updateUserProfile(req.user.id, {
-    username: req.body.username,
-    description: req.body.description,
-    avatar: profileFilePath(req.files, "avatar"),
-    banner: profileFilePath(req.files, "banner"),
-  });
+  const avatar = profileFilePath(req.files, "avatar");
+  const banner = profileFilePath(req.files, "banner");
 
-  res.json(user);
+  try {
+    const user = await updateUserProfile(req.user.id, {
+      username: req.body.username,
+      description: req.body.description,
+      avatar,
+      banner,
+    });
+    res.json(user);
+  } catch (error) {
+    // Pipeline already wrote new files; drop them if profile update fails.
+    const root = process.cwd();
+    if (avatar) await safeUnlinkMediaApiUrl(root, avatar);
+    if (banner) await safeUnlinkMediaApiUrl(root, banner);
+    throw error;
+  }
 };
 
 export const searchUsers: RequestHandler = async (req, res) => {
