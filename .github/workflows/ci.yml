@@ -135,7 +135,7 @@ jobs:
             --sarif-output=semgrep.sarif \
             --metrics=off
       - name: Upload SARIF to code scanning
-        uses: github/codeql-action/upload-sarif@b7351df727350dca84cb9d725d57dcf5bc82ba26 # v3.37.1
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
         if: always()
         # Requires GitHub code scanning (public repo or GHAS); informational otherwise.
         continue-on-error: true
