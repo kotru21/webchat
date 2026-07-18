@@ -42,20 +42,20 @@ const ChatHeaderComponent = ({
   }, []);
 
   return (
-    <header className="m3-surface-high sticky top-0 z-20 border-b border-border/70 px-3 py-3 backdrop-blur-xl sm:px-5 sm:py-4">
+    <header className="m3-surface-high sticky top-0 z-20 border-b border-border/70 px-4 py-3 backdrop-blur-xl sm:px-5 md:rounded-t-4xl">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={onOpenSidebar}
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
+            className="h-12 w-12 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
             aria-label="Открыть список чатов">
             <FiMenu size={22} />
           </Button>
           <h1
-            className={`max-w-[72vw] truncate text-lg font-medium text-foreground transition-all duration-300 ease-in-out sm:max-w-[52vw] sm:text-xl md:max-w-[38vw] ${
+            className={`max-w-[72vw] truncate text-lg font-medium leading-6 text-foreground transition-all duration-300 ease-in-out sm:max-w-[52vw] sm:text-xl md:max-w-[38vw] ${
               isTransitioning
                 ? "opacity-0 -translate-y-2"
                 : "opacity-100 translate-y-0"
@@ -64,8 +64,8 @@ const ChatHeaderComponent = ({
           </h1>
         </div>
 
-        <div className="flex items-stretch justify-between gap-3 sm:items-center sm:justify-end sm:gap-5">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex items-stretch justify-between gap-3 sm:items-center sm:justify-end sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             <AuthorizedMediaImg
               ref={avatarRef}
               onClick={onOpenProfileEditor}
@@ -75,7 +75,7 @@ const ChatHeaderComponent = ({
               decoding="async"
               className="h-10 w-10 shrink-0 cursor-pointer rounded-full object-cover ring-2 ring-primary/30 transition-all duration-200 hover:scale-105 hover:opacity-90"
             />
-            <div className="flex flex-col min-w-0 leading-tight">
+            <div className="flex min-w-0 flex-col leading-5">
               <span className="max-w-[40vw] truncate text-xs text-muted-foreground sm:max-w-60 sm:text-sm">
                 {user?.username || user?.email || "Пользователь"}
               </span>

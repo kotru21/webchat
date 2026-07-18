@@ -16,7 +16,8 @@ export const MessageVirtualList = memo(function MessageVirtualList({
   onMediaClick,
   onStartChat,
   ProfileWidgetComponent,
-  gaps = { message: 32, day: 24, hour: 16 },
+  // Material 3 (4/8dp): 16dp between bubbles, 24dp around day chips, 16dp hour marks
+  gaps = { message: 16, day: 24, hour: 16 },
 }) {
   const messageRefs = useRef({});
   const rowHeight = useDynamicRowHeight({ defaultRowHeight: 80 });
@@ -72,7 +73,7 @@ export const MessageVirtualList = memo(function MessageVirtualList({
             }
           }}
           data-message-id={mid}
-          className="message-item message-item-base px-4 md:px-12 lg:px-20 xl:px-24 xl:pr-40">
+          className="message-item message-item-base px-4 sm:px-6 md:px-12 lg:px-20 xl:px-24 xl:pr-40">
           <div style={{ paddingBottom: gaps.message }}>
             <MessageItem
               message={message}

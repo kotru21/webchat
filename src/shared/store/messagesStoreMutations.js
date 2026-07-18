@@ -93,6 +93,17 @@ export function finalizePendingMessageMutation(state, tempId, realDto) {
   }
 
   const realMessage = mapMessageDto(realDto);
+  const pendingMessage = chat.messages.find((message) => message._id === tempId);
+  if (
+    pendingMessage?.sender?.avatar &&
+    realMessage?.sender &&
+    !realMessage.sender.avatar
+  ) {
+    realMessage.sender = {
+      ...realMessage.sender,
+      avatar: pendingMessage.sender.avatar,
+    };
+  }
   const alreadyExists = chat.messages.some(
     (message) => message._id === realMessage._id && message._id !== tempId
   );

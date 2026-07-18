@@ -21,7 +21,7 @@ export const MessageItem = memo(function MessageItem({
       } w-full relative`}>
       <div className="max-w-[80%] message-wrapper">
         <div
-          className={`flex items-start ${
+          className={`flex items-end ${
             isOwnMessage ? "flex-row-reverse" : "flex-row"
           } gap-2`}>
           <MessageSenderAvatar
@@ -29,7 +29,7 @@ export const MessageItem = memo(function MessageItem({
             senderAvatar={senderAvatar}
           />
           <div
-            className={`relative rounded-[1.1rem] border px-4 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+            className={`relative rounded-2xl border px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
               isOwnMessage
                 ? "border-primary/40 bg-primary text-primary-foreground"
                 : "m3-surface-high border-border/70 text-foreground"
@@ -47,7 +47,7 @@ export const MessageItem = memo(function MessageItem({
               </span>
             )}
             <div
-              className={`mb-1 text-sm font-medium ${
+              className={`mb-2 text-sm font-medium leading-5 ${
                 isOwnMessage ? "text-right" : "text-left"
               }`}>
               {isOwnMessage
@@ -56,17 +56,17 @@ export const MessageItem = memo(function MessageItem({
             </div>
             <div>
               <p
-                className={`text-sm wrap-break-word ${
+                className={`text-sm leading-5 wrap-break-word ${
                   isOwnMessage ? "text-right" : "text-left"
                 }`}>
                 {message.content || ""}
               </p>
               <MessageMedia message={message} onMediaClick={onMediaClick} />
             </div>
-            <div className="flex flex-row-reverse gap-2 mt-1">
+            <div className="mt-2 flex flex-row-reverse gap-2">
               <span
-                className={`text-xs opacity-75 ${
-                  isOwnMessage ? "text-right mt-1.5" : "text-left"
+                className={`text-xs leading-4 opacity-75 ${
+                  isOwnMessage ? "text-right" : "text-left"
                 }`}>
                 {formatTime(message.createdAt)}
               </span>

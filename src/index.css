@@ -29,6 +29,21 @@
   --shadow-color: 216 20% 20%;
   --m3-gradient-1: rgba(111, 178, 255, 0.22);
   --m3-gradient-2: rgba(90, 255, 210, 0.12);
+  /* Material 3 spacing scale (4/8dp grid) */
+  --space-1: 0.25rem; /* 4dp */
+  --space-2: 0.5rem; /* 8dp */
+  --space-3: 0.75rem; /* 12dp */
+  --space-4: 1rem; /* 16dp */
+  --space-5: 1.5rem; /* 24dp */
+  --space-6: 2rem; /* 32dp */
+  --space-8: 3rem; /* 48dp */
+  --touch-target: 3rem; /* 48dp minimum */
+  /* Chat rhythm (Material messaging) */
+  --chat-bubble-pad-x: var(--space-4);
+  --chat-bubble-pad-y: var(--space-3);
+  --chat-message-gap: var(--space-4);
+  --chat-section-gap: var(--space-5);
+  --chat-gutter: var(--space-4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -88,6 +103,14 @@
   --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 6px);
+  --spacing-m3-1: var(--space-1);
+  --spacing-m3-2: var(--space-2);
+  --spacing-m3-3: var(--space-3);
+  --spacing-m3-4: var(--space-4);
+  --spacing-m3-5: var(--space-5);
+  --spacing-m3-6: var(--space-6);
+  --spacing-m3-8: var(--space-8);
+  --spacing-touch: var(--touch-target);
 }
 
 @layer base {

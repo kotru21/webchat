@@ -69,22 +69,22 @@ const ChatsList = memo(({ isOpen, onClose }) => {
         isOpen ? "translate-x-0" : "-translate-x-full"
       } fixed inset-y-0 left-0 z-30 h-full w-76 m3-surface-high border-r border-border/70 transition-transform duration-300 ease-in-out md:relative md:inset-auto md:w-full md:translate-x-0 md:rounded-r-4xl md:m3-elev-1`}>
       <div className="flex h-full flex-col p-4">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex min-h-12 items-center justify-between">
           <h2 className="text-lg font-semibold tracking-tight">Чаты</h2>
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-9 w-9 text-muted-foreground hover:text-foreground md:hidden"
+            className="h-12 w-12 text-muted-foreground hover:text-foreground md:hidden"
             aria-label="Закрыть список чатов">
             <FiX size={18} />
           </Button>
         </div>
 
-        <div className="relative mb-3">
+        <div className="relative mb-4">
           <FiSearch
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
             size={16}
             aria-hidden
           />
@@ -93,7 +93,7 @@ const ChatsList = memo(({ isOpen, onClose }) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Найти пользователя…"
-            className="h-10 pl-9 pr-9"
+            className="h-12 pl-11 pr-12"
             aria-label="Поиск пользователей"
             autoComplete="off"
           />
@@ -102,7 +102,7 @@ const ChatsList = memo(({ isOpen, onClose }) => {
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2 text-muted-foreground"
               onClick={() => setSearchQuery("")}
               aria-label="Очистить поиск">
               <FiX size={14} />
@@ -113,19 +113,19 @@ const ChatsList = memo(({ isOpen, onClose }) => {
         <div className="flex-1 overflow-x-hidden overflow-y-auto pr-1">
           {trimmedQuery ? (
             <>
-              <h3 className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="mb-2 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Результаты поиска
               </h3>
               {searchLoading ? (
-                <div className="p-3 text-center text-sm text-muted-foreground animate-pulse">
+                <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
                   Поиск…
                 </div>
               ) : searchError ? (
-                <div className="p-3 text-center text-sm text-destructive">
+                <div className="p-4 text-center text-sm text-destructive">
                   Не удалось выполнить поиск
                 </div>
               ) : searchResults.length === 0 ? (
-                <div className="p-3 text-center text-sm text-muted-foreground">
+                <div className="p-4 text-center text-sm text-muted-foreground">
                   Никого не найдено
                 </div>
               ) : (
@@ -143,22 +143,22 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                           openPeer(user);
                         }
                       }}
-                      className={`mb-1 cursor-pointer rounded-2xl border px-3 py-3 transition-all duration-200 hover:border-primary/35 hover:bg-card/70 ${
+                      className={`mb-2 min-h-14 cursor-pointer rounded-2xl border px-4 py-3 transition-all duration-200 hover:border-primary/35 hover:bg-card/70 ${
                         selectedPeerId === peerId
                           ? "border-primary/45 bg-primary/10"
                           : "border-transparent"
                       }`}>
-                      <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-4">
                         <AuthorizedMediaImg
                           src={user.avatar}
                           alt={user.username}
                           className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-border/70"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
+                          <p className="truncate text-sm font-medium leading-5">
                             {user.username}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="truncate text-xs leading-4 text-muted-foreground">
                             Написать сообщение
                           </p>
                         </div>
@@ -170,13 +170,13 @@ const ChatsList = memo(({ isOpen, onClose }) => {
             </>
           ) : (
             <>
-              <h3 className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="mb-2 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Личные сообщения
               </h3>
 
               {loading ? (
                 <div className="flex items-center justify-center py-4">
-                  <div className="flex animate-pulse space-x-3">
+                  <div className="flex animate-pulse space-x-4">
                     <div className="h-10 w-10 rounded-full bg-muted" />
                     <div className="flex-1 space-y-2">
                       <div className="h-4 w-3/4 rounded bg-muted" />
@@ -185,11 +185,11 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                   </div>
                 </div>
               ) : error ? (
-                <div className="p-3 text-center text-sm text-destructive">
+                <div className="p-4 text-center text-sm text-destructive">
                   {error}
                 </div>
               ) : chats.length === 0 ? (
-                <div className="space-y-1 p-3 text-center">
+                <div className="space-y-2 p-4 text-center">
                   <p className="text-sm font-medium text-foreground">
                     Начните диалог
                   </p>
@@ -213,13 +213,13 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                           handleSelectChat(chat);
                         }
                       }}
-                      className={`mb-1 cursor-pointer rounded-2xl border px-3 py-3 transition-all duration-200 hover:border-primary/35 hover:bg-card/70 ${
+                      className={`mb-2 min-h-16 cursor-pointer rounded-2xl border px-4 py-3 transition-all duration-200 hover:border-primary/35 hover:bg-card/70 ${
                         selectedPeerId === chatPeerId
                           ? "border-primary/45 bg-primary/10"
                           : "border-transparent"
                       }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-4">
                           <div className="relative shrink-0">
                             <AuthorizedMediaImg
                               src={chat.user.avatar}
@@ -229,13 +229,13 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
+                            <p className="truncate text-sm font-medium leading-5">
                               {chat.user.username}
                             </p>
-                            <p className="truncate text-xs text-muted-foreground">
+                            <p className="truncate text-xs leading-4 text-muted-foreground">
                               {formatLastMessage(chat.lastMessage)}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="mt-1 text-xs leading-4 text-muted-foreground">
                               {formatMessageTime(chat.lastMessage?.createdAt)}
                             </p>
                           </div>

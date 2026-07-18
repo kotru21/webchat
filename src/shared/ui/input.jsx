@@ -1,8 +1,10 @@
+import { forwardRef } from "react";
 import { cn } from "@shared/lib/cn";
 
-function Input({ className, type = "text", ...props }) {
+const Input = forwardRef(function Input({ className, type = "text", ...props }, ref) {
   return (
     <input
+      ref={ref}
       data-slot="input"
       type={type}
       className={cn(
@@ -12,6 +14,6 @@ function Input({ className, type = "text", ...props }) {
       {...props}
     />
   );
-}
+});
 
 export { Input };

@@ -83,7 +83,7 @@ const Chat = () => {
         </Suspense>
       </div>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col min-h-0 md:m-3 md:rounded-4xl md:border md:border-border/70 md:bg-card/75 md:backdrop-blur-md md:m3-elev-1">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden md:m-4 md:rounded-4xl md:border md:border-border/70 md:bg-card/75 md:backdrop-blur-md md:m3-elev-1">
         <ChatHeader
           user={user}
           emptyTitle={
