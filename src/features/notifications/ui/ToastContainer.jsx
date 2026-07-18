@@ -27,54 +27,52 @@ export function ToastContainer() {
       className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
       role="region"
       aria-label="Уведомления">
-      {toasts.map((t) => {
-        const pct = t.ttl
-          ? Math.max(0, 100 - ((Date.now() - t.createdAt) / t.ttl) * 100)
-          : 0;
-        return (
-          <div
-            key={t.id}
-            className={`px-4 py-3 rounded-lg shadow animate-fade-in text-sm flex flex-col gap-2 ${
-              typeStyles[t.type] || typeStyles.info
-            }`}
-            role="alert"
-            aria-live={t.type === "error" ? "assertive" : "polite"}>
-            <div className="flex justify-between items-start gap-3">
-              <span className="whitespace-pre-wrap break-words flex-1">
-                {t.message}
-              </span>
-              <div className="flex gap-2 items-center">
-                {t.actions &&
-                  t.actions.map((a) => (
-                    <button
-                      key={a.label}
-                      onClick={() => {
-                        a.onClick?.();
-                        dismiss(t.id);
-                      }}
-                      className="text-xs underline hover:opacity-80">
-                      {a.label}
-                    </button>
-                  ))}
-                <button
-                  onClick={() => dismiss(t.id)}
-                  className="text-xs opacity-70 hover:opacity-100"
-                  aria-label="Закрыть уведомление">
-                  ×
-                </button>
-              </div>
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`px-4 py-3 rounded-lg shadow animate-fade-in text-sm flex flex-col gap-2 ${
+            typeStyles[t.type] || typeStyles.info
+          }`}
+          role="alert"
+          aria-live={t.type === "error" ? "assertive" : "polite"}>
+          <div className="flex justify-between items-start gap-3">
+            <span className="whitespace-pre-wrap break-words flex-1">
+              {t.message}
+            </span>
+            <div className="flex gap-2 items-center">
+              {t.actions &&
+                t.actions.map((a) => (
+                  <button
+                    key={a.label}
+                    onClick={() => {
+                      a.onClick?.();
+                      dismiss(t.id);
+                    }}
+                    className="text-xs underline hover:opacity-80">
+                    {a.label}
+                  </button>
+                ))}
+              <button
+                onClick={() => dismiss(t.id)}
+                className="text-xs opacity-70 hover:opacity-100"
+                aria-label="Закрыть уведомление">
+                ×
+              </button>
             </div>
-            {t.ttl > 0 && (
-              <div className="h-1 w-full bg-black/10 dark:bg-white/10 rounded overflow-hidden">
-                <div
-                  className="h-full bg-current transition-all"
-                  style={{ width: pct + "%" }}
-                />
-              </div>
-            )}
           </div>
-        );
-      })}
+          {t.ttl > 0 && (
+            <div className="h-1 w-full bg-black/10 dark:bg-white/10 rounded overflow-hidden">
+              <div
+                className="h-full w-full origin-left bg-current"
+                style={{
+                  animation: `toast-progress ${t.ttl}ms linear forwards`,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+      <style>{`@keyframes toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
     </div>
   );
 }

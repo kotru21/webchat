@@ -4,11 +4,21 @@ import { useState, useEffect, useRef } from "react";
 import { TIMEOUTS } from "@constants/appConstants";
 
 const MediaViewer = ({ media, onClose }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [loadState, setLoadState] = useState({
+    url: media.url,
+    isLoaded: false,
+    hasError: false,
+  });
   const loadTimeoutRef = useRef(null);
   const imageRef = useRef(null);
   const videoRef = useRef(null);
+
+  // Reset load UI when the media target changes (adjust state during render).
+  if (loadState.url !== media.url) {
+    setLoadState({ url: media.url, isLoaded: false, hasError: false });
+  }
+
+  const { isLoaded, hasError } = loadState;
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
@@ -22,34 +32,49 @@ const MediaViewer = ({ media, onClose }) => {
     link.click();
   };
 
-  const checkIfImageLoaded = (img) => {
-    if (img && img.complete && img.naturalWidth > 0) {
-      setIsLoaded(true);
-      return true;
-    }
-    return false;
-  };
-
   useEffect(() => {
-    setIsLoaded(false);
-    setHasError(false);
     loadTimeoutRef.current = setTimeout(() => {
-      setIsLoaded((prev) => prev || true);
+      setLoadState((prev) =>
+        prev.url === media.url ? { ...prev, isLoaded: true } : prev
+      );
     }, TIMEOUTS.MEDIA_LOAD);
-    if (media.type === "image" && imageRef.current) {
-      checkIfImageLoaded(imageRef.current);
+
+    const img = imageRef.current;
+    if (
+      media.type === "image" &&
+      img &&
+      img.complete &&
+      img.naturalWidth > 0
+    ) {
+      queueMicrotask(() => {
+        setLoadState((prev) =>
+          prev.url === media.url
+            ? { ...prev, isLoaded: true, hasError: false }
+            : prev
+        );
+      });
     }
-    return () => loadTimeoutRef.current && clearTimeout(loadTimeoutRef.current);
+
+    return () => {
+      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    };
   }, [media.url, media.type]);
 
   const handleLoad = () => {
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-    setIsLoaded(true);
+    setLoadState((prev) =>
+      prev.url === media.url
+        ? { ...prev, isLoaded: true, hasError: false }
+        : prev
+    );
   };
   const handleError = () => {
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-    setHasError(true);
-    setIsLoaded(true);
+    setLoadState((prev) =>
+      prev.url === media.url
+        ? { ...prev, isLoaded: true, hasError: true }
+        : prev
+    );
     console.error("Failed to load media:", media.url);
   };
 

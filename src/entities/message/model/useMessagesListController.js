@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useChatStore } from "@shared/store/chatStore";
 import { useMessagesStore } from "@shared/store/messagesStore";
 import { resolvePeerId } from "@shared/lib/peerId";

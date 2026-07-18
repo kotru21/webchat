@@ -8,37 +8,27 @@ const LOCAL_SRC_RE = /^(?:blob:|data:|\/default-)/i;
  * using the in-memory Bearer token. Falls back when fetch fails.
  */
 export function useAuthorizedMediaSrc(url, { fallback = "" } = {}) {
-  const [src, setSrc] = useState(() => {
-    if (!url) return fallback;
-    if (LOCAL_SRC_RE.test(url)) return url;
-    return fallback;
-  });
+  const [fetched, setFetched] = useState({ url: null, src: null });
 
   useEffect(() => {
+    if (!url || LOCAL_SRC_RE.test(url)) {
+      return undefined;
+    }
+
     let cancelled = false;
     let objectUrl = "";
 
-    if (!url) {
-      setSrc(fallback);
-      return undefined;
-    }
-
-    if (LOCAL_SRC_RE.test(url)) {
-      setSrc(url);
-      return undefined;
-    }
-
     fetchAuthorizedMediaUrl(url)
-      .then((fetched) => {
+      .then((fetchedSrc) => {
         if (cancelled) {
-          if (fetched?.startsWith("blob:")) URL.revokeObjectURL(fetched);
+          if (fetchedSrc?.startsWith("blob:")) URL.revokeObjectURL(fetchedSrc);
           return;
         }
-        if (fetched?.startsWith("blob:")) objectUrl = fetched;
-        setSrc(fetched || fallback);
+        if (fetchedSrc?.startsWith("blob:")) objectUrl = fetchedSrc;
+        setFetched({ url, src: fetchedSrc || fallback });
       })
       .catch(() => {
-        if (!cancelled) setSrc(fallback);
+        if (!cancelled) setFetched({ url, src: fallback });
       });
 
     return () => {
@@ -47,7 +37,10 @@ export function useAuthorizedMediaSrc(url, { fallback = "" } = {}) {
     };
   }, [url, fallback]);
 
-  return src;
+  if (!url) return fallback;
+  if (LOCAL_SRC_RE.test(url)) return url;
+  if (fetched.url === url && fetched.src) return fetched.src;
+  return fallback;
 }
 
 export default useAuthorizedMediaSrc;

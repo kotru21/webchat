@@ -147,7 +147,11 @@ const Chat = () => {
               <div className="text-white text-lg">Загрузка медиа...</div>
             </div>
           }>
-          <MediaViewer media={fullscreenMedia} onClose={() => closeMedia()} />
+          <MediaViewer
+            key={fullscreenMedia.url}
+            media={fullscreenMedia}
+            onClose={() => closeMedia()}
+          />
         </Suspense>
       )}
       {isProfileEditorOpen && (

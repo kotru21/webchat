@@ -3,7 +3,6 @@ import { API } from "@constants/appConstants";
 import {
   clearAccessToken,
   getAccessToken,
-  setAccessToken,
 } from "@shared/lib/accessToken";
 import {
   clearRefreshSessionFlag,
