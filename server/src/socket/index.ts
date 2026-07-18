@@ -131,12 +131,18 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
           return;
         }
 
+        // Match REST validateMessage max length.
+        if (content.length > 1000) {
+          cb?.({ error: "TOO_LONG" });
+          return;
+        }
+
         assertCanListDm(authUser.id, receiverId);
 
         const room = dmRoomId(authUser.id, receiverId);
         const savedMessage = await createMessage({
           senderId: authUser.id,
-          senderUsername: authUser.username || authUser.email,
+          senderUsername: authUser.username?.trim() || "user",
           receiverId,
           content,
           mediaUrl: null,

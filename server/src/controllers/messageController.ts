@@ -108,7 +108,7 @@ export const createMessageHandler: RequestHandler = async (req, res) => {
 
   const savedMessage = await createMessage({
     senderId: req.user.id,
-    senderUsername: req.user.username || req.user.email,
+    senderUsername: req.user.username?.trim() || "user",
     content,
     receiverId,
     mediaUrl: media?.mediaUrl ?? null,

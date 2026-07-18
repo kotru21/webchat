@@ -165,10 +165,27 @@ describe("socket ACL", () => {
       _id: string;
       mediaUrl: string | null;
       content: string;
+      senderUsername?: string;
     }>;
 
     const saved = messages.find((message) => message._id === result.id);
     expect(saved?.content).toBe("socket-text-only");
     expect(saved?.mediaUrl).toBeNull();
+    expect(saved?.senderUsername).toBeTruthy();
+    expect(String(saved?.senderUsername)).not.toContain("@");
+  });
+
+  it("rejects oversized message_send content", async () => {
+    const result = await emitAck<{ ok?: boolean; error?: string }>(
+      socketA,
+      SOCKET_EVENTS.MESSAGE_SEND,
+      {
+        receiverId: userB.userId,
+        content: "x".repeat(1001),
+      }
+    );
+
+    expect(result.error).toBe("TOO_LONG");
+    expect(result.ok).toBeUndefined();
   });
 });

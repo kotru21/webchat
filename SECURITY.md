@@ -8,7 +8,7 @@
 |--------|--------|------------|
 | Spoofing | Stolen access JWT | Short-lived access token kept in memory only |
 | Spoofing | Stolen refresh token | HttpOnly cookie, `SameSite=Lax`, path `/api/auth` |
-| Tampering | Refresh token reuse | Rotation + `familyId` revoke-on-reuse |
+| Tampering | Refresh token reuse | Rotation + `familyId` revoke-on-reuse (1s grace so concurrent double-refresh does not kill the winner) |
 | Elevation | Weak prod secrets | Fail-closed `JWT_SECRET` entropy check |
 
 ### Messages (REST)

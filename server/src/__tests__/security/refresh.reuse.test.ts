@@ -31,6 +31,9 @@ describe("refresh token reuse detection", () => {
     expect(secondRefresh).toBeTruthy();
     expect(secondRefresh).not.toBe(oldRefresh);
 
+    // Past concurrent-refresh grace so reuse triggers family revoke.
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+
     const reuse = await request(app)
       .post("/api/auth/refresh")
       .set("Cookie", `refreshToken=${oldRefresh}`);
@@ -72,5 +75,44 @@ describe("refresh token reuse detection", () => {
     expect(
       headers.some((h) => /hasRefreshSession=/.test(h) && isCleared(h))
     ).toBe(true);
+  });
+
+  it("allows only one winner on concurrent refresh of the same token", async () => {
+    const fresh = await registerAndLogin(app, uniqueCreds("race"));
+    expect(fresh.refreshToken).toBeTruthy();
+    const cookie = `refreshToken=${fresh.refreshToken}`;
+
+    const results = await Promise.all([
+      request(app).post("/api/auth/refresh").set("Cookie", cookie),
+      request(app).post("/api/auth/refresh").set("Cookie", cookie),
+    ]);
+
+    const successes = results.filter((res) => res.status === 200);
+    const failures = results.filter((res) => res.status === 401);
+
+    // Atomic claim: at most one refresh may succeed for the same token.
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+
+    // Original token is spent — cannot mint another pair.
+    const oldAgain = await request(app)
+      .post("/api/auth/refresh")
+      .set("Cookie", cookie);
+    expect(oldAgain.status).toBe(401);
+
+    const winnerRefresh = parseCookieValue(
+      successes[0]?.headers["set-cookie"],
+      "refreshToken"
+    );
+    expect(winnerRefresh).toBeTruthy();
+    expect(winnerRefresh).not.toBe(fresh.refreshToken);
+
+    // Winner's rotated cookie remains usable (family not revoked by the loser).
+    const followUp = await request(app)
+      .post("/api/auth/refresh")
+      .set("Cookie", `refreshToken=${winnerRefresh}`);
+
+    expect(followUp.status).toBe(200);
+    expect(typeof followUp.body.token).toBe("string");
   });
 });

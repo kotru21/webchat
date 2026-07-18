@@ -28,6 +28,9 @@ interface UpdateProfileInput {
 
 const createFamilyId = (): string => crypto.randomUUID();
 
+/** Skip family revoke for concurrent double-refresh; real reuse is detected after this window. */
+const REFRESH_REUSE_GRACE_MS = 1_000;
+
 const issueTokenPair = async (userId: string, familyId = createFamilyId()) => {
   const token = signAccessToken(userId);
   const refreshToken = createRefreshToken();
@@ -213,6 +216,12 @@ export const refreshUserTokens = async (refreshToken: string) => {
   }
 
   if (session.revokedAt != null) {
+    const revokedAgeMs = Date.now() - session.revokedAt.getTime();
+    // Concurrent refresh losers hit this path immediately after the winner's
+    // atomic claim — do not nuke the winner's new session in that window.
+    if (revokedAgeMs < REFRESH_REUSE_GRACE_MS) {
+      throw createHttpError(401, "Недействительный refresh token", "INVALID_REFRESH_TOKEN");
+    }
     await revokeAllSessionsInFamily(session.familyId);
     throw createHttpError(
       401,
@@ -242,10 +251,20 @@ export const refreshUserTokens = async (refreshToken: string) => {
     throw createHttpError(401, "Пользователь не найден", "USER_NOT_FOUND");
   }
 
-  await prisma.refreshSession.update({
-    where: { id: session.id },
+  // Atomic claim: only one concurrent refresh can revoke this row.
+  const claimed = await prisma.refreshSession.updateMany({
+    where: {
+      id: session.id,
+      revokedAt: null,
+    },
     data: { revokedAt: new Date() },
   });
+
+  if (claimed.count !== 1) {
+    // Lost the race — winner already claimed; stay inside the grace window path
+    // on retry rather than revoking the new family session.
+    throw createHttpError(401, "Недействительный refresh token", "INVALID_REFRESH_TOKEN");
+  }
 
   return issueTokenPair(session.userId, session.familyId);
 };
@@ -281,7 +300,13 @@ export const logoutByRefreshToken = async (refreshToken: string): Promise<boolea
 export const updateUserProfile = async (userId: string, data: UpdateProfileInput) => {
   const updateData: UpdateProfileInput = {};
 
-  if (data.username !== undefined) updateData.username = data.username.trim();
+  if (data.username !== undefined) {
+    const trimmed = data.username.trim();
+    if (trimmed.length < 2 || trimmed.length > 30) {
+      throw createHttpError(400, "Некорректный никнейм", "INVALID_USERNAME");
+    }
+    updateData.username = trimmed;
+  }
   if (data.description !== undefined) updateData.description = data.description;
   if (data.avatar !== undefined) updateData.avatar = data.avatar;
   if (data.banner !== undefined) updateData.banner = data.banner;

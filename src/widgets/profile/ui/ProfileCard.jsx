@@ -33,7 +33,7 @@ export function ProfileCard({ profile, onStartChat, isCurrentUser, onClose }) {
             {profile.username || "Пользователь"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {profile.email}
+            {isCurrentUser ? profile.email : null}
           </p>
         </div>
         {profile.description && (
@@ -55,7 +55,6 @@ export function ProfileCard({ profile, onStartChat, isCurrentUser, onClose }) {
                   id: profile._id || profile.id,
                   username: profile.username,
                   avatar: profile.avatar,
-                  email: profile.email,
                 });
                 onClose && onClose();
               }}

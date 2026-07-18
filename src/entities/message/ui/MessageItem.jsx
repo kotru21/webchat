@@ -52,7 +52,7 @@ export const MessageItem = memo(function MessageItem({
               }`}>
               {isOwnMessage
                 ? "Вы"
-                : message.sender.username || message.sender.email}
+                : message.sender.username || "Пользователь"}
             </div>
             <div>
               <p

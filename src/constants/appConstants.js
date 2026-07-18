@@ -44,7 +44,7 @@ export const TIMEOUTS = {
 export const INPUT_LIMITS = {
   USERNAME_MAX_LENGTH: 32,
   DESCRIPTION_MAX_LENGTH: 500,
-  MESSAGE_MAX_LENGTH: 2000,
+  MESSAGE_MAX_LENGTH: 1000,
 };
 
 // Конфигурация форматирования дат

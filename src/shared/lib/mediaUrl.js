@@ -11,6 +11,14 @@ const toApiMediaPath = (url) => {
   return url.startsWith("/") ? url : `/${url}`;
 };
 
+/** Only same-app media API paths may receive the in-memory Bearer token. */
+export const isAuthorizedMediaTarget = (url) => {
+  if (!url || typeof url !== "string") return false;
+  if (url.startsWith("/api/media/")) return true;
+  if (API_BASE && url.startsWith(`${API_BASE}/api/media/`)) return true;
+  return false;
+};
+
 export function toAbsoluteMediaUrl(url) {
   if (!url) return "";
   if (ABSOLUTE_URL_RE.test(url)) return url;
@@ -20,12 +28,15 @@ export function toAbsoluteMediaUrl(url) {
 }
 
 export async function fetchAuthorizedMediaUrl(url) {
+  if (!url) return "";
+  if (/^(?:blob:|data:)/i.test(url)) return url;
+
   const absolute = toAbsoluteMediaUrl(url);
-  if (
-    !absolute ||
-    (ABSOLUTE_URL_RE.test(url) && !url.startsWith("http"))
-  ) {
-    return absolute;
+  if (!absolute) return "";
+
+  // Never attach Bearer to third-party hosts (token exfiltration).
+  if (!isAuthorizedMediaTarget(url) && !isAuthorizedMediaTarget(absolute)) {
+    throw new Error("MEDIA_UNTRUSTED_URL");
   }
 
   const token = getAccessToken();
