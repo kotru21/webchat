@@ -1,8 +1,12 @@
-import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { Prisma } from "../generated/prisma/client.js";
 import prisma from "../config/prisma.js";
 import { createHttpError } from "../utils/errors.js";
+import {
+  hashPassword,
+  needsRehash,
+  verifyPassword,
+} from "../utils/passwords.js";
 import { toOwnUser, toPublicUser } from "../utils/serializers.js";
 import {
   createRefreshToken,
@@ -37,8 +41,8 @@ const createFamilyId = (): string => crypto.randomUUID();
 /** Skip family revoke for concurrent double-refresh; real reuse is detected after this window. */
 const REFRESH_REUSE_GRACE_MS = 1_000;
 
-/** Fixed cost bcrypt compare for missing users (timing oracle). Generated once — not a real credential. */
-const DUMMY_PASSWORD_HASH = bcrypt.hashSync("timing-oracle-pad", 10);
+/** Fixed-cost compare for missing users (timing oracle). Argon2id pad — not a real credential. */
+const DUMMY_PASSWORD_HASH = await hashPassword("timing-oracle-pad");
 
 const issueTokenPair = async (userId: string, familyId = createFamilyId()) => {
   const token = signAccessToken(userId, familyId);
@@ -167,7 +171,7 @@ export const registerUser = async ({
     );
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
 
   const created = await prisma.user.create({
     data: {
@@ -193,12 +197,24 @@ export const loginUser = async (email: string, password: string) => {
     },
   });
 
-  const passwordMatches = await bcrypt.compare(
-    password,
-    user?.passwordHash ?? DUMMY_PASSWORD_HASH
+  const passwordMatches = await verifyPassword(
+    user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    password
   );
   if (!user || !passwordMatches) {
     throw createHttpError(400, "Неверный email или пароль", "INVALID_CREDENTIALS");
+  }
+
+  if (needsRehash(user.passwordHash)) {
+    try {
+      const nextHash = await hashPassword(password);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: nextHash },
+      });
+    } catch {
+      // Best-effort migration — must not fail the login.
+    }
   }
 
   const tokens = await issueTokenPair(user.id);
