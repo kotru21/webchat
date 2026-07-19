@@ -24,6 +24,8 @@ export interface AuthenticatedUser {
 
 export interface JwtPayload {
   id: string;
+  /** Refresh session family id — binds access JWT to a device session. */
+  sid: string;
   iat?: number;
   exp?: number;
 }

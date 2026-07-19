@@ -1,0 +1,36 @@
+services:
+  server:
+    build: .
+    restart: unless-stopped
+    # Reachable only on the compose network — clients go through `proxy`.
+    expose:
+      - "5000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # Must match the browser origin that hits the proxy (default :80).
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Honor X-Forwarded-For from nginx so rate limits key on the real client IP.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      DATABASE_URL: file:/data/webchat.db
+      UPLOADS_DIR: /app/uploads
+      BACKUP_DIR: /backups
+    volumes:
+      - webchat-data:/data
+      - webchat-uploads:/app/uploads
+      - webchat-backups:/backups
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "${PROXY_PORT:-80}:80"
+    depends_on:
+      - server
+
+volumes:
+  webchat-data:
+  webchat-uploads:
+  webchat-backups:

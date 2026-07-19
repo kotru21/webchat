@@ -61,15 +61,28 @@ export function useSendMessage({ receiverId }) {
           return { ok: true, value: dto };
         } catch (e) {
           failPending(tempId);
-          notify("error", "Не удалось отправить сообщение", {
-            actions: [
-              {
-                label: "Повторить",
-                onClick: () => {
-                  sendRef.current?.({ text, file, mediaType, audioDuration });
-                },
-              },
-            ],
+          const code = e?.response?.data?.code;
+          const message =
+            code === "DM_BLOCKED"
+              ? "Диалог недоступен"
+              : "Не удалось отправить сообщение";
+          notify("error", message, {
+            actions:
+              code === "DM_BLOCKED"
+                ? undefined
+                : [
+                    {
+                      label: "Повторить",
+                      onClick: () => {
+                        sendRef.current?.({
+                          text,
+                          file,
+                          mediaType,
+                          audioDuration,
+                        });
+                      },
+                    },
+                  ],
           });
           throw e;
         }

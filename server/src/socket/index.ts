@@ -7,7 +7,9 @@ import {
   dmRoomId,
 } from "../services/accessControl.js";
 import { createMessage } from "../services/messageService.js";
+import { isAccessTokenRevoked } from "../services/tokenRevocation.js";
 import type { AuthenticatedUser } from "../types/auth.js";
+import { isHttpError } from "../utils/errors.js";
 import { verifyAccessToken } from "../utils/tokens.js";
 import { allowSocketEvent } from "./rateLimit.js";
 import { isAllowedSocketRoom, peerIdFromDmRoom, userRoomId } from "./rooms.js";
@@ -64,6 +66,11 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
 
       const payload = verifyAccessToken(token);
 
+      if (isAccessTokenRevoked(payload)) {
+        next(new Error("TOKEN_REVOKED"));
+        return;
+      }
+
       const user = await prisma.user.findUnique({
         where: { id: payload.id },
         select: {
@@ -87,6 +94,7 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
       };
 
       socket.data.user = socketUser;
+      socket.data.sid = payload.sid;
       next();
     } catch (error) {
       if (error instanceof Error && error.name === "TokenExpiredError") {
@@ -184,7 +192,11 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
           ?.to([room, userRoomId(receiverId)])
           .emit(SOCKET_EVENTS.MESSAGE_NEW, savedMessage);
         cb?.({ ok: true, id: savedMessage._id });
-      } catch {
+      } catch (error) {
+        if (isHttpError(error) && error.code === "DM_BLOCKED") {
+          cb?.({ error: "BLOCKED" });
+          return;
+        }
         cb?.({ error: "SERVER" });
       }
     });

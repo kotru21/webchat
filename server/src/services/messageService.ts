@@ -2,6 +2,7 @@ import prisma from "../config/prisma.js";
 import { createHttpError } from "../utils/errors.js";
 import { toMessageDto } from "../utils/serializers.js";
 import { assertCanListDm, dmRoomId } from "./accessControl.js";
+import { isBlockedEitherWay } from "./blockService.js";
 import { messageInclude } from "./dbShapes.js";
 
 interface CreateMessageInput {
@@ -46,6 +47,10 @@ export const createMessage = async (data: CreateMessageInput) => {
 
   if (!receiver) {
     throw createHttpError(404, "Получатель не найден", "RECEIVER_NOT_FOUND");
+  }
+
+  if (await isBlockedEitherWay(data.senderId, data.receiverId)) {
+    throw createHttpError(403, "Диалог недоступен", "DM_BLOCKED");
   }
 
   const room = data.roomId ?? dmRoomId(data.senderId, data.receiverId);

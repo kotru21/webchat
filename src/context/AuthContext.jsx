@@ -94,12 +94,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const logoutAll = async () => {
+    try {
+      await apiClient.post("/api/auth/logout-all");
+    } catch (error) {
+      console.error("Ошибка при выходе со всех устройств:", error);
+    } finally {
+      clearAccessToken();
+      clearRefreshSessionFlag();
+      dispatch({ type: "LOGOUT" });
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user: state.user,
         login,
         logout,
+        logoutAll,
         updateUser,
         loading: state.loading,
       }}>
