@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/authRoutes.js";
+import blockRoutes from "./routes/blockRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import mediaRoutes from "./routes/mediaRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
@@ -43,6 +44,7 @@ export const createApp = () => {
 
   app.use("/api/media", mediaRoutes);
   app.use("/api/auth", authRoutes);
+  app.use("/api/blocks", blockRoutes);
   app.use("/api/messages", messageRoutes);
   app.use("/api/chats", chatRoutes);
 

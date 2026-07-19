@@ -1,8 +1,53 @@
 // Чистая презентация профиля
+import { useCallback, useEffect, useState } from "react";
 import { AuthorizedMediaImg } from "@shared/ui/AuthorizedMediaImg";
 import { Button } from "@shared/ui/button";
+import {
+  blockUser,
+  listBlocks,
+  unblockUser,
+} from "@features/profile/api/blocksApi";
+import { notify } from "@features/notifications/notify";
 
 export function ProfileCard({ profile, onStartChat, isCurrentUser, onClose }) {
+  const peerId = profile?._id || profile?.id;
+  const [blocked, setBlocked] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!peerId || isCurrentUser) return undefined;
+    let cancelled = false;
+    listBlocks()
+      .then((users) => {
+        if (cancelled) return;
+        setBlocked(users.some((u) => u._id === peerId || u.id === peerId));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [peerId, isCurrentUser]);
+
+  const toggleBlock = useCallback(async () => {
+    if (!peerId || busy) return;
+    setBusy(true);
+    try {
+      if (blocked) {
+        await unblockUser(peerId);
+        setBlocked(false);
+        notify("success", "Пользователь разблокирован");
+      } else {
+        await blockUser(peerId);
+        setBlocked(true);
+        notify("success", "Пользователь заблокирован");
+      }
+    } catch {
+      notify("error", "Не удалось изменить блокировку");
+    } finally {
+      setBusy(false);
+    }
+  }, [peerId, busy, blocked]);
+
   if (!profile) return null;
   return (
     <div className="m3-surface-high w-[320px] overflow-hidden rounded-3xl border border-border/70 shadow-xl backdrop-blur-md">
@@ -57,20 +102,30 @@ export function ProfileCard({ profile, onStartChat, isCurrentUser, onClose }) {
           Зарегистрирован: {new Date(profile.createdAt).toLocaleDateString()}
         </div>
 
-        {onStartChat && !isCurrentUser && (
-          <div className="mt-4">
+        {!isCurrentUser && (
+          <div className="mt-4 flex flex-col gap-2">
+            {onStartChat && (
+              <Button
+                type="button"
+                onClick={() => {
+                  onStartChat({
+                    id: peerId,
+                    username: profile.username,
+                    avatar: profile.avatar,
+                  });
+                  onClose && onClose();
+                }}
+                className="h-10 w-full">
+                Написать сообщение
+              </Button>
+            )}
             <Button
               type="button"
-              onClick={() => {
-                onStartChat({
-                  id: profile._id || profile.id,
-                  username: profile.username,
-                  avatar: profile.avatar,
-                });
-                onClose && onClose();
-              }}
+              variant="secondary"
+              disabled={busy}
+              onClick={toggleBlock}
               className="h-10 w-full">
-              Написать сообщение
+              {blocked ? "Разблокировать" : "Заблокировать"}
             </Button>
           </div>
         )}

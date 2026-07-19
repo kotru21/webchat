@@ -70,3 +70,12 @@ export const mediaLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Block / unblock mutations. */
+export const blockLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 10_000 : 30,
+  message: { message: "Слишком много запросов блокировки. Попробуйте позже." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
