@@ -104,6 +104,18 @@ export function finalizePendingMessageMutation(state, tempId, realDto) {
       avatar: pendingMessage.sender.avatar,
     };
   }
+  // Keep optimistic plaintext for e2ee so the bubble doesn't flash ciphertext.
+  if (
+    pendingMessage &&
+    realMessage?.contentFormat === "e2ee-v1" &&
+    typeof pendingMessage.content === "string" &&
+    pendingMessage.content &&
+    !pendingMessage.content.startsWith("{")
+  ) {
+    realMessage.localPlaintext = pendingMessage.content;
+  } else if (pendingMessage?.localPlaintext) {
+    realMessage.localPlaintext = pendingMessage.localPlaintext;
+  }
   const alreadyExists = chat.messages.some(
     (message) => message._id === realMessage._id && message._id !== tempId
   );

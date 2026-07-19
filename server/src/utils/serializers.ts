@@ -52,6 +52,7 @@ export const toMessageDto = (message: MessageWithRelations) => {
     receiver: message.receiver ? toPublicUser(message.receiver) : null,
     senderUsername: message.senderUsername,
     content: message.content,
+    contentFormat: message.contentFormat,
     mediaUrl: message.mediaUrl,
     mediaType: message.mediaType,
     audioDuration: message.audioDuration,

@@ -25,10 +25,19 @@ Not a production messenger. Scope is intentional and documented in [`SECURITY.md
 | Magic-bytes + Sharp image pipeline | `fileValidator.ts`, `uploadPipeline.ts` |
 | Path-safe unlink | `server/src/utils/uploads.ts` |
 | Threat model | [`SECURITY.md`](./SECURITY.md) |
+| Text DM E2EE (scoped) | `src/features/e2ee/`, ADR [`docs/adr/0001-e2ee-scope.md`](./docs/adr/0001-e2ee-scope.md) |
+
+## E2EE (text DMs)
+
+Text DMs encrypt with WebCrypto when both sides have identity keys. A **lock** on a bubble means the payload on the server is an opaque envelope (`contentFormat: e2ee-v1`), not readable plaintext. Compare fingerprints in the peer profile out-of-band.
+
+**Single-device caveat:** keys live in this browser profile (IndexedDB). A new device gets a new key; old messages will not decrypt there, and the peer sees a key-change warning until they explicitly trust the new key.
+
+Media attachments stay **unencrypted** (server upload pipeline).
 
 ## Out of scope
 
-E2EE · WAF · pin / edit / delete / read receipts (stripped)
+Signal-style X3DH / Double Ratchet · multi-device sync · WAF · pin / edit / delete / read receipts (stripped)
 
 ## Stack
 

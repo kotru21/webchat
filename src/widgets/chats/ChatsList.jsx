@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useState } from "react";
-import { FiImage, FiSearch, FiVideo, FiX } from "react-icons/fi";
+import { FiSearch, FiX } from "react-icons/fi";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useUserChats } from "@features/chats/api/useUserChats";
 import { useUserSearch } from "@features/chats/api/useUserSearch";
+import { ChatLastMessagePreview } from "@features/chats/ui/ChatLastMessagePreview";
 import { useChatStore } from "@shared/store/chatStore";
 import { resolvePeerId } from "@shared/lib/peerId";
 import { AuthorizedMediaImg } from "@shared/ui/AuthorizedMediaImg";
@@ -53,30 +54,6 @@ const ChatsList = memo(({ isOpen, onClose }) => {
     []
   );
 
-  const formatLastMessage = useCallback((m) => {
-    if (!m) return "Нет сообщений";
-    if (m.mediaUrl) {
-      if (m.mediaType === "image") {
-        return (
-          <span className="inline-flex items-center gap-1">
-            <FiImage size={12} aria-hidden className="shrink-0" />
-            Изображение
-          </span>
-        );
-      }
-      if (m.mediaType === "video") {
-        return (
-          <span className="inline-flex items-center gap-1">
-            <FiVideo size={12} aria-hidden className="shrink-0" />
-            Видео
-          </span>
-        );
-      }
-      return "Медиа";
-    }
-    return m.content.length > 25 ? m.content.slice(0, 25) + "..." : m.content;
-  }, []);
-
   const openPeer = useCallback(
     (user) => {
       const peerId = resolvePeerId(user);
@@ -108,11 +85,11 @@ const ChatsList = memo(({ isOpen, onClose }) => {
       className={`${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } fixed inset-y-0 left-0 z-30 h-full w-76 m3-surface-high border-r border-border/70 transition-transform duration-300 ease-in-out md:relative md:inset-auto md:w-full md:translate-x-0 md:rounded-r-4xl md:m3-elev-1`}>
-      <div className="flex h-full flex-col p-4">
+      <div className="flex h-full flex-col p-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="mb-4 flex min-h-12 items-center justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-              Kotikov
+              Secure Chat Lab
             </p>
             <h2 className="font-heading text-lg font-semibold tracking-tight">
               Чаты
@@ -130,12 +107,16 @@ const ChatsList = memo(({ isOpen, onClose }) => {
         </div>
 
         <div className="relative mb-4">
+          <label htmlFor="chats-user-search" className="sr-only">
+            Поиск пользователей
+          </label>
           <FiSearch
             className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
             size={16}
             aria-hidden
           />
           <Input
+            id="chats-user-search"
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -286,7 +267,9 @@ const ChatsList = memo(({ isOpen, onClose }) => {
                                 {chat.user.username}
                               </p>
                               <p className="truncate text-xs leading-4 text-muted-foreground">
-                                {formatLastMessage(chat.lastMessage)}
+                                <ChatLastMessagePreview
+                                  lastMessage={chat.lastMessage}
+                                />
                               </p>
                               <p className="mt-1 text-xs leading-4 text-muted-foreground">
                                 {formatMessageTime(chat.lastMessage?.createdAt)}

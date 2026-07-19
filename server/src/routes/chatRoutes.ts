@@ -5,6 +5,6 @@ import { readLimiter } from "../middleware/rateLimiter.js";
 
 const router = Router();
 
-router.get("/", protect, readLimiter, getUserChats);
+router.get("/", readLimiter, protect, getUserChats);
 
 export default router;

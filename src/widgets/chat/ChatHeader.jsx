@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef, memo, useCallback } from "react";
-import { FiLogOut, FiMenu, FiMonitor, FiMoon, FiSun, FiShield } from "react-icons/fi";
+import {
+  FiLogOut,
+  FiMenu,
+  FiMonitor,
+  FiMoon,
+  FiMoreVertical,
+  FiSun,
+} from "react-icons/fi";
 import { ANIMATION_DELAYS } from "@constants/appConstants";
 import { setupHoverPrefetch } from "@shared/lib/prefetch";
 import { useSelectedUser } from "@shared/store/chatSelectors";
@@ -27,6 +34,8 @@ const ChatHeaderComponent = ({
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
   const titleSource = selectedUser
     ? selectedUser.username || selectedUser.email
     : emptyTitle;
@@ -59,6 +68,26 @@ const ChatHeaderComponent = ({
     return cleanup;
   }, []);
 
+  useEffect(() => {
+    if (!accountMenuOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [accountMenuOpen]);
+
   const cycleTheme = useCallback(() => {
     const idx = THEME_CYCLE.indexOf(theme);
     const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
@@ -67,6 +96,7 @@ const ChatHeaderComponent = ({
 
   const handleLogout = useCallback(async () => {
     if (loggingOut) return;
+    setAccountMenuOpen(false);
     setLoggingOut(true);
     try {
       await logout();
@@ -81,6 +111,7 @@ const ChatHeaderComponent = ({
       "Выйти на всех устройствах? Активные сессии будут завершены везде."
     );
     if (!confirmed) return;
+    setAccountMenuOpen(false);
     setLoggingOut(true);
     try {
       await logoutAll();
@@ -93,7 +124,7 @@ const ChatHeaderComponent = ({
   const themeLabel = themeMeta[theme]?.label || "Сменить тему";
 
   return (
-    <header className="m3-surface-high sticky top-0 z-20 border-b border-border/70 px-4 py-3 backdrop-blur-xl sm:px-5 md:rounded-t-4xl">
+    <header className="m3-surface-high sticky top-0 z-20 border-b border-border/70 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-xl sm:px-5 md:rounded-t-4xl">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -103,7 +134,7 @@ const ChatHeaderComponent = ({
             onClick={onOpenSidebar}
             className="h-12 w-12 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
             aria-label="Открыть список чатов">
-            <FiMenu size={22} />
+            <FiMenu size={22} aria-hidden />
           </Button>
           <h1
             className={`max-w-[72vw] truncate text-lg font-medium leading-6 text-foreground transition-all duration-300 ease-in-out sm:max-w-[52vw] sm:text-xl md:max-w-[38vw] ${
@@ -146,32 +177,46 @@ const ChatHeaderComponent = ({
               onClick={cycleTheme}
               aria-label={themeLabel}
               title={themeLabel}>
-              <ThemeIcon size={20} />
+              <ThemeIcon size={20} aria-hidden />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12 text-muted-foreground hover:text-foreground"
-              onClick={handleLogoutAll}
-              disabled={loggingOut}
-              aria-label="Выйти на всех устройствах"
-              title="Выйти на всех устройствах"
-              aria-busy={loggingOut}>
-              <FiShield size={20} />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12 text-muted-foreground hover:text-foreground"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              aria-label={loggingOut ? "Выход…" : "Выйти из аккаунта"}
-              title="Выйти"
-              aria-busy={loggingOut}>
-              <FiLogOut size={20} />
-            </Button>
+            <div className="relative" ref={accountMenuRef}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 text-muted-foreground hover:text-foreground"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-label="Меню аккаунта"
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                disabled={loggingOut}
+                aria-busy={loggingOut}>
+                <FiMoreVertical size={20} aria-hidden />
+              </Button>
+              {accountMenuOpen ? (
+                <div
+                  role="menu"
+                  aria-label="Действия аккаунта"
+                  className="absolute right-0 z-40 mt-1 min-w-56 rounded-2xl border border-border/70 bg-popover p-1 text-popover-foreground shadow-lg m3-elev-2">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    onClick={handleLogout}>
+                    <FiLogOut size={16} aria-hidden />
+                    Выйти
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    onClick={handleLogoutAll}>
+                    <FiLogOut size={16} aria-hidden />
+                    Выйти на всех устройствах
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

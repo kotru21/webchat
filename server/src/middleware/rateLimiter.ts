@@ -79,3 +79,12 @@ export const blockLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** E2EE public-key upserts (identity rotation is rare). */
+export const keyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 10_000 : 10,
+  message: { message: "Слишком много обновлений ключа. Попробуйте позже." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

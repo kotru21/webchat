@@ -1,7 +1,4 @@
-import { BsMicFill, BsStopFill } from "react-icons/bs";
-import { FaTrash } from "react-icons/fa";
-import { MdSend } from "react-icons/md";
-import { FiAlertCircle } from "react-icons/fi";
+import { FiAlertCircle, FiMic, FiSend, FiSquare, FiTrash2 } from "react-icons/fi";
 import { FILE_LIMITS } from "@constants/appConstants";
 import { Button } from "@shared/ui/button";
 import { Alert, AlertDescription } from "@shared/ui/alert";
@@ -25,20 +22,20 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
   } = useVoiceRecorder({ onVoiceRecorded });
 
   return (
-    <div className="bg-muted/40 border border-border p-3 rounded-lg shadow-sm animate-fade-in">
+    <div className="rounded-lg border border-border bg-muted/40 p-3 shadow-sm animate-fade-in">
       {error && (
         <Alert variant="destructive" className="mb-3">
-          <FiAlertCircle className="h-4 w-4" />
+          <FiAlertCircle className="h-4 w-4" aria-hidden />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <div className="text-sm font-medium text-muted-foreground">
           {isRecording
             ? `Запись: ${formatTime(recordingTime)}`
             : audioBlob
-            ? "Готово к отправке"
-            : "Голосовое сообщение"}
+              ? "Готово к отправке"
+              : "Голосовое сообщение"}
         </div>
         {!isRecording && audioUrl && (
           <div className="text-xs text-muted-foreground">
@@ -51,7 +48,7 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
           ref={audioRef}
           src={audioUrl}
           controls
-          className="w-full mb-2 rounded-md"
+          className="mb-2 w-full rounded-md"
           onLoadedMetadata={handleAudioMetadata}
         />
       )}
@@ -64,7 +61,7 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
             size="icon"
             className="h-11 w-11 rounded-full"
             aria-label="Начать запись">
-            <BsMicFill size={20} />
+            <FiMic size={20} aria-hidden />
           </Button>
         )}
         {isRecording && (
@@ -75,7 +72,7 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
             size="icon"
             className="h-11 w-11 rounded-full animate-pulse"
             aria-label="Остановить запись">
-            <BsStopFill size={20} />
+            <FiSquare size={18} aria-hidden />
           </Button>
         )}
         {audioBlob && (
@@ -87,7 +84,7 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
               size="icon"
               className="h-11 w-11 rounded-full"
               aria-label="Отменить запись">
-              <FaTrash size={16} />
+              <FiTrash2 size={16} aria-hidden />
             </Button>
             <Button
               type="button"
@@ -95,7 +92,7 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
               size="icon"
               className="h-11 w-11 rounded-full"
               aria-label="Отправить голосовое сообщение">
-              <MdSend size={20} />
+              <FiSend size={20} aria-hidden />
             </Button>
           </>
         )}
@@ -112,8 +109,9 @@ const VoiceRecorder = ({ onVoiceRecorded, onCancel }) => {
         )}
       </div>
       {isRecording && (
-        <div className="mt-2 text-xs text-center text-muted-foreground">
-          Максимальная длительность: {formatTime(FILE_LIMITS.VOICE_MESSAGE_MAX_DURATION)}
+        <div className="mt-2 text-center text-xs text-muted-foreground">
+          Максимальная длительность:{" "}
+          {formatTime(FILE_LIMITS.VOICE_MESSAGE_MAX_DURATION)}
         </div>
       )}
     </div>

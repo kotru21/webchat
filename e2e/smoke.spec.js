@@ -38,6 +38,9 @@ const openDmWith = async (page, username) => {
   await expect(page.getByLabel("Текст сообщения")).toBeVisible();
 };
 
+const messageLog = (page) =>
+  page.getByLabel("Сообщения", { exact: true });
+
 test("register → login → DM between two users → logout", async ({
   browser,
 }) => {
@@ -61,14 +64,15 @@ test("register → login → DM between two users → logout", async ({
     await openDmWith(pageB, userA.username);
     await pageB.getByLabel("Текст сообщения").fill(message);
     await pageB.getByRole("button", { name: "Отправить сообщение" }).click();
-    await expect(pageB.getByText(message)).toBeVisible();
+    await expect(messageLog(pageB).getByText(message)).toBeVisible();
 
     // A opens the thread and sees the message (REST history + ACL).
     await openDmWith(pageA, userB.username);
-    await expect(pageA.getByText(message)).toBeVisible();
+    await expect(messageLog(pageA).getByText(message)).toBeVisible();
 
     // Logout clears the session and returns to /login.
-    await pageA.getByRole("button", { name: "Выйти из аккаунта" }).click();
+    await pageA.getByRole("button", { name: "Меню аккаунта" }).click();
+    await pageA.getByRole("menuitem", { name: "Выйти", exact: true }).click();
     await pageA.waitForURL("**/login");
     const cookies = await contextA.cookies();
     expect(

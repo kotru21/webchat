@@ -103,10 +103,25 @@ export const createMessageHandler: RequestHandler = async (req, res) => {
         ? req.body.content
         : "";
 
+  const contentFormat =
+    req.body.contentFormat === "e2ee-v1" ? "e2ee-v1" : "plain";
+
   // Client-supplied mediaUrl is ignored; only uploaded files are accepted.
   const media = getMessageMediaFromUpload(req);
 
-  if (!content.trim() && !media?.mediaUrl) {
+  if (contentFormat === "e2ee-v1" && media?.mediaUrl) {
+    throw createHttpError(
+      400,
+      "E2EE не поддерживает медиа",
+      "E2EE_MEDIA_UNSUPPORTED"
+    );
+  }
+
+  if (contentFormat === "e2ee-v1") {
+    if (!content) {
+      throw createHttpError(400, "Сообщение пустое", "EMPTY_MESSAGE");
+    }
+  } else if (!content.trim() && !media?.mediaUrl) {
     throw createHttpError(400, "Сообщение пустое", "EMPTY_MESSAGE");
   }
 
@@ -114,6 +129,7 @@ export const createMessageHandler: RequestHandler = async (req, res) => {
     senderId: req.user.id,
     senderUsername: req.user.username?.trim() || "user",
     content,
+    contentFormat,
     receiverId,
     mediaUrl: media?.mediaUrl ?? null,
     mediaType: media?.mediaType ?? null,

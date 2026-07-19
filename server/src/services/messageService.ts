@@ -9,6 +9,7 @@ interface CreateMessageInput {
   senderId: string;
   senderUsername: string;
   content?: string;
+  contentFormat?: string;
   receiverId: string;
   mediaUrl?: string | null;
   mediaType?: string | null;
@@ -60,6 +61,7 @@ export const createMessage = async (data: CreateMessageInput) => {
       senderId: data.senderId,
       senderUsername: data.senderUsername,
       content: data.content ?? "",
+      contentFormat: data.contentFormat ?? "plain",
       receiverId: data.receiverId,
       mediaUrl: data.mediaUrl ?? null,
       mediaType: data.mediaType ?? null,

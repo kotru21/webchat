@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import io from "socket.io-client";
 import { SOCKET_EVENTS } from "@constants/socketEvents";
 import { useMessagesStore } from "@shared/store/messagesStore";
@@ -10,6 +11,7 @@ import {
   refreshAccessToken,
 } from "@shared/lib/refreshSession";
 import { resolvePeerId } from "@shared/lib/peerId";
+import { queryKeys } from "@shared/api/queryKeys";
 
 const MAX_RECONNECTION_ATTEMPTS = 15;
 
@@ -31,6 +33,7 @@ const useChatSocket = ({
   incrementUnread,
   onSocketSendRef,
 }) => {
+  const queryClient = useQueryClient();
   const addMessage = useMessagesStore((s) => s.addMessage);
   const socketRef = useRef(null);
   const peerId = resolvePeerId(selectedUser);
@@ -114,6 +117,9 @@ const useChatSocket = ({
 
       if (!msg.isPrivate && !msg.receiver) return;
 
+      // Keep sidebar in sync (first DM must appear without reload).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+
       const isCurrentChat =
         currentSelectedId &&
         (senderId === currentSelectedId || receiverId === currentSelectedId);
@@ -135,7 +141,7 @@ const useChatSocket = ({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [user, peerId, incrementUnread, addMessage, onSocketSendRef]);
+  }, [user, peerId, incrementUnread, addMessage, onSocketSendRef, queryClient]);
 
   const prevSelectedRef = useRef(null);
   useEffect(() => {

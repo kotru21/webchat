@@ -121,8 +121,7 @@ const Login = () => {
 
           <CardFooter className="flex-col gap-3 text-sm text-muted-foreground">
             <p className="text-center text-xs leading-5">
-              Это учебная лаборатория, не production-мессенджер. E2EE в wave 1
-              нет — доверяйте только тем, кого сами добавили в DM.
+              Это учебная лаба, не production-мессенджер :D
             </p>
             <div className="justify-center text-center">
               Нет аккаунта?

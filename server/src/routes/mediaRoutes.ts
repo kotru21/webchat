@@ -46,7 +46,7 @@ const resolveSafeUploadPath = (requestPath: string): SafeUploadPath => {
 const isMessageAttachmentPath = (relative: string): boolean =>
   relative === "media" || relative.startsWith("media/");
 
-router.get("/*path", protect, mediaLimiter, async (req, res, next) => {
+router.get("/*path", mediaLimiter, protect, async (req, res, next) => {
   try {
     const rawPath = Array.isArray(req.params.path)
       ? req.params.path.join("/")

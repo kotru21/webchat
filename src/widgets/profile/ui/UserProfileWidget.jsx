@@ -2,6 +2,7 @@ import { useLayoutEffect, useEffect, useRef, useState, useCallback } from "react
 import { createPortal } from "react-dom";
 import ProfileCard from "./ProfileCard";
 import { useUserProfile } from "@features/profile/api/useUserProfile";
+import { getFocusable } from "@shared/ui/AccessibleDialog";
 
 const CARD_WIDTH = 320;
 const VIEW_MARGIN = 8;
@@ -80,6 +81,7 @@ export function UserProfileWidget({
   });
   const profile = profileData || fetchedProfile;
   const popoverRef = useRef(null);
+  const restoreFocusRef = useRef(null);
   const [position, setPosition] = useState(() =>
     computePopoverPosition({
       rect: anchorRect || null,
@@ -119,8 +121,11 @@ export function UserProfileWidget({
     };
   }, [isEmbedded, updatePosition]);
 
+  // Focus trap + restore (popover is a modal dialog for a11y).
   useEffect(() => {
     if (isEmbedded) return undefined;
+
+    restoreFocusRef.current = document.activeElement;
 
     const handlePointerDown = (e) => {
       // Switching to another avatar: let that click open the next preview
@@ -140,17 +145,60 @@ export function UserProfileWidget({
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         onClose?.();
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+
+      const panel = popoverRef.current;
+      const focusable = getFocusable(panel);
+      if (focusable.length === 0) {
+        e.preventDefault();
+        panel?.focus?.({ preventScroll: true });
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus({ preventScroll: true });
+      } else if (!panel?.contains(active)) {
+        e.preventDefault();
+        first.focus({ preventScroll: true });
       }
     };
 
     document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
+      const restore = restoreFocusRef.current;
+      // preventScroll: restoring to the avatar must not jump the message list.
+      if (restore && typeof restore.focus === "function") {
+        restore.focus({ preventScroll: true });
+      }
     };
-  }, [anchorEl, anchorRef, isEmbedded, onClose]);
+  }, [anchorEl, anchorRef, isEmbedded, onClose, userId]);
+
+  // Move focus into the panel once content is ready (or while loading).
+  useEffect(() => {
+    if (isEmbedded) return undefined;
+    queueMicrotask(() => {
+      const panel = popoverRef.current;
+      if (!panel) return;
+      const focusable = getFocusable(panel);
+      (focusable[0] || panel).focus?.({ preventScroll: true });
+    });
+  }, [isEmbedded, loading, profile, error, userId]);
 
   const isCurrentUser = () => {
     if (!profile || !currentUserId) return false;
@@ -161,7 +209,8 @@ export function UserProfileWidget({
     <div
       ref={popoverRef}
       role={isEmbedded ? undefined : "dialog"}
-      aria-modal={isEmbedded ? undefined : false}
+      aria-modal={isEmbedded ? undefined : true}
+      tabIndex={isEmbedded ? undefined : -1}
       aria-label={
         isEmbedded
           ? undefined
@@ -179,6 +228,7 @@ export function UserProfileWidget({
               left: position.left,
               zIndex: 60,
               visibility: ready ? "visible" : "hidden",
+              outline: "none",
             }
       }>
       {loading && (

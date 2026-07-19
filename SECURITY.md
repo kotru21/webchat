@@ -71,10 +71,30 @@
 | Email PII leak | public DTO without email | `server/src/utils/serializers.ts`, `server/src/services/dbShapes.ts` |
 | SPA XSS / mixed content | nginx CSP + companion headers | `deploy/nginx/default.conf`, `Dockerfile.web` |
 | Rate-limit IP collapse behind proxy | `TRUST_PROXY` → `app.set("trust proxy", 1)` | `server/src/config/env.ts`, `server/src/app.ts` |
+| E2EE text content (honest-but-curious server / DB dump) | WebCrypto P-256 ECDH + HKDF + AES-GCM; TOFU + encrypt-lock | `src/features/e2ee/lib/crypto.js`, `keyStore.js` |
+| E2EE public-key directory | Authenticated GET/PUT; reject JWK `d`; store minimal `{kty,crv,x,y}` | `server/src/routes/e2eeRoutes.ts`, `e2eeService.ts` |
+| E2EE key/plaintext not in Web Storage | Semgrep `secure-chat.e2ee-no-webstorage` | `.semgrep/rules/secure-chat-lab.yml` |
+| E2EE identity non-extractable | Semgrep `secure-chat.e2ee-no-extractable-identity` | `.semgrep/rules/secure-chat-lab.yml` |
+
+## E2EE (text DMs)
+
+Scoped end-to-end encryption for **text** private messages only. See ADR [`docs/adr/0001-e2ee-scope.md`](./docs/adr/0001-e2ee-scope.md).
+
+**Protects message content against:** a database dump, stolen backups, and a passive/honest-but-curious server operator reading stored or in-transit content.
+
+**Does not protect against:** an actively malicious server (it serves the JS and can ship key-exfiltrating code — mitigated but not eliminated by the wave-2 CSP), XSS on the client, device compromise, or metadata analysis (who talks to whom, when, how much — all still visible).
+
+**No forward secrecy and no post-compromise security:** compromise of either party’s identity private key decrypts that pair’s entire E2EE history. Explicit trade-off vs a Double Ratchet (out of scope).
+
+**Single device / account per browser profile:** the identity key is stored as `identity:<userId>` in IndexedDB (and TOFU pins as `<ownerUserId>:<peerId>`). A second account on the same profile gets its own key; a new device still generates a new key and peers get a key-change warning.
+
+**Media stays outside E2EE:** the server-side magic-bytes + Sharp pipeline is a deliberate wave-1 control we keep. Media messages remain visibly “not encrypted” in the UI.
+
+**TOFU + encrypt-lock:** first successful fetch of a peer’s public key is pinned in IndexedDB under the logged-in owner. Mismatch hard-blocks send until the user explicitly accepts the new key. If a peer was pinned and the server later returns 404 for their key, the client keeps the lock and does not silently fall back to plaintext (downgrade resistance).
 
 ## Out of scope
 
-- End-to-end encryption (E2EE)
+- Signal-style X3DH / Double Ratchet, multi-device key sync, forward secrecy / post-compromise security
 - WAF / CDN edge rules
 - Email verification flows
 - Distributed / multi-instance rate limiting or revocation stores (`express-rate-limit` and access-token revocation remain in-memory / single-instance; use `TRUST_PROXY=1` behind the compose nginx so per-IP limits see the real client)
@@ -94,7 +114,7 @@
 CI runs Semgrep on every push/PR (`.github/workflows/ci.yml`) with:
 
 - Registry packs: `p/javascript`, `p/typescript`, `p/nodejs`, `p/expressjs`, `p/owasp-top-ten`, `p/secrets`
-- Project rules: `.semgrep/rules/` (upload static serving, client `mediaUrl` persistence, hard-coded JWT secrets, media `sendFile` without DM ACL)
+- Project rules: `.semgrep/rules/` (upload static serving, client `mediaUrl` persistence, hard-coded JWT secrets, media `sendFile` without DM ACL, E2EE no Web Storage / non-extractable identity)
 - Ignore policy: `.semgrepignore` (deps, build output, generated Prisma client, uploads — security tests under `server/src/__tests__/security` remain in scope)
 - Gate: fails the job on **ERROR** severity findings
 

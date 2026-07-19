@@ -13,7 +13,7 @@ const FOCUSABLE_SELECTOR = [
 /** @type {{ id: symbol, panel: HTMLElement | null }[]} */
 const dialogStack = [];
 
-function getFocusable(container) {
+export function getFocusable(container) {
   if (!container) return [];
   return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
     (el) =>

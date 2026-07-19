@@ -14,7 +14,9 @@ dist-ssr
 
 # Local design/planning docs (specs, plans, brainstorming).
 # Public security docs stay at repo root: SECURITY.md + README (tracked).
-docs/
+# ADRs are public (referenced from README/SECURITY.md) and stay tracked.
+docs/*
+!docs/adr/
 
 # Editor directories and files
 .vscode/*
