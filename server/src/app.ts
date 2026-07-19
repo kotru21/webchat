@@ -14,6 +14,11 @@ import messageRoutes from "./routes/messageRoutes.js";
 export const createApp = () => {
   const app = express();
 
+  // Behind nginx, trust one proxy hop so rate-limit keys use the real client IP.
+  if (env.TRUST_PROXY) {
+    app.set("trust proxy", 1);
+  }
+
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());

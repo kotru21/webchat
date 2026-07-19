@@ -16,6 +16,12 @@ for (const key of required) {
   }
 }
 
+const parseTrustProxy = (value: string | undefined): boolean => {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+};
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV ?? "development",
   PORT: parseNumber(process.env.PORT, 5000),
@@ -25,4 +31,6 @@ export const env = {
   ACCESS_TOKEN_TTL: process.env.ACCESS_TOKEN_TTL ?? "15m",
   REFRESH_TOKEN_TTL_DAYS: parseNumber(process.env.REFRESH_TOKEN_TTL_DAYS, 7),
   COOKIE_SECURE: process.env.COOKIE_SECURE === "true",
+  /** When true, Express trusts one hop of X-Forwarded-* (compose nginx). */
+  TRUST_PROXY: parseTrustProxy(process.env.TRUST_PROXY),
 };
