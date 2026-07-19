@@ -6,6 +6,12 @@ import {
   USERNAME_MIN,
   USERNAME_PATTERN,
 } from "../utils/profileFields.js";
+import {
+  normalizeContentFormat,
+  PLAIN_CONTENT_MAX,
+  validateE2eeEnvelopeContent,
+} from "../utils/e2eeEnvelope.js";
+import { createHttpError } from "../utils/errors.js";
 
 const handleValidationErrors: RequestHandler = (req, res, next) => {
   const errors = validationResult(req);
@@ -27,17 +33,66 @@ const optionalUsername = () =>
     .matches(USERNAME_PATTERN)
     .withMessage("Никнейм может содержать только буквы, цифры, _, . и -");
 
+/**
+ * Message body validation. For e2ee-v1 we must NOT trim `content`/`text`
+ * (envelope must stay byte-identical). Format-aware checks live in a custom
+ * middleware after express-validator field presence checks.
+ */
+export const validateMessageContentFormat: RequestHandler = (req, _res, next) => {
+  const format = normalizeContentFormat(req.body?.contentFormat);
+  if (format === null) {
+    return next(
+      createHttpError(400, "Некорректный формат сообщения", "INVALID_FORMAT")
+    );
+  }
+  req.body.contentFormat = format;
+
+  const rawContent =
+    typeof req.body.text === "string"
+      ? req.body.text
+      : typeof req.body.content === "string"
+        ? req.body.content
+        : undefined;
+
+  if (format === "e2ee-v1") {
+    if (typeof rawContent !== "string") {
+      return next(
+        createHttpError(400, "Некорректный конверт E2EE", "INVALID_ENVELOPE")
+      );
+    }
+    // Do not trim — persist verbatim.
+    const err = validateE2eeEnvelopeContent(rawContent);
+    if (err) {
+      return next(
+        createHttpError(400, "Некорректный конверт E2EE", "INVALID_ENVELOPE")
+      );
+    }
+    // Prefer content field for downstream; keep text in sync if that was used.
+    if (typeof req.body.content !== "string" && typeof req.body.text === "string") {
+      req.body.content = req.body.text;
+    }
+    return next();
+  }
+
+  // plain / absent — existing 1000-char trim rule.
+  if (typeof rawContent === "string") {
+    const trimmed = rawContent.trim();
+    if (trimmed.length > PLAIN_CONTENT_MAX) {
+      return next(
+        createHttpError(400, "Сообщение слишком длинное", "TOO_LONG")
+      );
+    }
+    if (typeof req.body.text === "string") req.body.text = trimmed;
+    if (typeof req.body.content === "string") req.body.content = trimmed;
+  }
+  return next();
+};
+
 export const validateMessage = [
-  body("text")
+  body("contentFormat")
     .optional()
-    .trim()
-    .isLength({ max: 1000 })
-    .withMessage("Сообщение слишком длинное"),
-  body("content")
-    .optional()
-    .trim()
-    .isLength({ max: 1000 })
-    .withMessage("Сообщение слишком длинное"),
+    .isIn(["plain", "e2ee-v1"])
+    .withMessage("Некорректный формат сообщения"),
   body("receiverId")
     .optional()
     .isString()
@@ -45,6 +100,7 @@ export const validateMessage = [
     .isLength({ min: 1, max: 64 })
     .withMessage("Неверный формат ID получателя"),
   handleValidationErrors,
+  validateMessageContentFormat,
 ];
 
 export const validateRegister = [

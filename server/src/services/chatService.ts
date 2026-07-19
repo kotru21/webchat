@@ -7,6 +7,7 @@ interface ChatListRow {
   otherUserId: string;
   messageId: string;
   content: string;
+  contentFormat: string;
   mediaUrl: string | null;
   mediaType: string | null;
   createdAt: string;
@@ -22,6 +23,7 @@ export const getUserChatsList = async (userId: string) => {
         m.senderId,
         m.receiverId,
         m.content,
+        m.contentFormat,
         m.mediaUrl,
         m.mediaType,
         m.createdAt,
@@ -41,6 +43,7 @@ export const getUserChatsList = async (userId: string) => {
       ranked.otherUserId,
       ranked.id AS messageId,
       ranked.content,
+      ranked.contentFormat,
       ranked.mediaUrl,
       ranked.mediaType,
       ranked.createdAt,
@@ -74,6 +77,7 @@ export const getUserChatsList = async (userId: string) => {
         lastMessage: {
           _id: row.messageId,
           content: row.content,
+          contentFormat: row.contentFormat || "plain",
           mediaUrl: row.mediaUrl,
           mediaType: row.mediaType,
           createdAt: new Date(row.createdAt),

@@ -45,20 +45,21 @@ router.post("/login", authLimiter, validateLogin, login);
 // requireSameOrigin: CSRF guard for the cookie-authenticated endpoints.
 router.post("/logout", logoutLimiter, requireSameOrigin, logout);
 // Bearer-only ⇒ no CSRF middleware (invariant 7).
-router.post("/logout-all", protect, logoutLimiter, logoutAll);
+// Rate limit before protect so unauthenticated spam is throttled (CodeQL).
+router.post("/logout-all", logoutLimiter, protect, logoutAll);
 router.post("/refresh", refreshLimiter, requireSameOrigin, refreshAccessToken);
 router.put(
   "/profile",
-  protect,
   profileLimiter,
+  protect,
   profileUpload,
   cleanupUploadsOnError,
   validateFileMagicBytes,
   validateProfile,
   updateProfile
 );
-router.get("/users", protect, searchLimiter, searchUsers);
-router.get("/users/:id", protect, readLimiter, getUserProfile);
-router.get("/me", protect, readLimiter, getMe);
+router.get("/users", searchLimiter, protect, searchUsers);
+router.get("/users/:id", readLimiter, protect, getUserProfile);
+router.get("/me", readLimiter, protect, getMe);
 
 export default router;

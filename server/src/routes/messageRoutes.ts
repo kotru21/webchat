@@ -12,11 +12,11 @@ import { validateMessage } from "../middleware/validator.js";
 
 const router = Router();
 
-router.get("/", protect, readLimiter, getMessages);
+router.get("/", readLimiter, protect, getMessages);
 router.post(
   "/",
-  protect,
   messageLimiter,
+  protect,
   // Multer must run first so multipart fields exist for validateMessage.
   mediaUpload,
   cleanupUploadsOnError,

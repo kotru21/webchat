@@ -10,12 +10,14 @@ import QueryClientProvider from "@app/providers/QueryClientProvider.jsx";
 import ErrorBoundary from "@shared/ui/ErrorBoundary.jsx";
 import { Suspense, lazy } from "react";
 import ToastContainer from "@widgets/notifications/ToastContainer.jsx";
+import { useE2eeEnrollment } from "@features/e2ee/model/useE2eeEnrollment.js";
 const Login = lazy(() => import("@pages/Login"));
 const Register = lazy(() => import("@pages/Register"));
 const Chat = lazy(() => import("@pages/Chat"));
 
 const AppContent = () => {
   const { user } = useAuth();
+  useE2eeEnrollment();
 
   return (
     <Suspense

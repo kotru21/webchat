@@ -111,6 +111,93 @@
   --spacing-m3-6: var(--space-6);
   --spacing-m3-8: var(--space-8);
   --spacing-touch: var(--touch-target);
+
+  /* Motion — chat + shared UI (Tailwind v4; legacy tailwind.config.js is unused) */
+  --animate-fade-in: fade-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in: scale-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-message-in-own: message-in-own 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-message-in-peer: message-in-peer 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-message-toast-in: message-toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-sending-pulse: sending-pulse 1.1s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Own bubble: rises from composer / right edge */
+  @keyframes message-in-own {
+    from {
+      opacity: 0;
+      transform: translate3d(14px, 10px, 0) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  /* Peer bubble: slides in from the left */
+  @keyframes message-in-peer {
+    from {
+      opacity: 0;
+      transform: translate3d(-14px, 6px, 0) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes message-toast-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 10px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  @keyframes sending-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
 }
 
 @layer base {
@@ -210,6 +297,26 @@
     animation: anchorFlash 1.5s ease-in-out 1;
     position: relative;
     transition: background-color 0.4s ease;
+  }
+
+  .message-item-base {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .message-bubble {
+    transition:
+      opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.28s ease,
+      background-color 0.2s ease;
+  }
+
+  .message-bubble--optimistic {
+    opacity: 0.72;
+  }
+
+  .message-bubble--confirmed {
+    opacity: 1;
   }
 }
 

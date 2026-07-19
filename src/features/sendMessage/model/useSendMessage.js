@@ -5,6 +5,13 @@ import { useAuth } from "@context/useAuth";
 import { useMessagesStore } from "@shared/store/messagesStore";
 import { notify } from "@features/notifications/notify";
 import { queryKeys } from "@shared/api/queryKeys";
+import { encryptDm } from "@features/e2ee/lib/crypto.js";
+import {
+  cachePlaintext,
+  moveCachedPlaintext,
+} from "@features/e2ee/lib/plaintextCache.js";
+import { resolvePeerTrust } from "@features/e2ee/lib/peerTrust.js";
+import { ensureIdentity } from "@features/e2ee/lib/session.js";
 
 // Bridge хук. Позже sendMessageUsecase будет перенесён внутрь этой feature.
 export function useSendMessage({ receiverId }) {
@@ -29,19 +36,58 @@ export function useSendMessage({ receiverId }) {
       setLoading(true);
       setError(null);
       try {
+        let contentFormat = "plain";
+        let wireText = text || "";
+
+        // Media stays on the plain path (wave-1 pipeline).
+        if (text && !file) {
+          const trust = await resolvePeerTrust(user.id, receiverId);
+          if (trust.status === "changed" || trust.status === "locked") {
+            const err = new Error("E2EE_SEND_BLOCKED");
+            notify(
+              "error",
+              trust.status === "locked"
+                ? "Ключ собеседника недоступен — отправка заблокирована"
+                : "Ключ собеседника изменился — подтвердите новый ключ"
+            );
+            setError(err);
+            return { ok: false, error: err };
+          }
+          if (trust.status === "encrypted" && trust.peerJwk) {
+            const pair = await ensureIdentity(user.id);
+            wireText = await encryptDm({
+              myPrivate: pair.privateKey,
+              peerPublicJwk: trust.peerJwk,
+              senderId: user.id,
+              receiverId,
+              plaintext: text,
+            });
+            contentFormat = "e2ee-v1";
+          }
+        }
+
         const formData = new FormData();
-        if (text) formData.append("text", text);
+        if (wireText) formData.append("text", wireText);
+        if (contentFormat === "e2ee-v1") {
+          formData.append("contentFormat", "e2ee-v1");
+        }
         if (file) formData.append("media", file);
         if (mediaType) formData.append("mediaType", mediaType);
         if (audioDuration) formData.append("audioDuration", audioDuration);
         formData.append("receiverId", receiverId);
-        // optimistic
+        // optimistic — always show local plaintext
         const tempId = `temp-${Date.now()}-${Math.random()
           .toString(36)
           .slice(2, 8)}`;
+        const displayContent = text || (file ? "Медиа" : "");
+        if (contentFormat === "e2ee-v1" && text) {
+          cachePlaintext(tempId, text);
+        }
         addPending(receiverId, {
           _id: tempId,
-          content: text || (file ? "Медиа" : ""),
+          content: displayContent,
+          contentFormat,
+          localPlaintext: contentFormat === "e2ee-v1" ? text : undefined,
           sender: {
             _id: user.id,
             username: user.username,
@@ -56,6 +102,10 @@ export function useSendMessage({ receiverId }) {
         });
         try {
           const dto = await sendMessage(formData);
+          if (contentFormat === "e2ee-v1" && text && dto?._id) {
+            moveCachedPlaintext(tempId, dto._id);
+            cachePlaintext(dto._id, text);
+          }
           finalizePending(tempId, dto);
           void queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
           return { ok: true, value: dto };

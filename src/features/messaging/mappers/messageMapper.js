@@ -13,6 +13,7 @@ export function mapMessageDto(dto) {
   return {
     _id: dto._id,
     content: dto.content || "",
+    contentFormat: dto.contentFormat || "plain",
     mediaUrl: dto.mediaUrl || null,
     mediaType: dto.mediaType || null,
     sender,

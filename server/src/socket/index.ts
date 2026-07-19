@@ -10,6 +10,12 @@ import { createMessage } from "../services/messageService.js";
 import { isAccessTokenRevoked } from "../services/tokenRevocation.js";
 import type { AuthenticatedUser } from "../types/auth.js";
 import { isHttpError } from "../utils/errors.js";
+import {
+  E2EE_CONTENT_MAX,
+  normalizeContentFormat,
+  PLAIN_CONTENT_MAX,
+  validateE2eeEnvelopeContent,
+} from "../utils/e2eeEnvelope.js";
 import { verifyAccessToken } from "../utils/tokens.js";
 import { allowSocketEvent } from "./rateLimit.js";
 import { isAllowedSocketRoom, peerIdFromDmRoom, userRoomId } from "./rooms.js";
@@ -159,17 +165,45 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
             : undefined;
         const content =
           payload && typeof payload.content === "string" ? payload.content : "";
+        const contentFormat = normalizeContentFormat(
+          payload && typeof payload === "object"
+            ? (payload as { contentFormat?: unknown }).contentFormat
+            : undefined
+        );
+
+        if (contentFormat === null) {
+          cb?.({ error: "INVALID" });
+          return;
+        }
 
         // BAN: client mediaUrl / mediaType are ignored
-        if (!receiverId || !content.trim()) {
+        if (!receiverId) {
           cb?.({ error: "EMPTY" });
           return;
         }
 
-        // Match REST validateMessage max length.
-        if (content.length > 1000) {
-          cb?.({ error: "TOO_LONG" });
-          return;
+        if (contentFormat === "e2ee-v1") {
+          if (!content) {
+            cb?.({ error: "EMPTY" });
+            return;
+          }
+          if (content.length > E2EE_CONTENT_MAX) {
+            cb?.({ error: "TOO_LONG" });
+            return;
+          }
+          if (validateE2eeEnvelopeContent(content)) {
+            cb?.({ error: "INVALID" });
+            return;
+          }
+        } else {
+          if (!content.trim()) {
+            cb?.({ error: "EMPTY" });
+            return;
+          }
+          if (content.length > PLAIN_CONTENT_MAX) {
+            cb?.({ error: "TOO_LONG" });
+            return;
+          }
         }
 
         assertCanListDm(authUser.id, receiverId);
@@ -179,7 +213,8 @@ export const initializeSocket = (httpServer: HttpServer, corsOptions: CorsOption
           senderId: authUser.id,
           senderUsername: authUser.username?.trim() || "user",
           receiverId,
-          content,
+          content: contentFormat === "e2ee-v1" ? content : content.trim(),
+          contentFormat,
           mediaUrl: null,
           mediaType: null,
           audioDuration: null,

@@ -22,6 +22,7 @@ model User {
   refreshSessions  RefreshSession[]
   blocks           Block[]          @relation("UserBlocks")
   blockedBy        Block[]          @relation("UserBlockedBy")
+  e2eeKey          E2eeKey?
 
   @@index([createdAt])
 }
@@ -32,6 +33,7 @@ model Message {
   receiverId     String?
   senderUsername String
   content        String   @default("")
+  contentFormat  String   @default("plain")
   mediaUrl       String?
   mediaType      String?
   audioDuration  Int?
@@ -49,6 +51,13 @@ model Message {
   @@index([senderId, createdAt])
   @@index([receiverId, senderId, createdAt])
   @@index([mediaUrl])
+}
+
+model E2eeKey {
+  userId       String   @id
+  publicKeyJwk String
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model RefreshSession {
