@@ -3,13 +3,18 @@ import {
   getOwnUserById,
   getPublicUserById,
   loginUser,
-  logoutByRefreshToken,
-  logoutUser,
+  logoutFamilyByRefreshToken,
   refreshUserTokens,
   registerUser,
+  revokeAllSessionsInFamily,
+  revokeAllUserSessions,
   searchPublicUsers,
   updateUserProfile,
 } from "../services/authService.js";
+import {
+  revokeAllForUser,
+  revokeFamily,
+} from "../services/tokenRevocation.js";
 import { createHttpError, isHttpError } from "../utils/errors.js";
 import {
   clearRefreshCookie,
@@ -28,7 +33,22 @@ const profileFilePath = (files: Request["files"], key: "avatar" | "banner") => {
   return `/api/media/covers/${file.filename}`;
 };
 
-const disconnectUserSockets = (req: Request, userId: string) => {
+const disconnectFamilySockets = async (
+  req: Request,
+  userId: string,
+  familyId: string
+) => {
+  const io = req.app.get("io");
+  if (!io || typeof io.in !== "function") return;
+  const sockets = await io.in(userRoomId(userId)).fetchSockets();
+  for (const socket of sockets) {
+    if (socket.data?.sid === familyId) {
+      socket.disconnect(true);
+    }
+  }
+};
+
+const disconnectAllUserSockets = (req: Request, userId: string) => {
   const io = req.app.get("io");
   if (!io || typeof io.in !== "function") return;
   io.in(userRoomId(userId)).disconnectSockets(true);
@@ -93,18 +113,25 @@ export const refreshAccessToken: RequestHandler = async (req, res) => {
 };
 
 /**
- * Logout must succeed when the access JWT is expired but the refresh cookie
- * is still valid — otherwise sessions stay alive and the cookie is not cleared.
+ * Per-device logout: revoke only the refresh family from the cookie.
+ * Access JWT optional — expired Bearer must still clear the cookie via refresh path.
  */
 export const logout: RequestHandler = async (req, res) => {
   const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
   let userId: string | undefined;
+  let familyId: string | undefined;
 
   if (typeof refreshToken === "string" && refreshToken) {
-    userId = (await logoutByRefreshToken(refreshToken)) ?? undefined;
+    const result = await logoutFamilyByRefreshToken(refreshToken);
+    if (result) {
+      userId = result.userId;
+      familyId = result.familyId;
+      revokeFamily(result.familyId);
+    }
   }
 
-  if (!userId) {
+  // Bearer fallback (no cookie): revoke only this device's family via sid.
+  if (!familyId) {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
       const accessToken = authHeader.slice("Bearer ".length).trim();
@@ -112,7 +139,9 @@ export const logout: RequestHandler = async (req, res) => {
         try {
           const payload = verifyAccessToken(accessToken);
           userId = payload.id;
-          await logoutUser(payload.id);
+          familyId = payload.sid;
+          await revokeAllSessionsInFamily(payload.sid);
+          revokeFamily(payload.sid);
         } catch {
           // Best-effort: still clear cookies below.
         }
@@ -120,10 +149,24 @@ export const logout: RequestHandler = async (req, res) => {
     }
   }
 
-  if (userId) {
-    disconnectUserSockets(req, userId);
+  if (userId && familyId) {
+    await disconnectFamilySockets(req, userId, familyId);
   }
 
+  clearRefreshCookie(res);
+  res.json({ message: "Logout successful" });
+};
+
+/** Logout everywhere: revoke all refresh families + access JWTs for the user. */
+export const logoutAll: RequestHandler = async (req, res) => {
+  if (!req.user) {
+    throw createHttpError(401, "Не авторизован", "UNAUTHORIZED");
+  }
+
+  const userId = req.user.id;
+  await revokeAllUserSessions(userId);
+  revokeAllForUser(userId);
+  disconnectAllUserSockets(req, userId);
   clearRefreshCookie(res);
   res.json({ message: "Logout successful" });
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, memo, useCallback } from "react";
-import { FiLogOut, FiMenu, FiMonitor, FiMoon, FiSun } from "react-icons/fi";
+import { FiLogOut, FiMenu, FiMonitor, FiMoon, FiSun, FiShield } from "react-icons/fi";
 import { ANIMATION_DELAYS } from "@constants/appConstants";
 import { setupHoverPrefetch } from "@shared/lib/prefetch";
 import { useSelectedUser } from "@shared/store/chatSelectors";
@@ -22,7 +22,7 @@ const ChatHeaderComponent = ({
   onOpenSidebar,
   onOpenProfileEditor,
 }) => {
-  const { logout } = useAuth();
+  const { logout, logoutAll } = useAuth();
   const selectedUser = useSelectedUser();
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
@@ -74,6 +74,20 @@ const ChatHeaderComponent = ({
       setLoggingOut(false);
     }
   }, [loggingOut, logout]);
+
+  const handleLogoutAll = useCallback(async () => {
+    if (loggingOut) return;
+    const confirmed = window.confirm(
+      "Выйти на всех устройствах? Активные сессии будут завершены везде."
+    );
+    if (!confirmed) return;
+    setLoggingOut(true);
+    try {
+      await logoutAll();
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [loggingOut, logoutAll]);
 
   const ThemeIcon = themeMeta[theme]?.icon || FiMonitor;
   const themeLabel = themeMeta[theme]?.label || "Сменить тему";
@@ -139,9 +153,22 @@ const ChatHeaderComponent = ({
               variant="ghost"
               size="icon"
               className="h-12 w-12 text-muted-foreground hover:text-foreground"
+              onClick={handleLogoutAll}
+              disabled={loggingOut}
+              aria-label="Выйти на всех устройствах"
+              title="Выйти на всех устройствах"
+              aria-busy={loggingOut}>
+              <FiShield size={20} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12 text-muted-foreground hover:text-foreground"
               onClick={handleLogout}
               disabled={loggingOut}
               aria-label={loggingOut ? "Выход…" : "Выйти из аккаунта"}
+              title="Выйти"
               aria-busy={loggingOut}>
               <FiLogOut size={20} />
             </Button>

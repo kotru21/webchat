@@ -4,6 +4,7 @@ import {
   getUserProfile,
   login,
   logout,
+  logoutAll,
   refreshAccessToken,
   register,
   searchUsers,
@@ -40,9 +41,11 @@ router.post(
   register
 );
 router.post("/login", authLimiter, validateLogin, login);
-// No `protect`: expired access JWT must still clear refresh cookie + revoke sessions.
+// No `protect`: expired access JWT must still clear refresh cookie + revoke family.
 // requireSameOrigin: CSRF guard for the cookie-authenticated endpoints.
 router.post("/logout", logoutLimiter, requireSameOrigin, logout);
+// Bearer-only ⇒ no CSRF middleware (invariant 7).
+router.post("/logout-all", protect, logoutLimiter, logoutAll);
 router.post("/refresh", refreshLimiter, requireSameOrigin, refreshAccessToken);
 router.put(
   "/profile",

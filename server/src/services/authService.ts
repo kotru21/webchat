@@ -41,7 +41,7 @@ const REFRESH_REUSE_GRACE_MS = 1_000;
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("timing-oracle-pad", 10);
 
 const issueTokenPair = async (userId: string, familyId = createFamilyId()) => {
-  const token = signAccessToken(userId);
+  const token = signAccessToken(userId, familyId);
   const refreshToken = createRefreshToken();
 
   await prisma.refreshSession.create({
@@ -53,10 +53,10 @@ const issueTokenPair = async (userId: string, familyId = createFamilyId()) => {
     },
   });
 
-  return { token, refreshToken };
+  return { token, refreshToken, familyId };
 };
 
-const revokeAllSessionsInFamily = async (familyId: string): Promise<void> => {
+export const revokeAllSessionsInFamily = async (familyId: string): Promise<void> => {
   await prisma.refreshSession.updateMany({
     where: {
       familyId,
@@ -311,26 +311,21 @@ export const revokeAllUserSessions = async (userId: string) => {
   });
 };
 
-export const logoutUser = async (userId: string) => {
-  await revokeAllUserSessions(userId);
-};
-
 /**
- * Resolve user from refresh cookie and revoke all sessions (access JWT optional).
- * Returns the userId when a session was found; null otherwise.
- * Note: revokes every device for this user (not only the current family).
+ * Resolve refresh cookie session and revoke only that family (per-device logout).
+ * Returns `{ userId, familyId }` when found; null otherwise.
  */
-export const logoutByRefreshToken = async (
+export const logoutFamilyByRefreshToken = async (
   refreshToken: string
-): Promise<string | null> => {
+): Promise<{ userId: string; familyId: string } | null> => {
   const tokenHash = hashToken(refreshToken);
   const session = await prisma.refreshSession.findUnique({
     where: { tokenHash },
-    select: { userId: true },
+    select: { userId: true, familyId: true },
   });
   if (!session) return null;
-  await revokeAllUserSessions(session.userId);
-  return session.userId;
+  await revokeAllSessionsInFamily(session.familyId);
+  return { userId: session.userId, familyId: session.familyId };
 };
 
 export const updateUserProfile = async (userId: string, data: UpdateProfileInput) => {

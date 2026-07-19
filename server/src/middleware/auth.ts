@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import prisma from "../config/prisma.js";
+import { isAccessTokenRevoked } from "../services/tokenRevocation.js";
 import { verifyAccessToken } from "../utils/tokens.js";
 
 const protect: RequestHandler = async (req, res, next) => {
@@ -16,6 +17,11 @@ const protect: RequestHandler = async (req, res, next) => {
 
   try {
     const payload = verifyAccessToken(token);
+
+    if (isAccessTokenRevoked(payload)) {
+      return res.status(401).json({ message: "Сессия завершена" });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
