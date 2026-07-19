@@ -9,8 +9,9 @@ import { blockLimiter, readLimiter } from "../middleware/rateLimiter.js";
 
 const router = Router();
 
-router.get("/", protect, readLimiter, listBlocks);
-router.post("/:userId", protect, blockLimiter, createBlock);
-router.delete("/:userId", protect, blockLimiter, removeBlock);
+// Rate limit before protect so unauthenticated spam is throttled (CodeQL).
+router.get("/", readLimiter, protect, listBlocks);
+router.post("/:userId", blockLimiter, protect, createBlock);
+router.delete("/:userId", blockLimiter, protect, removeBlock);
 
 export default router;
