@@ -33,6 +33,7 @@ const bootstrap = async () => {
   });
 
   const gracefulShutdown = async () => {
+    setTimeout(() => process.exit(1), 10_000).unref();
     await prisma.$disconnect();
     io.close();
     httpServer.close(() => {

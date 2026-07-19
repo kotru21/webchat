@@ -24,11 +24,12 @@ COPY --from=build /app/dist ./dist
 COPY server/prisma/schema.prisma ./prisma/schema.prisma
 COPY server/prisma/migrations ./prisma/migrations
 COPY server/prisma.config.ts ./
+COPY server/scripts ./scripts
 # SQLite lives on a volume; uploads dir must be writable by the app user.
 ENV DATABASE_URL="file:/data/webchat.db"
-RUN mkdir -p /data /app/uploads && chown -R node:node /data /app/uploads
+RUN mkdir -p /data /app/uploads /backups && chown -R node:node /data /app/uploads /backups
 USER node
-VOLUME ["/data", "/app/uploads"]
+VOLUME ["/data", "/app/uploads", "/backups"]
 EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD node -e "fetch('http://localhost:'+(process.env.PORT||5000)+'/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
