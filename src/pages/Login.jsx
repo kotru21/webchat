@@ -1,4 +1,4 @@
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router";
 import { useAuth } from "@context/useAuth";
 import { Button } from "@shared/ui/button";
 import {

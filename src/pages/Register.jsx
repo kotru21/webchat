@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router";
 import { register } from "@features/auth/api/authApi";
 import { notifyError, notifySuccess } from "@features/notifications/notify";
 import { Button } from "@shared/ui/button";
