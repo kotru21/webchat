@@ -3,7 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
-} from "react-router-dom";
+} from "react-router";
 import { AuthProvider } from "@context/AuthContext";
 import { useAuth } from "@context/useAuth";
 import QueryClientProvider from "@app/providers/QueryClientProvider.jsx";
