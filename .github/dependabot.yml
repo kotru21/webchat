@@ -18,6 +18,11 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      # Keep multi-step actions (e.g. codeql init/analyze) on the same version.
+      github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: docker
     directory: "/"
     schedule:
